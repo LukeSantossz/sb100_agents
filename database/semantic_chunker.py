@@ -296,12 +296,12 @@ def search(query: str, top_k: int = 5):
     client = QdrantClient(url=QDRANT_URL)
     query_embedding = get_embedding(query)
 
-    results = client.search(
+    results = client.query_points(
         collection_name=COLLECTION_NAME,
-        query_vector=query_embedding.tolist(),
+        query=query_embedding.tolist(),
         limit=top_k,
         with_payload=True,
-    )
+    ).points
 
     print(f"\n🔎 Query: \"{query}\"\n")
     for i, r in enumerate(results, 1):
