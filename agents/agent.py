@@ -1,8 +1,17 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import ollama
 from qdrant_client import QdrantClient
 
 app = FastAPI(title="RAG Chat API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 CHAT_MODEL  = "llama3.1:8b"
 EMBED_MODEL = "nomic-embed-text"
