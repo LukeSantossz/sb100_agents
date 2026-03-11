@@ -22,10 +22,10 @@ import ollama
 # Configurações globais
 # ─────────────────────────────────────────────
 
-OLLAMA_MODEL       = "llama3.1:8b"   # modelo de embeddings via Ollama
-EMBED_DIM          = 4096            # dimensão dos embeddings do Llama 3.1:8b
+OLLAMA_MODEL       = "nomic-embed-text"   # modelo de embeddings via Ollama
+EMBED_DIM          = 768             # dimensão do nomic-embed-text
 QDRANT_URL         = "http://localhost:6333"
-COLLECTION_NAME    = "archives"
+COLLECTION_NAME    = "archives_v2"
 
 # Thresholds do chunking semântico
 SIMILARITY_THRESHOLD = 0.75   # abaixo disso → novo chunk

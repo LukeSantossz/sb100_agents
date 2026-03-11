@@ -23,3 +23,13 @@ ollama pull llama3.1:8b
 ```bash
 uv run python .\database\semantic_chunker.py index ./archives/
 ```
+
+## Rodar a API
+```bash
+uv run uvicorn agents.agent:app --reload 
+```
+
+## Testar a API
+```bash
+curl "http://localhost:8000/chat?question=O%20que%20devo%20utilizar%20para%20corrigir%20a%20acidez%20do%20solo?"
+```
