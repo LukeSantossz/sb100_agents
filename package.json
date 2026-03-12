@@ -1,0 +1,18 @@
+{
+  "name": "smartb100-project",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema RAG para consultas agrícolas",
+  "scripts": {
+    "start": "concurrently -n \"API,FRONT\" -c \"green,blue\" \"npm run api\" \"npm run frontend\"",
+    "api": "cd . && .venv\\Scripts\\python.exe -m uvicorn agents.agent:app --reload",
+    "frontend": "cd frontend/smartb100 && npm run dev",
+    "install:frontend": "cd frontend/smartb100 && npm install",
+    "setup": "npm run install:frontend",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

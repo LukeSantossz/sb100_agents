@@ -1,12 +1,47 @@
-# Python-generated files
+# Python
 __pycache__/
-*.py[oc]
-build/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+Lib/
+Scripts/
+Include/
+pyvenv.cfg
+.python-version
+
+# Virtual environment
+*.egg-info/
 dist/
-wheels/
-*.egg-info
+build/
 
-# Virtual environments
-.venv
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.claude/
 
-./qdrant_storage
+# Environment variables
+.env
+.env.local
+
+# Qdrant storage (optional - uncomment if you want to track)
+# qdrant_storage/
+
+# Node
+node_modules/
+.npm
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

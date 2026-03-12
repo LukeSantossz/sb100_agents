@@ -13,7 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-CHAT_MODEL  = "llama3.1:8b"
+CHAT_MODEL  = "llama3.2:3b"
 EMBED_MODEL = "nomic-embed-text"
 
 QDRANT_URL  = "http://localhost:6333"
