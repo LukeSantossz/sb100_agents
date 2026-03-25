@@ -90,18 +90,20 @@ sb100_agents/
 │   └── smartb100/
 │       └── src/
 │           ├── components/   # Componentes React
-│           │   ├── ChatInput.jsx
-│           │   ├── ChatScreen.jsx
-│           │   ├── MessageBubble.jsx
-│           │   ├── StartScreen.jsx
-│           │   └── index.js
+│           │   ├── StartScreen.jsx   # Tela inicial
+│           │   ├── ChatScreen.jsx    # Tela de chat
+│           │   └── index.js          # Exports
 │           ├── hooks/        # Custom hooks
 │           │   └── useChat.js
 │           ├── services/     # Serviços/API
 │           │   └── api.js
 │           ├── assets/       # Imagens
+│           │   └── images/
+│           │       ├── background.png
+│           │       └── logo.png
 │           ├── App.jsx       # Componente principal
-│           └── App.css       # Estilos
+│           ├── App.css       # Estilos do app
+│           └── index.css     # Estilos globais
 ├── archives/                 # PDFs para indexação
 ├── qdrant_storage/           # Dados do Qdrant
 ├── docker-compose.yml        # Configuração Docker
@@ -121,3 +123,28 @@ curl "http://localhost:8000/chat?question=O%20que%20devo%20utilizar%20para%20cor
 
 - `GET /chat?question=<pergunta>` - Faz uma pergunta ao agente
 - `GET /health` - Verifica status da API
+
+## Roadmap
+
+Features in development on separate branches:
+
+| Branch | Feature | Status |
+|--------|---------|--------|
+| `feat/hallucination-audit-method` | **Semantic Entropy Pipeline** - Hallucination detection using Shannon entropy over response clusters | In Progress |
+| `feat/audit-and-hybrid-search` | **Architecture Documentation** - System audit with Mermaid diagrams (`ARCHITECTURE.md`) | In Progress |
+
+### Semantic Entropy Pipeline
+
+Uncertainty detection module to identify potential LLM hallucinations:
+
+1. Generate multiple responses for the same query
+2. Convert responses to vector embeddings
+3. Cluster embeddings by cosine similarity
+4. Calculate Shannon entropy over cluster distribution
+5. Return risk-based decision
+
+### Planned Improvements
+
+- [ ] Hybrid search (dense + sparse vectors)
+- [ ] Response validation loop
+- [ ] Hallucination risk scoring in API response
