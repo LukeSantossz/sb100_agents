@@ -1,137 +1,147 @@
-# SmartB100 - Agente RAG para Agricultura
+# SmartB100 — Agriculture RAG Agent
 
-Sistema de chat baseado em RAG (Retrieval-Augmented Generation) para consultas sobre agricultura, utilizando documentos PDF como base de conhecimento.
+A RAG (Retrieval-Augmented Generation) chat system for agriculture consulting, using PDF documents as a knowledge base.
 
-## Requisitos
+## Requirements
 
-- **Docker Desktop** (para Qdrant)
-- **Ollama** (para modelos LLM)
+- **Docker Desktop** (for Qdrant)
+- **Ollama** (for LLM inference)
 - **Python 3.12+**
-- **Node.js 18+** (para frontend)
+- **Node.js 18+** (for the frontend)
 
-## Início Rápido
+## Quick Start
 
 ### Windows
 ```bash
-# Execute o script de inicialização
+# Run the startup script
 .\start.bat
-# ou
+# or
 powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
 
-### Com npm (após setup inicial)
+### With npm (after initial setup)
 ```bash
 npm run start
 ```
 
-## Passo a Passo Manual
+## Manual Setup
 
-### 1. Iniciar Qdrant (banco de dados vetorial)
+### 1. Start Qdrant (vector database)
 ```bash
 docker-compose up -d
 ```
 
-### 2. Instalar modelos Ollama
+### 2. Install Ollama models
 
 **Windows (via winget):**
 ```bash
 winget install Ollama.Ollama
-ollama pull llama3.1:8b
+ollama pull llama3.2:3b
 ollama pull nomic-embed-text
 ```
 
-### 3. Instalar dependências
+### 3. Install dependencies
 ```bash
-# Dependências do projeto raiz
+# Root project dependencies
 npm install
 
-# Dependências do frontend
+# Frontend dependencies
 npm run install:frontend
 ```
 
-### 4. Indexar documentos (primeira vez)
+### 4. Index documents (first run only)
 ```bash
 .venv\Scripts\python.exe database\semantic_chunker.py index ./archives/
 ```
 
-### 5. Iniciar tudo junto
+### 5. Start everything
 ```bash
 npm run start
 ```
 
-## URLs dos Serviços
+## Service URLs
 
-| Serviço | URL |
+| Service | URL |
 |---------|-----|
 | API | http://localhost:8000 |
 | Frontend | http://localhost:5173 |
 | Qdrant Dashboard | http://localhost:6333/dashboard |
 
-## Scripts npm
+## npm Scripts
 
-| Comando | Descrição |
-|---------|-----------|
-| `npm run start` | Inicia API e Frontend simultaneamente |
-| `npm run api` | Inicia apenas a API |
-| `npm run frontend` | Inicia apenas o Frontend |
-| `npm run setup` | Instala dependências do frontend |
-| `npm run docker:up` | Inicia container Qdrant |
-| `npm run docker:down` | Para container Qdrant |
+| Command | Description |
+|---------|-------------|
+| `npm run start` | Starts API and Frontend simultaneously |
+| `npm run api` | Starts the API only |
+| `npm run frontend` | Starts the Frontend only |
+| `npm run setup` | Installs frontend dependencies |
+| `npm run docker:up` | Starts the Qdrant container |
+| `npm run docker:down` | Stops the Qdrant container |
 
-## Estrutura do Projeto
+## Project Structure
 
 ```
 sb100_agents/
 ├── agents/
-│   └── agent.py              # API FastAPI com RAG
+│   └── agent.py              # FastAPI app with RAG logic
 ├── database/
-│   └── semantic_chunker.py   # Indexação de documentos
+│   └── semantic_chunker.py   # PDF ingestion and semantic chunking
 ├── frontend/
 │   └── smartb100/
 │       └── src/
-│           ├── components/   # Componentes React
-│           │   ├── StartScreen.jsx   # Tela inicial
-│           │   ├── ChatScreen.jsx    # Tela de chat
-│           │   └── index.js          # Exports
-│           ├── hooks/        # Custom hooks
+│           ├── components/   # React components
+│           │   ├── StartScreen.jsx
+│           │   ├── ChatScreen.jsx
+│           │   └── index.js
+│           ├── hooks/
 │           │   └── useChat.js
-│           ├── services/     # Serviços/API
+│           ├── services/
 │           │   └── api.js
-│           ├── assets/       # Imagens
-│           │   └── images/
-│           │       ├── background.png
-│           │       └── logo.png
-│           ├── App.jsx       # Componente principal
-│           ├── App.css       # Estilos do app
-│           └── index.css     # Estilos globais
-├── archives/                 # PDFs para indexação
-├── qdrant_storage/           # Dados do Qdrant
-├── docker-compose.yml        # Configuração Docker
-├── package.json              # Scripts npm raiz
-├── pyproject.toml            # Dependências Python
-├── start.bat                 # Script Windows CMD
-└── start.ps1                 # Script PowerShell
+│           ├── assets/images/
+│           │   ├── background.png
+│           │   └── logo.png
+│           ├── App.jsx
+│           ├── App.css
+│           └── index.css
+├── archives/                 # PDF files to be indexed
+├── qdrant_storage/           # Qdrant persistent data
+├── docker-compose.yml
+├── package.json
+├── pyproject.toml
+├── start.bat
+└── start.ps1
 ```
 
-## Testar a API
+## Models in Use
+
+| Role | Model |
+|------|-------|
+| LLM (chat) | `llama3.2:3b` |
+| Embeddings | `nomic-embed-text` (768 dimensions) |
+
+## API Reference
 
 ```bash
-curl "http://localhost:8000/chat?question=O%20que%20devo%20utilizar%20para%20corrigir%20a%20acidez%20do%20solo?"
+# Ask the agent a question
+curl "http://localhost:8000/chat?question=What+should+I+use+to+correct+soil+acidity?"
+
+# Health check
+curl "http://localhost:8000/health"
 ```
 
-## Endpoints da API
+### Endpoints
 
-- `GET /chat?question=<pergunta>` - Faz uma pergunta ao agente
-- `GET /health` - Verifica status da API
+- `GET /chat?question=<text>` — Queries the RAG agent
+- `GET /health` — Returns API and model status
 
 ## Roadmap
 
-Features in development on separate branches:
+Features currently in development on separate branches:
 
 | Branch | Feature | Status |
 |--------|---------|--------|
-| `feat/hallucination-audit-method` | **Semantic Entropy Pipeline** - Hallucination detection using Shannon entropy over response clusters | In Progress |
-| `feat/audit-and-hybrid-search` | **Architecture Documentation** - System audit with Mermaid diagrams (`ARCHITECTURE.md`) | In Progress |
+| `feat/hallucination-audit-method` | **Semantic Entropy Pipeline** — Hallucination detection using Shannon entropy over response clusters | In Progress |
+| `feat/audit-and-hybrid-search` | **Architecture Documentation** — System audit with Mermaid diagrams (`ARCHITECTURE.md`) | In Progress |
 
 ### Semantic Entropy Pipeline
 
@@ -140,11 +150,11 @@ Uncertainty detection module to identify potential LLM hallucinations:
 1. Generate multiple responses for the same query
 2. Convert responses to vector embeddings
 3. Cluster embeddings by cosine similarity
-4. Calculate Shannon entropy over cluster distribution
-5. Return risk-based decision
+4. Calculate Shannon entropy over the cluster distribution
+5. Return a risk-based decision
 
 ### Planned Improvements
 
 - [ ] Hybrid search (dense + sparse vectors)
 - [ ] Response validation loop
-- [ ] Hallucination risk scoring in API response
+- [ ] Hallucination risk score exposed in the API response
