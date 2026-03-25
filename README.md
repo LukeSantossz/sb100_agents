@@ -1,63 +1,110 @@
+![Python](https://img.shields.io/badge/Python-3.12%2B-blue?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111%2B-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-18%2B-61DAFB?logo=react&logoColor=black)
+![Status](https://img.shields.io/badge/status-in%20development-yellow)
+
 # SmartB100 — Agriculture RAG Agent
 
-A RAG (Retrieval-Augmented Generation) chat system for agriculture consulting, using PDF documents as a knowledge base.
+> RAG-powered chat system for agriculture consulting, using PDF documents as a knowledge base.
 
-## Requirements
+## Overview
+
+SmartB100 is a Retrieval-Augmented Generation (RAG) system that answers agronomy questions by retrieving relevant context from indexed PDF documents and generating responses via a local LLM. It exposes a FastAPI backend and a React frontend, orchestrated through npm scripts with Docker for the vector database.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| API | FastAPI + Uvicorn |
+| LLM inference | Ollama (`llama3.2:3b`) |
+| Embeddings | Ollama (`nomic-embed-text`, 768 dims) |
+| Vector database | Qdrant (Docker) |
+| Document ingestion | PyMuPDF + semantic chunker |
+| Frontend | React + Vite |
+
+## Getting Started
+
+### Prerequisites
 
 - **Docker Desktop** (for Qdrant)
 - **Ollama** (for LLM inference)
 - **Python 3.12+**
-- **Node.js 18+** (for the frontend)
+- **Node.js 18+**
 
-## Quick Start
-
-### Windows
+### Installation
 ```bash
-# Run the startup script
+# Install Ollama models
+ollama pull llama3.2:3b
+ollama pull nomic-embed-text
+
+# Install root and frontend dependencies
+npm install
+npm run install:frontend
+```
+
+### Running
+
+**Windows (one-shot script):**
+```bash
 .\start.bat
 # or
 powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
 
-### With npm (after initial setup)
+**Manual (step by step):**
 ```bash
-npm run start
-```
-
-## Manual Setup
-
-### 1. Start Qdrant (vector database)
-```bash
+# 1. Start the vector database
 docker-compose up -d
-```
 
-### 2. Install Ollama models
-
-**Windows (via winget):**
-```bash
-winget install Ollama.Ollama
-ollama pull llama3.2:3b
-ollama pull nomic-embed-text
-```
-
-### 3. Install dependencies
-```bash
-# Root project dependencies
-npm install
-
-# Frontend dependencies
-npm run install:frontend
-```
-
-### 4. Index documents (first run only)
-```bash
+# 2. Index PDF documents (first run only)
 .venv\Scripts\python.exe database\semantic_chunker.py index ./archives/
-```
 
-### 5. Start everything
-```bash
+# 3. Start API + Frontend
 npm run start
 ```
+
+## Project Structure
+```
+sb100_agents/
+├── agents/
+│   └── agent.py              # FastAPI app with RAG logic
+├── database/
+│   └── semantic_chunker.py   # PDF ingestion and semantic chunking
+├── frontend/
+│   └── smartb100/src/
+│       ├── components/        # React components (StartScreen, ChatScreen)
+│       ├── hooks/             # useChat.js
+│       ├── services/          # api.js
+│       └── assets/images/     # background.png, logo.png
+├── archives/                  # PDF files to be indexed
+├── qdrant_storage/            # Qdrant persistent data
+├── docker-compose.yml
+├── package.json               # npm scripts (root)
+├── pyproject.toml
+├── start.bat
+└── start.ps1
+```
+
+## Current Status
+
+**Status: In development — active**
+
+| Feature | Status |
+|---------|--------|
+| RAG pipeline (retrieval + generation) | Done ✅ |
+| FastAPI backend (`/chat` and `/health`) | Done ✅ |
+| Semantic chunker with cosine-similarity grouping | Done ✅ |
+| React frontend (start + chat screens) | Done ✅ |
+| Hybrid search (dense + sparse vectors) | In progress 🔄 |
+| Semantic entropy / hallucination detection | In progress 🔄 |
+| Hallucination risk score in API response | Pending ⏳ |
+
+**Active branches:**
+
+| Branch | Feature |
+|--------|---------|
+| `feat/hallucination-audit-method` | Semantic Entropy Pipeline — detects hallucinations via Shannon entropy over response clusters |
+| `feat/audit-and-hybrid-search` | Architecture documentation with Mermaid diagrams (`ARCHITECTURE.md`) |
 
 ## Service URLs
 
@@ -78,49 +125,7 @@ npm run start
 | `npm run docker:up` | Starts the Qdrant container |
 | `npm run docker:down` | Stops the Qdrant container |
 
-## Project Structure
-
-```
-sb100_agents/
-├── agents/
-│   └── agent.py              # FastAPI app with RAG logic
-├── database/
-│   └── semantic_chunker.py   # PDF ingestion and semantic chunking
-├── frontend/
-│   └── smartb100/
-│       └── src/
-│           ├── components/   # React components
-│           │   ├── StartScreen.jsx
-│           │   ├── ChatScreen.jsx
-│           │   └── index.js
-│           ├── hooks/
-│           │   └── useChat.js
-│           ├── services/
-│           │   └── api.js
-│           ├── assets/images/
-│           │   ├── background.png
-│           │   └── logo.png
-│           ├── App.jsx
-│           ├── App.css
-│           └── index.css
-├── archives/                 # PDF files to be indexed
-├── qdrant_storage/           # Qdrant persistent data
-├── docker-compose.yml
-├── package.json
-├── pyproject.toml
-├── start.bat
-└── start.ps1
-```
-
-## Models in Use
-
-| Role | Model |
-|------|-------|
-| LLM (chat) | `llama3.2:3b` |
-| Embeddings | `nomic-embed-text` (768 dimensions) |
-
 ## API Reference
-
 ```bash
 # Ask the agent a question
 curl "http://localhost:8000/chat?question=What+should+I+use+to+correct+soil+acidity?"
@@ -129,32 +134,7 @@ curl "http://localhost:8000/chat?question=What+should+I+use+to+correct+soil+acid
 curl "http://localhost:8000/health"
 ```
 
-### Endpoints
-
-- `GET /chat?question=<text>` — Queries the RAG agent
-- `GET /health` — Returns API and model status
-
-## Roadmap
-
-Features currently in development on separate branches:
-
-| Branch | Feature | Status |
-|--------|---------|--------|
-| `feat/hallucination-audit-method` | **Semantic Entropy Pipeline** — Hallucination detection using Shannon entropy over response clusters | In Progress |
-| `feat/audit-and-hybrid-search` | **Architecture Documentation** — System audit with Mermaid diagrams (`ARCHITECTURE.md`) | In Progress |
-
-### Semantic Entropy Pipeline
-
-Uncertainty detection module to identify potential LLM hallucinations:
-
-1. Generate multiple responses for the same query
-2. Convert responses to vector embeddings
-3. Cluster embeddings by cosine similarity
-4. Calculate Shannon entropy over the cluster distribution
-5. Return a risk-based decision
-
-### Planned Improvements
-
-- [ ] Hybrid search (dense + sparse vectors)
-- [ ] Response validation loop
-- [ ] Hallucination risk score exposed in the API response
+| Endpoint | Description |
+|----------|-------------|
+| `GET /chat?question=<text>` | Queries the RAG agent |
+| `GET /health` | Returns API and model status |
