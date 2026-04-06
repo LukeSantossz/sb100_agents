@@ -5,29 +5,35 @@
 
 # SmartB100 — Agriculture RAG Agent
 
-> RAG-powered chat system for agriculture consulting, using PDF documents as a knowledge base.
+> RAG-powered chat system for agricultural technical support, with agent-oriented architecture via LangGraph and hallucination verification through semantic entropy.
 
 ## Overview
 
-SmartB100 is a Retrieval-Augmented Generation (RAG) system that answers agronomy questions by retrieving relevant context from indexed PDF documents and generating responses via a local LLM. It exposes a FastAPI backend and a React frontend, orchestrated through npm scripts with Docker for the vector database.
+SmartB100 is a Retrieval-Augmented Generation (RAG) system specialized in agronomy. It answers technical agricultural questions by retrieving relevant context from indexed PDF documents and generating responses via a local LLM. It exposes a FastAPI backend and a React frontend, orchestrated through npm scripts with Docker for the vector database.
+
+The evolving architecture targets migration to a ReAct graph with LangGraph, hybrid search (dense + sparse vectors with RRF fusion), and a dual-pipeline hallucination verifier — semantic entropy and atomic claim verification.
+
+For architecture details and design decisions, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+|-------|------------|
 | API | FastAPI + Uvicorn |
 | LLM inference | Ollama (`llama3.2:3b`) |
 | Embeddings | Ollama (`nomic-embed-text`, 768 dims) |
 | Vector database | Qdrant (Docker) |
 | Document ingestion | PyMuPDF + semantic chunker |
 | Frontend | React + Vite |
+| Agent orchestration | LangGraph (migration in progress) |
+| Hallucination verification | Semantic Entropy + Claim Verification (in development) |
 
 ## Getting Started
 
 ### Prerequisites
 
 - **Docker Desktop** (for Qdrant)
-- **Ollama** (for LLM inference)
+- **Ollama** (for local LLM inference)
 - **Python 3.12+**
 - **Node.js 18+**
 
@@ -67,19 +73,23 @@ npm run start
 ```
 sb100_agents/
 ├── agents/
-│   └── agent.py              # FastAPI app with RAG logic
+│   └── agent.py                    # FastAPI app with RAG logic
 ├── database/
-│   └── semantic_chunker.py   # PDF ingestion and semantic chunking
+│   └── semantic_chunker.py         # PDF ingestion and semantic chunking
+├── hallucination_verifier/         # Hallucination verifier (in development)
+│   ├── entropy_pipeline.py         # Semantic Entropy Pipeline
+│   └── claim_pipeline.py           # Atomic Claim Verification Pipeline
 ├── frontend/
 │   └── smartb100/src/
-│       ├── components/        # React components (StartScreen, ChatScreen)
-│       ├── hooks/             # useChat.js
-│       ├── services/          # api.js
-│       └── assets/images/     # background.png, logo.png
-├── archives/                  # PDF files to be indexed
-├── qdrant_storage/            # Qdrant persistent data
+│       ├── components/             # React components (StartScreen, ChatScreen)
+│       ├── hooks/                  # useChat.js
+│       ├── services/               # api.js
+│       └── assets/images/         # background.png, logo.png
+├── archives/                       # PDF files to be indexed
+├── qdrant_storage/                 # Qdrant persistent data
+├── ARCHITECTURE.md                 # Architecture diagrams and decisions (Mermaid)
 ├── docker-compose.yml
-├── package.json               # npm scripts (root)
+├── package.json
 ├── pyproject.toml
 ├── start.bat
 └── start.ps1
@@ -87,24 +97,27 @@ sb100_agents/
 
 ## Current Status
 
-**Status: In development — active**
+**Sprint 1 — active | MVP: functional RAG pipeline**
 
 | Feature | Status |
 |---------|--------|
-| RAG pipeline (retrieval + generation) | Done ✅ |
-| FastAPI backend (`/chat` and `/health`) | Done ✅ |
-| Semantic chunker with cosine-similarity grouping | Done ✅ |
-| React frontend (start + chat screens) | Done ✅ |
-| Hybrid search (dense + sparse vectors) | In progress 🔄 |
-| Semantic entropy / hallucination detection | In progress 🔄 |
-| Hallucination risk score in API response | Pending ⏳ |
+| RAG pipeline (retrieval + generation) | Done |
+| FastAPI backend (`/chat` and `/health`) | Done |
+| Semantic chunker with cosine-similarity grouping | Done |
+| React frontend (start + chat screens) | Done |
+| `ARCHITECTURE.md` with Mermaid diagrams | Done |
+| Hybrid search (dense + sparse vectors, RRF fusion) | In progress |
+| LangGraph skeleton with agricultural intent filter | In progress |
+| Semantic Entropy Pipeline (hallucination verifier) | In progress |
+| Claim Verification Pipeline (atomic decomposition + RAG) | In progress |
+| Hallucination risk score in API response | Pending |
 
 **Active branches:**
 
 | Branch | Feature |
 |--------|---------|
-| `feat/hallucination-audit-method` | Semantic Entropy Pipeline — detects hallucinations via Shannon entropy over response clusters |
-| `feat/audit-and-hybrid-search` | Architecture documentation with Mermaid diagrams (`ARCHITECTURE.md`) |
+| `feat/audit-and-hybrid-search` | Code audit + `ARCHITECTURE.md` (PR open, awaiting Task 2) |
+| `feat/hallucination-verifier` | Dual-pipeline hallucination verifier: semantic entropy clustering and atomic claim verification with entropy gate |
 
 ## Service URLs
 
