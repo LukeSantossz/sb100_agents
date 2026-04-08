@@ -31,6 +31,7 @@ class Message(Base):
     conversation_id = Column(Integer, ForeignKey("conversations.id"))
     role = Column(String) # 'user' or 'assistant'
     content = Column(Text)
+    is_hallucinated = Column(Integer, nullable=True) # 0 for No, 1 for Yes (Hallucinated)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     conversation = relationship("Conversation", back_populates="messages")

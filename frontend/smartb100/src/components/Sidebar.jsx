@@ -1,13 +1,17 @@
-import { Plus, MessageSquare, LogOut } from 'lucide-react';
+import { Plus, MessageSquare, LogOut, Sun, Moon, Leaf } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import '../index.css';
 
-export default function Sidebar({ conversations, activeConvId, onSelectConversation, onNewConversation }) {
+export default function Sidebar({ conversations, activeConvId, onSelectConversation, onNewConversation, theme, onToggleTheme }) {
     const { user, logout } = useAuth();
 
     return (
         <div className="sidebar glass-panel">
             <div className="sidebar-header">
+                <div className="sidebar-brand">
+                    <Leaf size={22} className="brand-icon" />
+                    <span className="brand-name">AgroBot</span>
+                </div>
                 <button className="new-chat-btn" onClick={onNewConversation}>
                     <Plus size={18} />
                     <span>Novo Chat</span>
@@ -38,9 +42,14 @@ export default function Sidebar({ conversations, activeConvId, onSelectConversat
                     <div className="avatar">{user?.username?.[0]?.toUpperCase() || 'U'}</div>
                     <span className="truncate">{user?.username}</span>
                 </div>
-                <button className="logout-btn" onClick={logout} title="Sair">
-                    <LogOut size={18} />
-                </button>
+                <div className="sidebar-actions">
+                    <button className="icon-btn" onClick={onToggleTheme} title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}>
+                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
+                    <button className="logout-btn" onClick={logout} title="Sair">
+                        <LogOut size={18} />
+                    </button>
+                </div>
             </div>
         </div>
     );

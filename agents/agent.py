@@ -47,6 +47,9 @@ class ChatRequest(BaseModel):
 class ConversationCreate(BaseModel):
     title: str = "Nova Conversa"
 
+class HallucinationUpdate(BaseModel):
+    is_hallucinated: int
+
 # ─── RAG Helpers ──────────────────────────────────────────────────────────────
 def gerar_embedding(texto: str) -> list[float]:
     response = ollama.embeddings(model=EMBED_MODEL, prompt=texto)
@@ -162,7 +165,7 @@ def list_messages(conv_id: int, db: Session = Depends(get_db), current_user: mod
         raise HTTPException(status_code=404, detail="Conversation not found")
     
     messages = db.query(models.Message).filter(models.Message.conversation_id == conv_id).order_by(models.Message.created_at.asc()).all()
-    return [{"id": m.id, "role": m.role, "content": m.content, "created_at": m.created_at} for m in messages]
+    return [{"id": m.id, "role": m.role, "content": m.content, "created_at": m.created_at, "is_hallucinated": m.is_hallucinated} for m in messages]
 
 @app.post("/conversations/{conv_id}/chat")
 def chat_in_conversation(conv_id: int, req: ChatRequest, db: Session = Depends(get_db), current_user: models.User = Depends(security.get_current_user)):
@@ -207,8 +210,9 @@ def chat_in_conversation(conv_id: int, req: ChatRequest, db: Session = Depends(g
         assistant_msg = models.Message(conversation_id=conv_id, role="assistant", content=answer)
         db.add(assistant_msg)
         db.commit()
+        db.refresh(assistant_msg)
         
-        return {"question": req.question, "answer": answer, "context": trechos}
+        return {"question": req.question, "answer": answer, "context": trechos, "message_id": assistant_msg.id}
     except Exception as e:
         import traceback
         raise HTTPException(status_code=500, detail=traceback.format_exc())
@@ -235,6 +239,21 @@ def ask_question(req: ChatRequest, db: Session = Depends(get_db), current_user: 
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.patch("/messages/{message_id}/hallucination")
+def update_hallucination(message_id: int, req: HallucinationUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(security.get_current_user)):
+    msg = db.query(models.Message).filter(models.Message.id == message_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+        
+    # Validar se a mensagem pertence a uma conversa do usuário atual
+    conv = db.query(models.Conversation).filter(models.Conversation.id == msg.conversation_id, models.Conversation.user_id == current_user.id).first()
+    if not conv:
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    msg.is_hallucinated = req.is_hallucinated
+    db.commit()
+    return {"message": "Classification updated", "id": msg.id, "is_hallucinated": msg.is_hallucinated}
 
 @app.get("/health")
 def health():
