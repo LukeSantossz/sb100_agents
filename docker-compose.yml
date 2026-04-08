@@ -8,3 +8,91 @@ services:
     volumes:
       - ./qdrant_storage:/qdrant/storage
     restart: unless-stopped
+    networks:
+      - smartb100_net
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: smartb100_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - smartb100_net
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: smartb100_ollama_pull
+    depends_on:
+      - ollama
+    networks:
+      - smartb100_net
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    command: >
+      sh -c "until ollama list; do sleep 2; done && ollama pull llama3.1:8b && ollama pull nomic-embed-text"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: smartb100_api
+    ports:
+      - "8000:8000"
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+      - CHAT_MODEL=llama3.1:8b
+      - EMBED_MODEL=nomic-embed-text
+      - OLLAMA_HOST=http://ollama:11434
+    volumes:
+      - ../smartb100_v2.db:/app/smartb100_v2.db
+      - .:/app/sb100_agents # Opcional: monta os arquivos locais para desenvolvimento
+    restart: unless-stopped
+    depends_on:
+      - qdrant
+      - ollama
+    networks:
+      - smartb100_net
+
+  frontend:
+    build:
+      context: ./frontend/smartb100
+      dockerfile: Dockerfile
+    container_name: smartb100_frontend
+    expose:
+      - "5173"
+    environment:
+      - API_URL=http://api:8000
+    volumes:
+      - ./frontend/smartb100:/app
+      - /app/node_modules # Impede que o node_modules local sobrescreva o do container
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - smartb100_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - frontend
+    networks:
+      - smartb100_net
+
+networks:
+  smartb100_net:
+    driver: bridge
+
+volumes:
+  ollama_data:

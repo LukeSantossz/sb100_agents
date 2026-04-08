@@ -6,6 +6,7 @@ from pydantic import BaseModel
 import ollama
 from qdrant_client import QdrantClient
 from typing import List
+import os
 
 from sb100_agents.database.db import get_db, engine
 from sb100_agents.database import models
@@ -24,11 +25,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-CHAT_MODEL = "llama3.1:8b"
-EMBED_MODEL = "nomic-embed-text"
-QDRANT_URL = "http://localhost:6333"
-COLLECTION = "archives_v2"
-TOP_K = 3
+CHAT_MODEL = os.getenv("CHAT_MODEL", "llama3.1:8b")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+COLLECTION = os.getenv("COLLECTION_NAME", "archives_v2")
+TOP_K = int(os.getenv("TOP_K", "3"))
 
 qdrant = QdrantClient(url=QDRANT_URL)
 
