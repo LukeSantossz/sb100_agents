@@ -1,0 +1,24 @@
+FROM python:3.12-slim
+
+WORKDIR /app/sb100_agents
+
+# Instala dependências do sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copia e instala dependências Python primeiro para aproveitar cache
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copia todo o projeto para /app/sb100_agents
+# Assumindo que este Dockerfile será construído da pasta sb100_agents
+COPY . .
+
+# Garante que o diretório pai está no PYTHONPATH para imports como "from sb100_agents.database..."
+ENV PYTHONPATH=/app
+
+EXPOSE 8000
+
+CMD ["uvicorn", "agents.agent:app", "--host", "0.0.0.0", "--port", "8000"]
