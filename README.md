@@ -1,63 +1,123 @@
-# SmartB100 - RAG Agent for Agriculture
+![Python](https://img.shields.io/badge/Python-3.12%2B-blue?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111%2B-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-18%2B-61DAFB?logo=react&logoColor=black)
+![Status](https://img.shields.io/badge/status-in%20development-yellow)
 
-RAG (Retrieval-Augmented Generation) chat system for agricultural queries, using PDF documents as a knowledge base.
+# SmartB100 — Agriculture RAG Agent
 
-## Requirements
+> RAG-powered chat system for agricultural technical support, with agent-oriented architecture via LangGraph and hallucination verification through semantic entropy.
+
+## Overview
+
+SmartB100 is a Retrieval-Augmented Generation (RAG) system specialized in agronomy. It answers technical agricultural questions by retrieving relevant context from indexed PDF documents and generating responses via a local LLM. It exposes a FastAPI backend and a React frontend, orchestrated through npm scripts with Docker for the vector database.
+
+The evolving architecture targets migration to a ReAct graph with LangGraph, hybrid search (dense + sparse vectors with RRF fusion), and a dual-pipeline hallucination verifier — semantic entropy and atomic claim verification.
+
+For architecture details and design decisions, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| API | FastAPI + Uvicorn |
+| LLM inference | Ollama (`llama3.2:3b`) |
+| Embeddings | Ollama (`nomic-embed-text`, 768 dims) |
+| Vector database | Qdrant (Docker) |
+| Document ingestion | PyMuPDF + semantic chunker |
+| Frontend | React + Vite |
+| Agent orchestration | LangGraph (migration in progress) |
+| Hallucination verification | Semantic Entropy + Claim Verification (in development) |
+
+## Getting Started
+
+### Prerequisites
 
 - **Docker Desktop** (for Qdrant)
-- **Ollama** (for LLM models)
+- **Ollama** (for local LLM inference)
 - **Python 3.12+**
-- **Node.js 18+** (for frontend)
+- **Node.js 18+**
 
-## Quick Start
-
-### Windows
+### Installation
 ```bash
-# Run the startup script
+# Install Ollama models
+ollama pull llama3.2:3b
+ollama pull nomic-embed-text
+
+# Install root and frontend dependencies
+npm install
+npm run install:frontend
+```
+
+### Running
+
+**Windows (one-shot script):**
+```bash
 .\start.bat
 # or
 powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
 
-### With npm (after initial setup)
+**Manual (step by step):**
 ```bash
-npm run start
-```
-
-## Manual Step-by-Step
-
-### 1. Start Qdrant (vector database)
-```bash
+# 1. Start the vector database
 docker-compose up -d
-```
 
-### 2. Install Ollama models
-
-**Windows (via winget):**
-```bash
-winget install Ollama.Ollama
-ollama pull llama3.1:8b
-ollama pull nomic-embed-text
-```
-
-### 3. Install dependencies
-```bash
-# Root project dependencies
-npm install
-
-# Frontend dependencies
-npm run install:frontend
-```
-
-### 4. Index documents (first time only)
-```bash
+# 2. Index PDF documents (first run only)
 .venv\Scripts\python.exe database\semantic_chunker.py index ./archives/
-```
 
-### 5. Start everything
-```bash
+# 3. Start API + Frontend
 npm run start
 ```
+
+## Project Structure
+```
+sb100_agents/
+├── agents/
+│   └── agent.py                    # FastAPI app with RAG logic
+├── database/
+│   └── semantic_chunker.py         # PDF ingestion and semantic chunking
+├── hallucination_verifier/         # Hallucination verifier (in development)
+│   ├── entropy_pipeline.py         # Semantic Entropy Pipeline
+│   └── claim_pipeline.py           # Atomic Claim Verification Pipeline
+├── frontend/
+│   └── smartb100/src/
+│       ├── components/             # React components (StartScreen, ChatScreen)
+│       ├── hooks/                  # useChat.js
+│       ├── services/               # api.js
+│       └── assets/images/         # background.png, logo.png
+├── archives/                       # PDF files to be indexed
+├── qdrant_storage/                 # Qdrant persistent data
+├── ARCHITECTURE.md                 # Architecture diagrams and decisions (Mermaid)
+├── docker-compose.yml
+├── package.json
+├── pyproject.toml
+├── start.bat
+└── start.ps1
+```
+
+## Current Status
+
+**Sprint 1 — active | MVP: functional RAG pipeline**
+
+| Feature | Status |
+|---------|--------|
+| RAG pipeline (retrieval + generation) | Done |
+| FastAPI backend (`/chat` and `/health`) | Done |
+| Semantic chunker with cosine-similarity grouping | Done |
+| React frontend (start + chat screens) | Done |
+| `ARCHITECTURE.md` with Mermaid diagrams | Done |
+| Hybrid search (dense + sparse vectors, RRF fusion) | In progress |
+| LangGraph skeleton with agricultural intent filter | In progress |
+| Semantic Entropy Pipeline (hallucination verifier) | In progress |
+| Claim Verification Pipeline (atomic decomposition + RAG) | In progress |
+| Hallucination risk score in API response | Pending |
+
+**Active branches:**
+
+| Branch | Feature |
+|--------|---------|
+| `feat/audit-and-hybrid-search` | Code audit + `ARCHITECTURE.md` (PR open, awaiting Task 2) |
+| `feat/hallucination-verifier` | Dual-pipeline hallucination verifier: semantic entropy clustering and atomic claim verification with entropy gate |
 
 ## Service URLs
 
@@ -72,52 +132,22 @@ npm run start
 | Command | Description |
 |---------|-------------|
 | `npm run start` | Starts API and Frontend simultaneously |
-| `npm run api` | Starts API only |
-| `npm run frontend` | Starts Frontend only |
+| `npm run api` | Starts the API only |
+| `npm run frontend` | Starts the Frontend only |
 | `npm run setup` | Installs frontend dependencies |
-| `npm run docker:up` | Starts Qdrant container |
-| `npm run docker:down` | Stops Qdrant container |
+| `npm run docker:up` | Starts the Qdrant container |
+| `npm run docker:down` | Stops the Qdrant container |
 
-## Project Structure
-
-```
-sb100_agents/
-├── agents/
-│   └── agent.py              # FastAPI API with RAG
-├── database/
-│   └── semantic_chunker.py   # Document indexing
-├── frontend/
-│   └── smartb100/
-│       └── src/
-│           ├── components/   # React components
-│           │   ├── ChatInput.jsx
-│           │   ├── ChatScreen.jsx
-│           │   ├── MessageBubble.jsx
-│           │   ├── StartScreen.jsx
-│           │   └── index.js
-│           ├── hooks/        # Custom hooks
-│           │   └── useChat.js
-│           ├── services/     # Services/API
-│           │   └── api.js
-│           ├── assets/       # Images
-│           ├── App.jsx       # Main component
-│           └── App.css       # Styles
-├── archives/                 # PDFs for indexing
-├── qdrant_storage/           # Qdrant data
-├── docker-compose.yml        # Docker configuration
-├── package.json              # Root npm scripts
-├── pyproject.toml            # Python dependencies
-├── start.bat                 # Windows CMD script
-└── start.ps1                 # PowerShell script
-```
-
-## Test the API
-
+## API Reference
 ```bash
+# Ask the agent a question
 curl "http://localhost:8000/chat?question=What+should+I+use+to+correct+soil+acidity?"
+
+# Health check
+curl "http://localhost:8000/health"
 ```
 
-## API Endpoints
-
-- `GET /chat?question=<question>` - Ask the agent a question
-- `GET /health` - Check API status
+| Endpoint | Description |
+|----------|-------------|
+| `GET /chat?question=<text>` | Queries the RAG agent |
+| `GET /health` | Returns API and model status |
