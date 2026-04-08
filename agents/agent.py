@@ -255,6 +255,55 @@ def update_hallucination(message_id: int, req: HallucinationUpdate, db: Session 
     db.commit()
     return {"message": "Classification updated", "id": msg.id, "is_hallucinated": msg.is_hallucinated}
 
+@app.get("/hallucination-report")
+def hallucination_report(db: Session = Depends(get_db), current_user: models.User = Depends(security.get_current_user)):
+    """Retorna um relatório de mensagens classificadas pelo usuário."""
+    # Busca todas as conversas do usuário
+    conv_ids = [c.id for c in db.query(models.Conversation).filter(models.Conversation.user_id == current_user.id).all()]
+    
+    if not conv_ids:
+        return {"total_classified": 0, "total_hallucinated": 0, "total_correct": 0, "hallucinations": []}
+    
+    # Busca mensagens classificadas de respostas do assistente
+    classified = db.query(models.Message, models.Conversation).join(
+        models.Conversation, models.Message.conversation_id == models.Conversation.id
+    ).filter(
+        models.Message.conversation_id.in_(conv_ids),
+        models.Message.role == "assistant",
+        models.Message.is_hallucinated.isnot(None)
+    ).order_by(models.Message.created_at.desc()).all()
+    
+    hallucinations = []
+    total_hallucinated = 0
+    total_correct = 0
+    
+    for msg, conv in classified:
+        if msg.is_hallucinated == 1:
+            total_hallucinated += 1
+            # Busca a mensagem anterior (pergunta do usuário)
+            user_q = db.query(models.Message).filter(
+                models.Message.conversation_id == msg.conversation_id,
+                models.Message.id < msg.id,
+                models.Message.role == "user"
+            ).order_by(models.Message.id.desc()).first()
+            
+            hallucinations.append({
+                "message_id": msg.id,
+                "conversation_title": conv.title,
+                "user_question": user_q.content if user_q else "(desconhecido)",
+                "ai_response_summary": msg.content[:400] + ("..." if len(msg.content) > 400 else ""),
+                "classified_at": msg.created_at,
+            })
+        else:
+            total_correct += 1
+    
+    return {
+        "total_classified": len(classified),
+        "total_hallucinated": total_hallucinated,
+        "total_correct": total_correct,
+        "hallucinations": hallucinations,
+    }
+
 @app.get("/health")
 def health():
     return {"status": "ok", "model": CHAT_MODEL}

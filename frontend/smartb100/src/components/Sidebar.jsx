@@ -1,8 +1,8 @@
-import { Plus, MessageSquare, LogOut, Sun, Moon, Leaf } from 'lucide-react';
+import { Plus, MessageSquare, LogOut, Sun, Moon, Leaf, BarChart2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import '../index.css';
 
-export default function Sidebar({ conversations, activeConvId, onSelectConversation, onNewConversation, theme, onToggleTheme }) {
+export default function Sidebar({ conversations, activeConvId, onSelectConversation, onNewConversation, theme, onToggleTheme, onOpenReport }) {
     const { user, logout } = useAuth();
 
     return (
@@ -43,6 +43,9 @@ export default function Sidebar({ conversations, activeConvId, onSelectConversat
                     <span className="truncate">{user?.username}</span>
                 </div>
                 <div className="sidebar-actions">
+                    <button className="icon-btn" onClick={onOpenReport} title="Relatório de Alucinações">
+                        <BarChart2 size={18} />
+                    </button>
                     <button className="icon-btn" onClick={onToggleTheme} title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}>
                         {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                     </button>
