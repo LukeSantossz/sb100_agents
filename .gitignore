@@ -45,3 +45,18 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Frontend
+frontend/smartb100/node_modules/
+frontend/smartb100/dist/
+frontend/smartb100/dist-ssr/
+frontend/smartb100/*.local
+
+# API
+.venv/
+.env
+.env.local
+
+# AI
+.claude/
+/tutor.md 
