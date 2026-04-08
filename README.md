@@ -1,37 +1,37 @@
-# SmartB100 - Agente RAG para Agricultura
+# SmartB100 - RAG Agent for Agriculture
 
-Sistema de chat baseado em RAG (Retrieval-Augmented Generation) para consultas sobre agricultura, utilizando documentos PDF como base de conhecimento.
+RAG (Retrieval-Augmented Generation) chat system for agricultural queries, using PDF documents as a knowledge base.
 
-## Requisitos
+## Requirements
 
-- **Docker Desktop** (para Qdrant)
-- **Ollama** (para modelos LLM)
+- **Docker Desktop** (for Qdrant)
+- **Ollama** (for LLM models)
 - **Python 3.12+**
-- **Node.js 18+** (para frontend)
+- **Node.js 18+** (for frontend)
 
-## Início Rápido
+## Quick Start
 
 ### Windows
 ```bash
-# Execute o script de inicialização
+# Run the startup script
 .\start.bat
-# ou
+# or
 powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
 
-### Com npm (após setup inicial)
+### With npm (after initial setup)
 ```bash
 npm run start
 ```
 
-## Passo a Passo Manual
+## Manual Step-by-Step
 
-### 1. Iniciar Qdrant (banco de dados vetorial)
+### 1. Start Qdrant (vector database)
 ```bash
 docker-compose up -d
 ```
 
-### 2. Instalar modelos Ollama
+### 2. Install Ollama models
 
 **Windows (via winget):**
 ```bash
@@ -40,56 +40,56 @@ ollama pull llama3.1:8b
 ollama pull nomic-embed-text
 ```
 
-### 3. Instalar dependências
+### 3. Install dependencies
 ```bash
-# Dependências do projeto raiz
+# Root project dependencies
 npm install
 
-# Dependências do frontend
+# Frontend dependencies
 npm run install:frontend
 ```
 
-### 4. Indexar documentos (primeira vez)
+### 4. Index documents (first time only)
 ```bash
 .venv\Scripts\python.exe database\semantic_chunker.py index ./archives/
 ```
 
-### 5. Iniciar tudo junto
+### 5. Start everything
 ```bash
 npm run start
 ```
 
-## URLs dos Serviços
+## Service URLs
 
-| Serviço | URL |
+| Service | URL |
 |---------|-----|
 | API | http://localhost:8000 |
 | Frontend | http://localhost:5173 |
 | Qdrant Dashboard | http://localhost:6333/dashboard |
 
-## Scripts npm
+## npm Scripts
 
-| Comando | Descrição |
-|---------|-----------|
-| `npm run start` | Inicia API e Frontend simultaneamente |
-| `npm run api` | Inicia apenas a API |
-| `npm run frontend` | Inicia apenas o Frontend |
-| `npm run setup` | Instala dependências do frontend |
-| `npm run docker:up` | Inicia container Qdrant |
-| `npm run docker:down` | Para container Qdrant |
+| Command | Description |
+|---------|-------------|
+| `npm run start` | Starts API and Frontend simultaneously |
+| `npm run api` | Starts API only |
+| `npm run frontend` | Starts Frontend only |
+| `npm run setup` | Installs frontend dependencies |
+| `npm run docker:up` | Starts Qdrant container |
+| `npm run docker:down` | Stops Qdrant container |
 
-## Estrutura do Projeto
+## Project Structure
 
 ```
 sb100_agents/
 ├── agents/
-│   └── agent.py              # API FastAPI com RAG
+│   └── agent.py              # FastAPI API with RAG
 ├── database/
-│   └── semantic_chunker.py   # Indexação de documentos
+│   └── semantic_chunker.py   # Document indexing
 ├── frontend/
 │   └── smartb100/
 │       └── src/
-│           ├── components/   # Componentes React
+│           ├── components/   # React components
 │           │   ├── ChatInput.jsx
 │           │   ├── ChatScreen.jsx
 │           │   ├── MessageBubble.jsx
@@ -97,27 +97,27 @@ sb100_agents/
 │           │   └── index.js
 │           ├── hooks/        # Custom hooks
 │           │   └── useChat.js
-│           ├── services/     # Serviços/API
+│           ├── services/     # Services/API
 │           │   └── api.js
-│           ├── assets/       # Imagens
-│           ├── App.jsx       # Componente principal
-│           └── App.css       # Estilos
-├── archives/                 # PDFs para indexação
-├── qdrant_storage/           # Dados do Qdrant
-├── docker-compose.yml        # Configuração Docker
-├── package.json              # Scripts npm raiz
-├── pyproject.toml            # Dependências Python
-├── start.bat                 # Script Windows CMD
-└── start.ps1                 # Script PowerShell
+│           ├── assets/       # Images
+│           ├── App.jsx       # Main component
+│           └── App.css       # Styles
+├── archives/                 # PDFs for indexing
+├── qdrant_storage/           # Qdrant data
+├── docker-compose.yml        # Docker configuration
+├── package.json              # Root npm scripts
+├── pyproject.toml            # Python dependencies
+├── start.bat                 # Windows CMD script
+└── start.ps1                 # PowerShell script
 ```
 
-## Testar a API
+## Test the API
 
 ```bash
-curl "http://localhost:8000/chat?question=O%20que%20devo%20utilizar%20para%20corrigir%20a%20acidez%20do%20solo?"
+curl "http://localhost:8000/chat?question=What+should+I+use+to+correct+soil+acidity?"
 ```
 
-## Endpoints da API
+## API Endpoints
 
-- `GET /chat?question=<pergunta>` - Faz uma pergunta ao agente
-- `GET /health` - Verifica status da API
+- `GET /chat?question=<question>` - Ask the agent a question
+- `GET /health` - Check API status
