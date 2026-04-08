@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import MainChat from '../components/MainChat';
+import HallucinationPanel from '../components/HallucinationPanel';
 import '../index.css';
 
 export default function Dashboard() {
@@ -9,6 +10,7 @@ export default function Dashboard() {
     const [activeConvId, setActiveConvId] = useState(null);
     const [messages, setMessages] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [showReport, setShowReport] = useState(false);
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
 
     useEffect(() => {
@@ -125,6 +127,7 @@ export default function Dashboard() {
                 onNewConversation={handleNewConversation}
                 theme={theme}
                 onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+                onOpenReport={() => setShowReport(true)}
             />
             <div className="main-content">
                 <MainChat 
@@ -134,6 +137,7 @@ export default function Dashboard() {
                     isLoading={isLoading} 
                 />
             </div>
+            {showReport && <HallucinationPanel onClose={() => setShowReport(false)} />}
         </div>
     );
 }

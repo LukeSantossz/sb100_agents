@@ -46,6 +46,14 @@ export const api = {
         });
     },
 
+    patch(endpoint, body, options = {}) {
+        return this.request(endpoint, {
+            ...options,
+            method: 'PATCH',
+            body: JSON.stringify(body),
+        });
+    },
+
     postForm(endpoint, formData, options = {}) {
         // Specifically for OAuth2 application/x-www-form-urlencoded
         const token = localStorage.getItem('token');
