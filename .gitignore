@@ -59,4 +59,8 @@ frontend/smartb100/*.local
 
 # AI
 .claude/
+
+
+# Miscellaneous
 /tutor.md 
+/review.md
