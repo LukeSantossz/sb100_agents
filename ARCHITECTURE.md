@@ -168,6 +168,121 @@ def chat(question: str):
     return {"question": question, "answer": answer}
 ```
 
+## Target Architecture (MVP)
+
+**Classificação:** feature — documentação de arquitetura-alvo do MVP.
+
+Visão consolidada do estado-alvo do MVP **SmartB100 Squad5**, alinhada ao contexto do sprint atual. Complementa a auditoria do estado atual acima; detalhes de implementação ainda podem divergir do repositório até a entrega do MVP.
+
+### Visão Geral
+
+O sistema é um agente de suporte técnico agrícola baseado em RAG, orquestrado via **LangGraph** com padrão **ReAct**. A arquitetura-alvo organiza o código em **oito camadas modulares**: `api`, `core`, `retrieval`, `memory`, `profiling`, `generation`, `verification` e `database`.
+
+### Camada de Entrada — API
+
+- **Endpoint único:** `POST /chat`.
+- **Corpo estruturado:** `session_id`, `UserProfile` e `question`.
+- O perfil do usuário é **fornecido explicitamente pelo cliente** — não inferido pelo sistema (responsabilidade compartilhada entre **API** e **profiling**: validação/consumo do payload, sem Knowledge Graph no MVP).
+
+### Orquestração — LangGraph ReAct
+
+- O grafo do agente segue o padrão **ReAct**.
+- O nó de **filtro de intenção agrícola** é **obrigatório** e o **primeiro nó** do grafo.
+- Perguntas **fora do domínio agrícola** são interceptadas **antes** de recuperação ou geração, com **resposta de recusa** devolvida diretamente.
+
+### Recuperação — Hybrid Search com RRF
+
+- Modo **híbrido** (vetores **densos** + vetores **esparsos**) sobre **Qdrant** (camada **database**).
+- **40** candidatos iniciais fundidos via **Reciprocal Rank Fusion (RRF)**, depois **re-ranking** para os **8** mais relevantes.
+- Após a seleção final: **expansão de bordas** por chunk adjacente (**ID ±1**), incluindo chunks vizinhos no contexto recuperado.
+- **Agente validador de contexto** após a recuperação: confirma pertinência dos chunks à pergunta **antes** da geração.
+
+### Memória Conversacional
+
+- Janela rolante com **`deque` FIFO**.
+- Histórico recente por **`session_id`**, injetado no contexto de cada turno.
+
+### Verificação de Alucinação — Dual Pipeline
+
+O verificador opera em **dois estágios sequenciais**, com até **2 tentativas de regeneração**:
+
+**Estágio 1 — Semantic Entropy:** várias respostas para a mesma pergunta; **clusterização semântica**; **entropia de Shannon** sobre a distribuição de clusters. Entropia **acima** do limiar configurado → **resposta de fallback imediata**, **sem** avançar ao estágio 2.
+
+**Estágio 2 — Atomic Claim Verification:** só quando a entropia está **dentro** do limiar aceitável. **Afirmações atômicas** da resposta verificadas **individualmente** contra o contexto RAG recuperado.
+
+A inferência **multi-chamada** do pipeline de entropia usa **OpenAI API** (`gpt-4o-mini` ou equivalente), **não** Ollama local, devido ao custo de latência de múltiplas chamadas sequenciais ao modelo local.
+
+### Geração
+
+- Resposta principal via **Ollama** com **`llama3.1:8b`**.
+- **Embeddings** com **`nomic-embed-text`**.
+
+### Fora de Escopo do MVP
+
+- **GraphRAG**
+- **Knowledge Graph** de perfil de produtor (ex.: Neo4j)
+- **Logging estruturado** de alucinações
+
+Itens acima permanecem em **roadmap**; não compõem o escopo do MVP atual.
+
+### Diagrama de Fluxo (MVP Alvo)
+
+```mermaid
+flowchart TD
+    subgraph API["Camada api"]
+        POST["POST /chat<br/>session_id + UserProfile + question"]
+    end
+
+    subgraph PROF["Camada profiling"]
+        PROF_IN["UserProfile explícito<br/>(cliente)"]
+    end
+
+    subgraph CORE["Camada core — LangGraph ReAct"]
+        INT["1º nó: filtro intenção agrícola"]
+        GRAPH["Grafo ReAct"]
+    end
+
+    subgraph MEM["Camada memory"]
+        DEQ["deque FIFO por session_id"]
+    end
+
+    subgraph RET["Camada retrieval + database (Qdrant)"]
+        HYB["Busca híbrida denso + esparsos"]
+        RRF["RRF sobre ~40 candidatos"]
+        TOP8["Re-rank → top 8"]
+        ADJ["Expansão vizinhos chunk ID ±1"]
+        CVAL["Validador de contexto"]
+    end
+
+    subgraph GEN["Camada generation"]
+        OLL["Ollama llama3.1:8b"]
+        NOMIC["Embeddings nomic-embed-text"]
+    end
+
+    subgraph VER["Camada verification"]
+        S1["Estágio 1: entropia semântica<br/>OpenAI gpt-4o-mini"]
+        S2["Estágio 2: claims atômicos vs contexto RAG"]
+        REGEN["Até 2 regenerações"]
+    end
+
+    POST --> PROF_IN
+    PROF_IN --> INT
+    INT -->|fora do domínio| OUT["Resposta de recusa"]
+    INT -->|domínio agrícola| GRAPH
+    DEQ -.->|histórico recente| GRAPH
+    GRAPH --> HYB
+    HYB --> RRF --> TOP8 --> ADJ --> CVAL
+    CVAL --> OLL
+    NOMIC -.->|queries / index| HYB
+    OLL --> S1
+    S1 -->|entropia alta| FB["Fallback imediato"]
+    S1 -->|entropia OK| S2
+    S2 -->|falha / incerteza| REGEN
+    REGEN --> OLL
+```
+
+> **Diagrama:** fluxo lógico alvo; nomes de módulos e limites entre camadas podem ser refinados na implementação.
+
 ## Estrutura de Diretórios
 
 ```
@@ -639,5 +754,5 @@ REGRAS:
 
 ---
 
-**Última atualização**: Auditoria inicial do sistema
+**Última atualização**: Inclusão da seção *Target Architecture (MVP)* (Squad5); auditoria do estado atual mantida.
 **Branch**: feat/audit-and-hybrid-search
