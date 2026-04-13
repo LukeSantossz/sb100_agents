@@ -49,9 +49,10 @@ export default function Dashboard() {
         }
     };
 
-    const handleNewConversation = async () => {
+
+    const createConversation = async (title) => {
         try {
-            const data = await api.post('/conversations', { title: 'Nova Conversa' });
+            const data = await api.post('/conversations', { title });
             setConversations([data, ...conversations]);
             setActiveConvId(data.id);
         } catch (e) {
@@ -79,28 +80,15 @@ export default function Dashboard() {
         setMessages(prev => [...prev, userMsg]);
         setIsLoading(true);
 
-        try {
-            const res = await api.post(`/conversations/${currentConvId}/chat`, { question: text });
-            
-            // Refresh conversations to pick up auto-generated title
-            loadConversations();
+        const profile = { name: 'User', expertise: 'beginner' };
+        const sessionId = String(currentConvId);
 
-            // Add AI response immediately with all fields from backend
-            // message_id is the DB ID of the assistant message
-            setMessages(prev => [...prev, {
-                id: res.message_id,          // critical: needed for rating
-                role: 'assistant',
-                content: res.answer,
-                context: res.context || [],
-                is_hallucinated: null,
-            }]);
+        try {
+            const res = await api.post(`/chat`, {session_id: sessionId, question: text, profile});
+            setMessages(prev => [...prev, { role: 'assistant', content: res.answer }]);
         } catch (e) {
             console.error("Erro ao enviar msg", e);
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: '⚠️ Erro ao obter resposta. Tente novamente.',
-                context: [],
-            }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: 'Erro ao obter resposta. Tente novamente.' }]);
         } finally {
             setIsLoading(false);
         }
@@ -124,7 +112,7 @@ export default function Dashboard() {
                 conversations={conversations} 
                 activeConvId={activeConvId} 
                 onSelectConversation={setActiveConvId}
-                onNewConversation={handleNewConversation}
+                onNewConversation={createConversation}
                 theme={theme}
                 onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
                 onOpenReport={() => setShowReport(true)}
