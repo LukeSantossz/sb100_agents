@@ -36,7 +36,8 @@ npm run docker:down  # Stop Qdrant
 .venv\Scripts\python.exe database\semantic_chunker.py search "query text"
 
 # Test API
-curl "http://localhost:8000/chat?question=your+question"
+curl -X POST "http://localhost:8000/chat" -H "Content-Type: application/json" \
+  -d '{"session_id":"test","question":"your question","profile":{"name":"User","expertise":"beginner"}}'
 curl "http://localhost:8000/health"
 
 # Frontend linting
@@ -91,7 +92,10 @@ LangGraph Agent → Tool Call → Hybrid Search → Validation Subgraph
 
 | File | Purpose |
 |------|---------|
-| `agents/agent.py` | FastAPI app, `/chat` and `/health` endpoints |
+| `api/main.py` | FastAPI app entry: CORS, `include_router` for routes |
+| `api/routes/chat.py` | `POST /chat` with `ChatRequest` / `ChatResponse` |
+| `api/routes/health.py` | `GET /health` |
+| `core/schemas.py` | Pydantic contract (`ChatRequest`, `ChatResponse`, `UserProfile`) |
 | `database/semantic_chunker.py` | PDF → chunks → Qdrant indexing |
 | `frontend/smartb100/src/hooks/useChat.js` | Chat state management |
 | `frontend/smartb100/src/services/api.js` | HTTP client |

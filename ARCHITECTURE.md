@@ -7,43 +7,41 @@ Documento de auditoria arquitetural do sistema SmartB100 RAG.
 ```mermaid
 flowchart TD
     subgraph Frontend ["Frontend (React/Vite :5173)"]
-        UI[Interface Chat]
-        HOOK[useChat Hook]
+        UI[Dashboard / MainChat]
         API_SVC[api.js Service]
     end
 
     subgraph Backend ["Backend (FastAPI :8000)"]
-        CHAT["/chat endpoint"]
-        EMB[gerar_embedding]
-        CTX[buscar_contexto]
-        LLM[perguntar_ollama]
+        MAIN[api.main]
+        CHAT["POST /chat\napi/routes/chat.py"]
+        REQ["ChatRequest\n(session_id, question, profile)"]
+        RES["ChatResponse\n(answer, hallucination_score)"]
+    end
+
+    subgraph Future ["Pipeline RAG (próximas tasks)"]
+        EMB[Embedding]
+        CTX[Busca Qdrant]
+        LLM[LLM Ollama]
     end
 
     subgraph Qdrant ["Qdrant :6333"]
         COLL[(archives_v2)]
     end
 
-    subgraph Ollama ["Ollama (Local)"]
-        NOMIC[nomic-embed-text]
-        LLAMA[llama3.2:3b]
-    end
+    UI --> API_SVC
+    API_SVC -->|POST JSON| MAIN
+    MAIN --> CHAT
+    CHAT --> REQ
+    CHAT --> RES
+    RES -->|JSON| API_SVC
 
-    UI --> HOOK
-    HOOK --> API_SVC
-    API_SVC -->|GET /chat?question=| CHAT
-
-    CHAT --> EMB
-    EMB -->|prompt| NOMIC
-    NOMIC -->|768-dim vector| EMB
-    EMB --> CTX
-    CTX -->|query_points| COLL
-    COLL -->|TOP_K=3 chunks| CTX
-    CTX --> LLM
-    LLM -->|chat prompt| LLAMA
-    LLAMA -->|response| LLM
-    LLM --> CHAT
-    CHAT -->|JSON response| API_SVC
+    CHAT -.->|futuro| EMB
+    EMB -.-> CTX
+    CTX -.-> COLL
+    CTX -.-> LLM
 ```
+
+> **Nota:** o handler atual de `POST /chat` valida o contrato Pydantic e retorna resposta **stub**. O encadeamento RAG (embedding → Qdrant → LLM) será integrado nas tasks seguintes.
 
 ### Pipeline de Indexação
 
@@ -121,7 +119,7 @@ MAX_CHUNK_SENTENCES  = 20                    # Máximo de frases/chunk
 ## Configuração do Qdrant
 
 ```python
-# agents/agent.py
+# Exemplo de constantes (indexação / busca — ver semantic_chunker.py)
 
 QDRANT_URL  = "http://localhost:6333"
 COLLECTION  = "archives_v2"
@@ -159,14 +157,14 @@ Pergunta → Embedding → Busca Densa → Prompt + Contexto → LLM → Respost
 - Sem LangGraph
 
 ```python
-# agents/agent.py - Fluxo completo
+# api/routes/chat.py — contrato atual (resposta stub até integrar RAG)
 
-@app.get("/chat")
-def chat(question: str):
-    context = buscar_contexto(question)    # 1. Busca densa (TOP_K=3)
-    answer  = perguntar_ollama(question, context)  # 2. LLM direto
-    return {"question": question, "answer": answer}
+@router.post("", response_model=ChatResponse)
+async def chat(req: ChatRequest):
+    return ChatResponse(answer="...", hallucination_score=0.0)
 ```
+
+O pipeline linear histórico (embedding → busca densa → LLM) continua válido como **referência de design**; a implementação será acoplada ao handler `POST /chat` quando o RAG for migrado para este módulo.
 
 ## Target Architecture (MVP)
 
@@ -287,8 +285,14 @@ flowchart TD
 
 ```
 sb100_agents/
-├── agents/
-│   └── agent.py                 # API FastAPI, endpoints /chat e /health
+├── api/
+│   ├── main.py                  # FastAPI: CORS + include_router
+│   └── routes/
+│       ├── chat.py              # POST /chat (ChatRequest / ChatResponse)
+│       └── health.py            # GET /health
+│
+├── core/
+│   └── schemas.py               # Contrato Pydantic da API
 │
 ├── database/
 │   └── semantic_chunker.py      # Pipeline de indexação: PDF → chunks → Qdrant
@@ -434,7 +438,7 @@ late_model   = LateInteractionTextEmbedding("colbert-ir/colbertv2.0")
 #### sb100_agents: Busca Densa Simples
 
 ```python
-# agents/agent.py
+# Exemplo conceitual — busca densa (implementação histórica / chunker)
 def buscar_contexto(question: str) -> str:
     embedding = gerar_embedding(question)
     resultados = qdrant.query_points(
