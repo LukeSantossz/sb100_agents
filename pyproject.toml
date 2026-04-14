@@ -18,4 +18,7 @@ dependencies = [
     "transformers>=4.40.0",
     "uvicorn>=0.29.0",
     "pydantic-settings>=2.0",
+    "sqlalchemy>=2.0.0",
+    "pyjwt>=2.8.0",
+    "python-multipart>=0.0.9",
 ]
