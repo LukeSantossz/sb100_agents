@@ -7,8 +7,8 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 import os
 
-from sb100_agents.database.db import get_db
-from sb100_agents.database.models import User
+from database.db import get_db
+from database.models import User
 
 # Configuration
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "super-secret-key-replace-in-production")

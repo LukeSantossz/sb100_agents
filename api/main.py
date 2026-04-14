@@ -1,13 +1,29 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from api.routes import chat, health
 from fastapi.middleware.cors import CORSMiddleware
+
+from api.routes import auth, chat, health
+from database.db import Base, engine
 
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
-app = FastAPI(title="SmartB100 API", description="API para o sistema SmartB100")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
+app = FastAPI(
+    title="SmartB100 API",
+    description="API para o sistema SmartB100",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,5 +33,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(health.router)
