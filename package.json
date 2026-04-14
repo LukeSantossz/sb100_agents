@@ -5,7 +5,7 @@
   "description": "Sistema RAG para consultas agrícolas",
   "scripts": {
     "start": "concurrently -n \"API,FRONT\" -c \"green,blue\" \"npm run api\" \"npm run frontend\"",
-    "api": "cd . && .venv\\Scripts\\python.exe -m uvicorn agents.agent:app --reload",
+    "api": "cd . && .venv\\Scripts\\python.exe -m uvicorn api.main:app --reload",
     "frontend": "cd frontend/smartb100 && npm run dev",
     "install:frontend": "cd frontend/smartb100 && npm install",
     "setup": "npm run install:frontend",

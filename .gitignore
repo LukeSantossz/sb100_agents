@@ -24,7 +24,6 @@ build/
 .idea/
 *.swp
 *.swo
-.claude/
 
 # Environment variables
 .env
@@ -59,4 +58,8 @@ frontend/smartb100/*.local
 
 # AI
 .claude/
+CLAUDE.md
+
+# Miscellaneous
 /tutor.md 
+/review.md

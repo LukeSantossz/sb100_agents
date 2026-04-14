@@ -1,29 +1,53 @@
-import { useState } from 'react';
-import { StartScreen, ChatScreen } from './components';
-import { useChat } from './hooks/useChat';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+
+function PrivateRoute({ children }) {
+    const { isAuthenticated, isLoading } = useAuth();
+    if (isLoading) return <div>Loading...</div>;
+    return isAuthenticated ? children : <Navigate to="/login" replace />;
+}
+
+function PublicRoute({ children }) {
+    const { isAuthenticated, isLoading } = useAuth();
+    if (isLoading) return <div>Loading...</div>;
+    return !isAuthenticated ? children : <Navigate to="/chat" replace />;
+}
 
 export default function App() {
-  const [isStarted, setIsStarted] = useState(false);
-  const { messages, isLoading, messagesEndRef, sendMessage } = useChat();
-
-  const handleSubmit = async (content) => {
-    if (!isStarted) {
-      setIsStarted(true);
-    }
-    await sendMessage(content);
-  };
-
-  if (!isStarted) {
-    return <StartScreen onSubmit={handleSubmit} />;
-  }
-
-  return (
-    <ChatScreen
-      messages={messages}
-      isLoading={isLoading}
-      messagesEndRef={messagesEndRef}
-      onSubmit={handleSubmit}
-    />
-  );
+    return (
+        <AuthProvider>
+            <Router>
+                <Routes>
+                    <Route 
+                        path="/login" 
+                        element={
+                            <PublicRoute>
+                                <Login />
+                            </PublicRoute>
+                        } 
+                    />
+                    <Route 
+                        path="/register" 
+                        element={
+                            <PublicRoute>
+                                <Register />
+                            </PublicRoute>
+                        } 
+                    />
+                    <Route 
+                        path="/chat" 
+                        element={
+                            <PrivateRoute>
+                                <Dashboard />
+                            </PrivateRoute>
+                        } 
+                    />
+                    <Route path="*" element={<Navigate to="/chat" replace />} />
+                </Routes>
+            </Router>
+        </AuthProvider>
+    );
 }
