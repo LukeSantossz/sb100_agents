@@ -72,8 +72,13 @@ npm run start
 ## Project Structure
 ```
 sb100_agents/
-├── agents/
-│   └── agent.py                    # FastAPI app with RAG logic
+├── api/
+│   ├── main.py                     # FastAPI app entry (CORS + routers)
+│   └── routes/
+│       ├── chat.py                 # POST /chat (ChatRequest / ChatResponse)
+│       └── health.py               # GET /health
+├── core/
+│   └── schemas.py                  # Pydantic API contract (ChatRequest, etc.)
 ├── database/
 │   └── semantic_chunker.py         # PDF ingestion and semantic chunking
 ├── hallucination_verifier/         # Hallucination verifier (in development)
@@ -102,7 +107,7 @@ sb100_agents/
 | Feature | Status |
 |---------|--------|
 | RAG pipeline (retrieval + generation) | Done |
-| FastAPI backend (`/chat` and `/health`) | Done |
+| FastAPI backend (`POST /chat`, `GET /health`) | Done |
 | Semantic chunker with cosine-similarity grouping | Done |
 | React frontend (start + chat screens) | Done |
 | `ARCHITECTURE.md` with Mermaid diagrams | Done |
@@ -140,8 +145,9 @@ sb100_agents/
 
 ## API Reference
 ```bash
-# Ask the agent a question
-curl "http://localhost:8000/chat?question=What+should+I+use+to+correct+soil+acidity?"
+# Chat (JSON body — contract in core/schemas.py)
+curl -X POST "http://localhost:8000/chat" -H "Content-Type: application/json" \
+  -d '{"session_id":"demo-session","question":"What should I use to correct soil acidity?","profile":{"name":"User","expertise":"beginner"}}'
 
 # Health check
 curl "http://localhost:8000/health"
@@ -149,5 +155,5 @@ curl "http://localhost:8000/health"
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /chat?question=<text>` | Queries the RAG agent |
-| `GET /health` | Returns API and model status |
+| `POST /chat` | Accepts `ChatRequest` body; returns `ChatResponse` (`answer`, `hallucination_score`) |
+| `GET /health` | Returns API health status |
