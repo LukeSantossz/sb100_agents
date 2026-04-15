@@ -297,4 +297,102 @@ flowchart TD
 
 ---
 
-**Última atualização**: Simplificação para comparativo Atual vs MVP
+## Pipeline de Avaliação Automatizado
+
+Sistema de benchmark contínuo para medir qualidade das respostas do RAG contra modelos de referência.
+
+### Diagrama do Pipeline
+
+```mermaid
+flowchart LR
+    subgraph A ["TEval-A: Preparação"]
+        PDF[PDF/TXT] --> GEN[generate_questions.py]
+        GEN --> QS[questions.json<br/>300 perguntas]
+        QS --> COL[collect_references.py]
+        COL --> REF[reference_answers.json<br/>2+ modelos]
+    end
+
+    subgraph B ["TEval-B: Execução"]
+        REF --> RUN[run_evaluation.py]
+        RUN -->|POST /chat| API[SB100 API]
+        API --> RES[evaluation_results.json]
+        RES --> JUD[judge.py]
+        JUD -->|LLM Judge| JUDGED[judged_results.json]
+        JUDGED --> REP[report.py]
+        REP --> MD[report.md]
+        REP --> CSV[human_sample.csv<br/>10% amostra]
+    end
+```
+
+### Componentes
+
+| Script | Função | Provider |
+|--------|--------|----------|
+| `generate_questions.py` | Gera perguntas de domínio agrícola a partir de documentos | Groq / Ollama |
+| `collect_references.py` | Coleta respostas de modelos open-source (LLaMA, Mistral) | Groq / Ollama |
+| `run_evaluation.py` | Executa perguntas contra `POST /chat` com session_id único | HTTP (httpx) |
+| `judge.py` | Compara respostas com LLM juiz (alterna posição para evitar viés) | Groq / Ollama |
+| `report.py` | Gera relatório MD e amostra CSV para validação humana | Local |
+
+### Estrutura de Dados
+
+```json
+{
+  "metadata": {
+    "source_documents": ["boletim_sb100.pdf"],
+    "generated_at": "ISO-8601",
+    "total_questions": 300
+  },
+  "questions": [
+    {
+      "question_id": "uuid-v4",
+      "question": "texto da pergunta",
+      "reference_answers": [
+        {
+          "reference_model": "llama-3.1-8b-instant",
+          "reference_answer": "texto da resposta"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Métricas de Avaliação
+
+| Métrica | Descrição |
+|---------|-----------|
+| `judge_score` | Score numérico (0-10) atribuído pelo LLM juiz |
+| `judge_verdict` | Veredicto comparativo: `better` / `equivalent` / `worse` |
+| `judge_justification` | Justificativa textual da avaliação |
+
+### Mitigação de Viés
+
+O script `judge.py` implementa alternância de posição (50%/50%) para evitar viés de ordem:
+- 50% das comparações: SB100 na posição A, referência na posição B
+- 50% das comparações: Referência na posição A, SB100 na posição B
+
+### Execução
+
+```bash
+# 1. Gerar perguntas (requer PDF)
+python eval/generate_questions.py ./archives/boletim.pdf --num-questions 300
+
+# 2. Coletar respostas de referência
+python eval/collect_references.py
+
+# 3. Executar avaliação (API rodando)
+python eval/run_evaluation.py
+
+# 4. Julgar respostas
+python eval/judge.py
+
+# 5. Gerar relatório
+python eval/report.py
+```
+
+Ver `eval/README.md` para documentação completa.
+
+---
+
+**Última atualização**: Adição do pipeline de avaliação automatizado
