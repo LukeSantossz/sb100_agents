@@ -1,398 +1,412 @@
 # ARCHITECTURE.md
 
-Documento de auditoria arquitetural do sistema SmartB100 RAG.
-
-## Diagrama de Fluxo - Estado Atual
-
-```mermaid
-flowchart TD
-    subgraph Frontend ["Frontend (React/Vite :5173)"]
-        UI[Dashboard / MainChat]
-        API_SVC[api.js Service]
-    end
-
-    subgraph Backend ["Backend (FastAPI :8000)"]
-        MAIN[api.main]
-        CHAT["POST /chat\napi/routes/chat.py"]
-        REQ["ChatRequest\n(session_id, question, profile)"]
-        RES["ChatResponse\n(answer, hallucination_score)"]
-    end
-
-    subgraph Future ["Pipeline RAG (próximas tasks)"]
-        EMB[Embedding]
-        CTX[Busca Qdrant]
-        LLM[LLM Ollama]
-    end
-
-    subgraph Qdrant ["Qdrant :6333"]
-        COLL[(archives_v2)]
-    end
-
-    UI --> API_SVC
-    API_SVC -->|POST JSON| MAIN
-    MAIN --> CHAT
-    CHAT --> REQ
-    CHAT --> RES
-    RES -->|JSON| API_SVC
-
-    CHAT -.->|futuro| EMB
-    EMB -.-> CTX
-    CTX -.-> COLL
-    CTX -.-> LLM
-```
-
-> **Nota:** o handler atual de `POST /chat` valida o contrato Pydantic e retorna resposta **stub**. O encadeamento RAG (embedding → Qdrant → LLM) será integrado nas tasks seguintes.
-
-### Pipeline de Indexação
-
-```mermaid
-flowchart LR
-    subgraph Input
-        PDF[PDF Files]
-    end
-
-    subgraph Processing ["semantic_chunker.py"]
-        EXT[extract_text_from_pdf<br/>PyMuPDF]
-        SENT[split_into_sentences<br/>Regex]
-        BATCH[get_embeddings_batch<br/>Ollama]
-        CHUNK[semantic_chunking<br/>Cosine Similarity]
-        BUILD[build_chunks]
-    end
-
-    subgraph Storage
-        QD[(Qdrant<br/>archives_v2)]
-    end
-
-    PDF --> EXT --> SENT --> BATCH --> CHUNK --> BUILD --> QD
-```
-
-## Stack Tecnológica
-
-### Backend (Python 3.12+)
-
-| Componente | Tecnologia | Versão | Função |
-|------------|------------|--------|--------|
-| API Framework | FastAPI | ≥0.111.0 | REST endpoints |
-| Server | Uvicorn | ≥0.29.0 | ASGI server |
-| Vector DB Client | qdrant-client | ≥1.9.0 | Interface Qdrant |
-| PDF Extraction | PyMuPDF (fitz) | ≥1.24.0 | Extração de texto |
-| Embeddings | Ollama | ≥0.2.0 | nomic-embed-text (768-dim) |
-| LLM | Ollama | ≥0.2.0 | llama3.2:3b |
-| Math | NumPy | ≥1.26.0 | Operações vetoriais |
-
-### Frontend (Node.js 18+)
-
-| Componente | Tecnologia | Versão | Função |
-|------------|------------|--------|--------|
-| Framework | React | 19.2.0 | UI components |
-| Build Tool | Vite | 7.3.1 | Dev server + bundler |
-| Linting | ESLint | 9.39.1 | Code quality |
-
-### Infraestrutura
-
-| Componente | Tecnologia | Porta | Função |
-|------------|------------|-------|--------|
-| Vector Database | Qdrant (Docker) | 6333/6334 | Armazenamento vetorial |
-| LLM Runtime | Ollama | 11434 | Inferência local |
-
-## Configuração de Chunking
-
-```python
-# database/semantic_chunker.py
-
-OLLAMA_MODEL         = "nomic-embed-text"   # Modelo de embeddings
-EMBED_DIM            = 768                   # Dimensão do vetor
-SIMILARITY_THRESHOLD = 0.75                  # Threshold para novo chunk
-MIN_CHUNK_SENTENCES  = 3                     # Mínimo de frases/chunk
-MAX_CHUNK_SENTENCES  = 20                    # Máximo de frases/chunk
-```
-
-**Estratégia**: Chunking semântico baseado em similaridade de cosseno entre embeddings de frases consecutivas. Quando a similaridade cai abaixo de 0.75, um novo chunk é iniciado.
-
-**Algoritmo**:
-1. Extrai texto do PDF via PyMuPDF
-2. Divide em frases via regex (`(?<=[.!?])\s+(?=[A-Z])`)
-3. Gera embedding para cada frase
-4. Agrupa frases com similaridade ≥ 0.75
-5. Embedding do chunk = média dos embeddings das frases
-
-## Configuração do Qdrant
-
-```python
-# Exemplo de constantes (indexação / busca — ver semantic_chunker.py)
-
-QDRANT_URL  = "http://localhost:6333"
-COLLECTION  = "archives_v2"
-TOP_K       = 3
-```
-
-### Tipo de Busca: Apenas Densa
-
-- **Vetor**: nomic-embed-text (768 dimensões)
-- **Distância**: COSINE
-- **Sparse Vectors**: NÃO IMPLEMENTADO
-- **Late Interaction**: NÃO IMPLEMENTADO
-
-```python
-# Configuração da collection (semantic_chunker.py:188-191)
-client.create_collection(
-    collection_name=COLLECTION_NAME,
-    vectors_config=VectorParams(size=embed_dim, distance=Distance.COSINE),
-)
-```
-
-## Arquitetura do Agente
-
-### Estado Atual: Pipeline Linear
-
-```
-Pergunta → Embedding → Busca Densa → Prompt + Contexto → LLM → Resposta
-```
-
-**Características**:
-- Sem loops de validação
-- Sem expansão de contexto
-- Sem tool calling
-- Sem ReAct pattern
-- Sem LangGraph
-
-```python
-# api/routes/chat.py — contrato atual (resposta stub até integrar RAG)
-
-@router.post("", response_model=ChatResponse)
-async def chat(req: ChatRequest):
-    return ChatResponse(answer="...", hallucination_score=0.0)
-```
-
-O pipeline linear histórico (embedding → busca densa → LLM) continua válido como **referência de design**; a implementação será acoplada ao handler `POST /chat` quando o RAG for migrado para este módulo.
-
-## Target Architecture (MVP)
-
-**Classificação:** feature — documentação de arquitetura-alvo do MVP.
-
-Visão consolidada do estado-alvo do MVP **SmartB100 Squad5**, alinhada ao contexto do sprint atual. Complementa a auditoria do estado atual acima; detalhes de implementação ainda podem divergir do repositório até a entrega do MVP.
-
-### Visão Geral
-
-O sistema é um agente de suporte técnico agrícola baseado em RAG, orquestrado via **LangGraph** com padrão **ReAct**. A arquitetura-alvo organiza o código em **oito camadas modulares**: `api`, `core`, `retrieval`, `memory`, `profiling`, `generation`, `verification` e `database`.
-
-### Camada de Entrada — API
-
-- **Endpoint único:** `POST /chat`.
-- **Corpo estruturado:** `session_id`, `UserProfile` e `question`.
-- O perfil do usuário é **fornecido explicitamente pelo cliente** — não inferido pelo sistema (responsabilidade compartilhada entre **API** e **profiling**: validação/consumo do payload, sem Knowledge Graph no MVP).
-
-### Orquestração — LangGraph ReAct
-
-- O grafo do agente segue o padrão **ReAct**.
-- O nó de **filtro de intenção agrícola** é **obrigatório** e o **primeiro nó** do grafo.
-- Perguntas **fora do domínio agrícola** são interceptadas **antes** de recuperação ou geração, com **resposta de recusa** devolvida diretamente.
-
-### Recuperação — Hybrid Search com RRF
-
-- Modo **híbrido** (vetores **densos** + vetores **esparsos**) sobre **Qdrant** (camada **database**).
-- **40** candidatos iniciais fundidos via **Reciprocal Rank Fusion (RRF)**, depois **re-ranking** para os **8** mais relevantes.
-- Após a seleção final: **expansão de bordas** por chunk adjacente (**ID ±1**), incluindo chunks vizinhos no contexto recuperado.
-- **Agente validador de contexto** após a recuperação: confirma pertinência dos chunks à pergunta **antes** da geração.
-
-### Memória Conversacional
-
-- Janela rolante com **`deque` FIFO**.
-- Histórico recente por **`session_id`**, injetado no contexto de cada turno.
-
-### Verificação de Alucinação — Dual Pipeline
-
-O verificador opera em **dois estágios sequenciais**, com até **2 tentativas de regeneração**:
-
-**Estágio 1 — Semantic Entropy:** várias respostas para a mesma pergunta; **clusterização semântica**; **entropia de Shannon** sobre a distribuição de clusters. Entropia **acima** do limiar configurado → **resposta de fallback imediata**, **sem** avançar ao estágio 2.
-
-**Estágio 2 — Atomic Claim Verification:** só quando a entropia está **dentro** do limiar aceitável. **Afirmações atômicas** da resposta verificadas **individualmente** contra o contexto RAG recuperado.
-
-A inferência **multi-chamada** do pipeline de entropia usa **OpenAI API** (`gpt-4o-mini` ou equivalente), **não** Ollama local, devido ao custo de latência de múltiplas chamadas sequenciais ao modelo local.
-
-### Geração
-
-- Resposta principal via **Ollama** com **`llama3.1:8b`**.
-- **Embeddings** com **`nomic-embed-text`**.
-
-### Fora de Escopo do MVP
-
-- **GraphRAG**
-- **Knowledge Graph** de perfil de produtor (ex.: Neo4j)
-- **Logging estruturado** de alucinações
-
-Itens acima permanecem em **roadmap**; não compõem o escopo do MVP atual.
-
-### Diagrama de Fluxo (MVP Alvo)
-
-```mermaid
-flowchart TD
-    subgraph API["Camada api"]
-        POST["POST /chat<br/>session_id + UserProfile + question"]
-    end
-
-    subgraph PROF["Camada profiling"]
-        PROF_IN["UserProfile explícito<br/>(cliente)"]
-    end
-
-    subgraph CORE["Camada core — LangGraph ReAct"]
-        INT["1º nó: filtro intenção agrícola"]
-        GRAPH["Grafo ReAct"]
-    end
-
-    subgraph MEM["Camada memory"]
-        DEQ["deque FIFO por session_id"]
-    end
-
-    subgraph RET["Camada retrieval + database (Qdrant)"]
-        HYB["Busca híbrida denso + esparsos"]
-        RRF["RRF sobre ~40 candidatos"]
-        TOP8["Re-rank → top 8"]
-        ADJ["Expansão vizinhos chunk ID ±1"]
-        CVAL["Validador de contexto"]
-    end
-
-    subgraph GEN["Camada generation"]
-        OLL["Ollama llama3.1:8b"]
-        NOMIC["Embeddings nomic-embed-text"]
-    end
-
-    subgraph VER["Camada verification"]
-        S1["Estágio 1: entropia semântica<br/>OpenAI gpt-4o-mini"]
-        S2["Estágio 2: claims atômicos vs contexto RAG"]
-        REGEN["Até 2 regenerações"]
-    end
-
-    POST --> PROF_IN
-    PROF_IN --> INT
-    INT -->|fora do domínio| OUT["Resposta de recusa"]
-    INT -->|domínio agrícola| GRAPH
-    DEQ -.->|histórico recente| GRAPH
-    GRAPH --> HYB
-    HYB --> RRF --> TOP8 --> ADJ --> CVAL
-    CVAL --> OLL
-    NOMIC -.->|queries / index| HYB
-    OLL --> S1
-    S1 -->|entropia alta| FB["Fallback imediato"]
-    S1 -->|entropia OK| S2
-    S2 -->|falha / incerteza| REGEN
-    REGEN --> OLL
-```
-
-> **Diagrama:** fluxo lógico alvo; nomes de módulos e limites entre camadas podem ser refinados na implementação.
-
-## Comparativo: Atual vs MVP
-
-| Aspecto | Atual | MVP |
-|---------|-------|-----|
-| **Busca** | Dense only | Híbrida (Dense + Sparse + RRF) |
-| **Orquestração** | Pipeline linear | LangGraph ReAct |
-| **Filtro de domínio** | Nenhum | Primeiro nó obrigatório |
-| **Validação de contexto** | Nenhuma | Validador pré-geração |
-| **Expansão de contexto** | Nenhuma | Vizinhos ±1 |
-| **Memória** | Nenhuma | deque FIFO por sessão |
-| **Verificação** | Nenhuma | Dual pipeline (entropia + claims) |
-| **LLM** | llama3.2:3b | llama3.1:8b |
-| **Regeneração** | Nenhuma | Até 2 tentativas |
+Arquitetura do sistema SmartB100 — agente RAG para suporte técnico agrícola.
 
 ---
 
-## Pipeline de Avaliação Automatizado
+## Visão Geral
 
-Sistema de benchmark contínuo para medir qualidade das respostas do RAG contra modelos de referência.
+O SmartB100 é um sistema de perguntas e respostas especializado em agronomia, construído sobre a arquitetura RAG (Retrieval-Augmented Generation). O sistema recupera contexto relevante de documentos técnicos indexados e gera respostas adaptadas ao perfil do usuário.
 
-### Diagrama do Pipeline
+A arquitetura é organizada em **oito camadas modulares**:
+
+| Camada | Responsabilidade |
+|--------|------------------|
+| `api` | Endpoints REST e validação de contratos |
+| `core` | Schemas Pydantic e configurações globais |
+| `retrieval` | Embeddings e busca vetorial |
+| `memory` | Histórico conversacional por sessão |
+| `profiling` | Adaptação de respostas ao perfil do usuário |
+| `generation` | Geração de respostas via LLM |
+| `verification` | Detecção de alucinações |
+| `database` | Persistência (SQLite + Qdrant) |
+
+---
+
+## Diagrama de Arquitetura
 
 ```mermaid
-flowchart LR
-    subgraph A ["TEval-A: Preparação"]
-        PDF[PDF/TXT] --> GEN[generate_questions.py]
-        GEN --> QS[questions.json<br/>300 perguntas]
-        QS --> COL[collect_references.py]
-        COL --> REF[reference_answers.json<br/>2+ modelos]
+flowchart TD
+    subgraph CLIENT["Cliente"]
+        UI["Frontend React\n:5173"]
     end
 
-    subgraph B ["TEval-B: Execução"]
-        REF --> RUN[run_evaluation.py]
-        RUN -->|POST /chat| API[SB100 API]
-        API --> RES[evaluation_results.json]
-        RES --> JUD[judge.py]
-        JUD -->|LLM Judge| JUDGED[judged_results.json]
-        JUDGED --> REP[report.py]
-        REP --> MD[report.md]
-        REP --> CSV[human_sample.csv<br/>10% amostra]
+    subgraph API["Camada api"]
+        ENDPOINT["POST /chat"]
+        AUTH["JWT Auth"]
     end
+
+    subgraph CORE["Camada core"]
+        SCHEMA["ChatRequest\nChatResponse\nUserProfile"]
+        CONFIG["Settings\n(.env)"]
+    end
+
+    subgraph AGENT["Orquestração LangGraph"]
+        INTENT["Filtro de Intenção\nAgrícola"]
+        REACT["Grafo ReAct"]
+    end
+
+    subgraph MEMORY["Camada memory"]
+        BUFFER["ConversationBuffer\ndeque FIFO"]
+    end
+
+    subgraph RETRIEVAL["Camada retrieval"]
+        EMBED["Embedder\nnomic-embed-text"]
+        SEARCH["Hybrid Search\nDense + Sparse"]
+        RRF["RRF Fusion\n+ Re-ranking"]
+        EXPAND["Expansão\nChunks ±1"]
+        VALIDATE["Validador\nde Contexto"]
+    end
+
+    subgraph GENERATION["Camada generation"]
+        LLM["LLM Generator\nllama3.1:8b"]
+        PROMPT["System Prompt\npor ExpertiseLevel"]
+    end
+
+    subgraph VERIFICATION["Camada verification"]
+        ENTROPY["Semantic Entropy\nClusterização"]
+        CLAIMS["Atomic Claims\nVerification"]
+    end
+
+    subgraph DATABASE["Camada database"]
+        QDRANT[("Qdrant\n:6333")]
+        SQLITE[("SQLite\nusers/messages")]
+    end
+
+    UI -->|HTTP JSON| ENDPOINT
+    ENDPOINT --> AUTH
+    AUTH --> SCHEMA
+    SCHEMA --> INTENT
+
+    INTENT -->|fora do domínio| REFUSE["Resposta de Recusa"]
+    INTENT -->|domínio agrícola| REACT
+
+    BUFFER -.->|histórico| REACT
+    REACT --> EMBED
+    EMBED --> SEARCH
+    SEARCH --> QDRANT
+    SEARCH --> RRF
+    RRF --> EXPAND
+    EXPAND --> VALIDATE
+
+    VALIDATE --> PROMPT
+    PROMPT --> LLM
+    LLM --> ENTROPY
+
+    ENTROPY -->|entropia alta| FALLBACK["Fallback"]
+    ENTROPY -->|entropia OK| CLAIMS
+    CLAIMS -->|falha| LLM
+    CLAIMS -->|sucesso| RESPONSE["ChatResponse"]
+
+    ENDPOINT --> SQLITE
 ```
 
-### Componentes
+---
 
-| Script | Função | Provider |
-|--------|--------|----------|
-| `generate_questions.py` | Gera perguntas de domínio agrícola a partir de documentos | Groq / Ollama |
-| `collect_references.py` | Coleta respostas de modelos open-source (LLaMA, Mistral) | Groq / Ollama |
-| `run_evaluation.py` | Executa perguntas contra `POST /chat` com session_id único | HTTP (httpx) |
-| `judge.py` | Compara respostas com LLM juiz (alterna posição para evitar viés) | Groq / Ollama |
-| `report.py` | Gera relatório MD e amostra CSV para validação humana | Local |
+## Camadas em Detalhe
 
-### Estrutura de Dados
+### 1. Camada API (`api/`)
 
-```json
+Ponto de entrada do sistema. Expõe endpoints REST via FastAPI.
+
+```
+api/
+├── main.py           # App FastAPI, CORS, lifespan
+└── routes/
+    ├── chat.py       # POST /chat — pipeline RAG principal
+    ├── auth.py       # POST /auth/register, /auth/token
+    └── health.py     # GET /health
+```
+
+**Endpoint principal:**
+
+```python
+POST /chat
 {
-  "metadata": {
-    "source_documents": ["boletim_sb100.pdf"],
-    "generated_at": "ISO-8601",
-    "total_questions": 300
-  },
-  "questions": [
-    {
-      "question_id": "uuid-v4",
-      "question": "texto da pergunta",
-      "reference_answers": [
-        {
-          "reference_model": "llama-3.1-8b-instant",
-          "reference_answer": "texto da resposta"
-        }
-      ]
+    "session_id": "uuid",
+    "question": "Como corrigir acidez do solo?",
+    "profile": {
+        "name": "João",
+        "expertise": "beginner"  # beginner | intermediate | expert
     }
-  ]
 }
 ```
 
-### Métricas de Avaliação
-
-| Métrica | Descrição |
-|---------|-----------|
-| `judge_score` | Score numérico (0-10) atribuído pelo LLM juiz |
-| `judge_verdict` | Veredicto comparativo: `better` / `equivalent` / `worse` |
-| `judge_justification` | Justificativa textual da avaliação |
-
-### Mitigação de Viés
-
-O script `judge.py` implementa alternância de posição (50%/50%) para evitar viés de ordem:
-- 50% das comparações: SB100 na posição A, referência na posição B
-- 50% das comparações: Referência na posição A, SB100 na posição B
-
-### Execução
-
-```bash
-# 1. Gerar perguntas (requer PDF)
-python eval/generate_questions.py ./archives/boletim.pdf --num-questions 300
-
-# 2. Coletar respostas de referência
-python eval/collect_references.py
-
-# 3. Executar avaliação (API rodando)
-python eval/run_evaluation.py
-
-# 4. Julgar respostas
-python eval/judge.py
-
-# 5. Gerar relatório
-python eval/report.py
-```
-
-Ver `eval/README.md` para documentação completa.
+O `session_id` identifica a conversa para manter histórico. O `profile` determina a complexidade da resposta.
 
 ---
 
-**Última atualização**: Adição do pipeline de avaliação automatizado
+### 2. Camada Core (`core/`)
+
+Define os contratos de dados e configurações do sistema.
+
+```
+core/
+├── config.py         # Pydantic Settings (carrega .env)
+└── schemas.py        # Modelos: ChatRequest, ChatResponse, UserProfile
+```
+
+**ExpertiseLevel** controla o tom das respostas:
+- `beginner`: linguagem simples, exemplos práticos
+- `intermediate`: termos técnicos com explicações breves
+- `expert`: precisão técnica, dados quantitativos
+
+---
+
+### 3. Camada Retrieval (`retrieval/`)
+
+Responsável por encontrar os trechos mais relevantes dos documentos indexados.
+
+```
+retrieval/
+├── embedder.py       # Gera embeddings via Ollama
+└── vector_store.py   # Busca no Qdrant
+```
+
+**Pipeline de Busca Híbrida:**
+
+1. **Embedding da query** — converte a pergunta em vetor 768-dim
+2. **Busca densa** — similaridade de cosseno no Qdrant
+3. **Busca esparsa** — BM25 para termos exatos
+4. **RRF (Reciprocal Rank Fusion)** — combina rankings dos dois métodos
+5. **Re-ranking** — seleciona os 8 melhores de ~40 candidatos
+6. **Expansão de bordas** — inclui chunks adjacentes (ID ±1)
+7. **Validação** — confirma relevância antes de passar ao LLM
+
+---
+
+### 4. Camada Memory (`memory/`)
+
+Mantém o histórico de conversas para contexto multi-turno.
+
+```
+memory/
+├── conversation.py   # ConversationBuffer com deque FIFO
+└── __init__.py
+```
+
+**ConversationBuffer:**
+
+```python
+buffer = ConversationBuffer(maxlen=10)
+buffer.add("user", "Qual o pH ideal?")
+buffer.add("assistant", "Entre 6.0 e 7.0...")
+history = buffer.to_messages()  # Lista para injetar no LLM
+```
+
+Usa `collections.deque` com `maxlen` para descartar automaticamente turnos antigos (FIFO).
+
+---
+
+### 5. Camada Generation (`generation/`)
+
+Gera respostas usando LLM local via Ollama.
+
+```
+generation/
+├── llm.py            # Função generate() com system prompts
+└── __init__.py
+```
+
+**Fluxo:**
+
+1. Monta `messages[]` com system prompt baseado no perfil
+2. Injeta histórico da conversa
+3. Adiciona pergunta atual com contexto RAG
+4. Chama `ollama.chat()` com o modelo configurado
+
+```python
+generate(
+    question="Como corrigir acidez?",
+    context="Texto dos chunks recuperados...",
+    history=[{"role": "user", "content": "..."}],
+    profile=UserProfile(name="João", expertise="beginner")
+)
+```
+
+---
+
+### 6. Camada Verification (`semantic_entropy/`)
+
+Detecta alucinações através de dois estágios sequenciais.
+
+```
+semantic_entropy/
+├── compute_entropy.py        # Orquestrador do pipeline
+├── response_generator.py     # Gera múltiplas respostas
+├── similarity_clustering.py  # Agrupa por similaridade
+└── shannon_entropy.py        # Calcula entropia
+```
+
+**Estágio 1 — Semantic Entropy:**
+- Gera N respostas para a mesma pergunta
+- Agrupa por similaridade semântica (clustering)
+- Calcula entropia de Shannon sobre a distribuição
+- Entropia alta = incerteza = possível alucinação
+
+**Estágio 2 — Atomic Claim Verification:**
+- Decompõe a resposta em afirmações atômicas
+- Verifica cada afirmação contra o contexto RAG
+- Afirmações não suportadas = alucinação
+
+Se falhar, regenera a resposta (até 2 tentativas).
+
+---
+
+### 7. Camada Database (`database/`)
+
+Persistência de dados estruturados e vetoriais.
+
+```
+database/
+├── db.py                 # SQLAlchemy engine + session
+├── models.py             # User, Conversation, Message
+└── semantic_chunker.py   # CLI de indexação de PDFs
+```
+
+**Qdrant (Vetorial):**
+- Collection: `archives_v2`
+- Dimensão: 768 (nomic-embed-text)
+- Distância: COSINE
+
+**SQLite (Relacional):**
+- Tabelas: `users`, `conversations`, `messages`
+- Autenticação JWT com hash bcrypt
+
+---
+
+### 8. Pipeline de Indexação
+
+Processa PDFs e armazena chunks semânticos no Qdrant.
+
+```mermaid
+flowchart LR
+    PDF["PDF"] --> EXTRACT["Extrair Texto\nPyMuPDF"]
+    EXTRACT --> SPLIT["Dividir em\nFrases"]
+    SPLIT --> EMBED["Gerar\nEmbeddings"]
+    EMBED --> CHUNK["Chunking\nSemântico"]
+    CHUNK --> STORE["Armazenar\nQdrant"]
+```
+
+**Chunking Semântico:**
+- Agrupa frases consecutivas com similaridade ≥ 0.75
+- Mínimo 3 frases, máximo 20 por chunk
+- Embedding do chunk = média dos embeddings das frases
+
+```bash
+# Indexar documentos
+python database/semantic_chunker.py index ./archives/
+
+# Testar busca
+python database/semantic_chunker.py search "calagem"
+```
+
+---
+
+## Pipeline de Avaliação
+
+Sistema automatizado para medir qualidade das respostas.
+
+```mermaid
+flowchart LR
+    subgraph PREP["Preparação"]
+        PDF["Documentos"] --> GEN["generate_questions.py"]
+        GEN --> QUESTIONS["questions.json"]
+        QUESTIONS --> COLLECT["collect_references.py"]
+        COLLECT --> REFS["reference_answers.json"]
+    end
+
+    subgraph EXEC["Execução"]
+        REFS --> RUN["run_evaluation.py"]
+        RUN --> API["POST /chat"]
+        API --> RESULTS["evaluation_results.json"]
+        RESULTS --> JUDGE["judge.py"]
+        JUDGE --> JUDGED["judged_results.json"]
+        JUDGED --> REPORT["report.py"]
+        REPORT --> MD["report.md"]
+    end
+```
+
+**Componentes:**
+
+| Script | Função | Providers |
+|--------|--------|-----------|
+| `generate_questions.py` | Gera perguntas a partir de PDFs | Groq, Ollama, OpenRouter |
+| `collect_references.py` | Coleta respostas de referência | Groq, Ollama, OpenRouter |
+| `run_evaluation.py` | Executa perguntas contra a API | HTTP |
+| `judge.py` | Compara respostas (LLM-as-judge) | Groq, Ollama, OpenRouter |
+| `report.py` | Gera relatório final | Local |
+
+**Mitigação de Viés:**
+O juiz alterna a posição das respostas (50% SB100 primeiro, 50% referência primeiro) para evitar viés de ordem.
+
+---
+
+## Stack Tecnológica
+
+### Backend
+
+| Componente | Tecnologia | Função |
+|------------|------------|--------|
+| Framework | FastAPI | REST API |
+| LLM | Ollama (llama3.1:8b) | Geração de respostas |
+| Embeddings | Ollama (nomic-embed-text) | Vetorização 768-dim |
+| Vector DB | Qdrant | Busca semântica |
+| SQL DB | SQLite + SQLAlchemy | Users, conversations |
+| Auth | PyJWT + bcrypt | Autenticação JWT |
+
+### Frontend
+
+| Componente | Tecnologia | Função |
+|------------|------------|--------|
+| Framework | React 19 | Interface do chat |
+| Build | Vite | Dev server + bundler |
+| State | Custom hooks | useChat, AuthContext |
+
+### Infraestrutura
+
+| Serviço | Porta | Função |
+|---------|-------|--------|
+| FastAPI | 8000 | Backend API |
+| React/Vite | 5173 | Frontend dev |
+| Qdrant | 6333 | Vector database |
+| Ollama | 11434 | LLM inference |
+
+---
+
+## Configuração
+
+Variáveis de ambiente (`.env`):
+
+```bash
+# Modelos
+CHAT_MODEL=llama3.1:8b
+EMBED_MODEL=nomic-embed-text
+
+# Qdrant
+QDRANT_URL=http://localhost:6333
+COLLECTION_NAME=archives_v2
+TOP_K=3
+
+# Verificação
+HALLUCINATION_THRESHOLD=0.5
+VERIFICATION_ENABLED=true
+
+# Auth
+JWT_SECRET_KEY=your-secret-key
+
+# APIs externas (eval pipeline)
+GROQ_API_KEY=
+OPENROUTER_API_KEY=
+```
+
+---
+
+## Fora de Escopo
+
+Itens planejados para versões futuras:
+
+- **GraphRAG** — grafo de conhecimento sobre entidades agrícolas
+- **Knowledge Graph de Produtores** — Neo4j para perfis detalhados
+- **Logging Estruturado de Alucinações** — analytics sobre falhas
+- **Streaming de Respostas** — SSE para respostas incrementais
