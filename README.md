@@ -87,6 +87,15 @@ sb100_agents/
 │   ├── db.py                       # SQLAlchemy engine + session
 │   ├── models.py                   # User, Conversation, Message models
 │   └── semantic_chunker.py         # PDF ingestion and semantic chunking
+├── eval/                           # Automated evaluation pipeline
+│   ├── dataset/                    # Generated questions and reference answers
+│   ├── results/                    # Evaluation results and reports
+│   ├── generate_questions.py       # Question generator from PDFs
+│   ├── collect_references.py       # Reference answer collector
+│   ├── run_evaluation.py           # Evaluation executor against POST /chat
+│   ├── judge.py                    # LLM-as-judge comparison
+│   ├── report.py                   # Summary report and human sample generator
+│   └── README.md                   # Pipeline documentation
 ├── retrieval/
 │   ├── embedder.py                 # Ollama embedding generation
 │   └── vector_store.py             # Qdrant context search
@@ -115,7 +124,7 @@ sb100_agents/
 
 ## Current Status
 
-**Sprint 1 — active | MVP: functional RAG pipeline**
+**Sprint 2 — active | MVP: functional RAG pipeline + evaluation**
 
 | Feature | Status |
 |---------|--------|
@@ -126,6 +135,11 @@ sb100_agents/
 | Semantic chunker with cosine-similarity grouping | Done |
 | React frontend (start + chat screens) | Done |
 | `ARCHITECTURE.md` with Mermaid diagrams | Done |
+| Evaluation pipeline structure (`eval/`) | Done |
+| Question generator from documents | Done |
+| Reference answer collector (open-source models) | Done |
+| LLM-as-judge evaluation | Done |
+| Evaluation dataset (300 questions) | Pending PDF |
 | Hybrid search (dense + sparse vectors, RRF fusion) | In progress |
 | LangGraph skeleton with agricultural intent filter | In progress |
 | Semantic Entropy Pipeline (hallucination verifier) | In progress |
