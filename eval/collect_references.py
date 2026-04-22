@@ -7,8 +7,14 @@ e coleta respostas de ao menos dois modelos open-source.
 Uso:
     python eval/collect_references.py
     python eval/collect_references.py --models llama3:8b,mistral:7b --provider ollama
-    python eval/collect_references.py --models llama-3.1-8b-instant,mixtral-8x7b-32768 --provider groq
+    python eval/collect_references.py --models llama-3.1-8b-instant,gemma2-9b-it --provider groq
 """
+
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Carrega variaveis de ambiente do .env
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 import argparse
 import json
@@ -24,7 +30,7 @@ DEFAULT_PROVIDER = "groq"
 
 # Modelos padrao por provider
 DEFAULT_MODELS = {
-    "groq": ["llama-3.1-8b-instant", "mixtral-8x7b-32768"],
+    "groq": ["llama-3.1-8b-instant", "gemma2-9b-it"],
     "ollama": ["llama3:8b", "mistral:7b"],
     "openrouter": ["google/gemma-4-31b-it", "google/gemma-4-26b-a4b-it"],
 }
