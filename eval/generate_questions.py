@@ -9,6 +9,12 @@ Uso:
     python eval/generate_questions.py ./archives/ --num-questions 300 --provider ollama
 """
 
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Carrega variaveis de ambiente do .env
+load_dotenv(Path(__file__).parent.parent / ".env")
+
 import argparse
 import json
 import os
@@ -22,7 +28,7 @@ import fitz  # PyMuPDF
 
 # Providers disponiveis: groq, ollama, openrouter
 DEFAULT_PROVIDER = "groq"
-DEFAULT_GROQ_MODEL = "llama-3.1-70b-versatile"
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 DEFAULT_OLLAMA_MODEL = "llama3.2:3b"
 DEFAULT_OPENROUTER_MODEL = "google/gemma-4-31b-it"
 

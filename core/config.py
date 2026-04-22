@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     groq_api_key: str = ""
     openrouter_api_key: str = ""
+    jwt_secret_key: str = ""
 
     @property
     def collection(self) -> str:

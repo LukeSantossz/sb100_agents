@@ -6,8 +6,14 @@ O juiz fornece score numerico (0-10), justificativa e veredicto.
 
 Uso:
     python eval/judge.py
-    python eval/judge.py --model llama-3.1-70b-versatile --provider groq
+    python eval/judge.py --model llama-3.3-70b-versatile --provider groq
 """
+
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Carrega variaveis de ambiente do .env
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 import argparse
 import json
@@ -24,7 +30,7 @@ DEFAULT_PROVIDER = "groq"
 
 # Modelo juiz padrao (distinto dos modelos de referencia)
 DEFAULT_JUDGE_MODELS = {
-    "groq": "llama-3.1-70b-versatile",
+    "groq": "llama-3.3-70b-versatile",
     "ollama": "llama3:70b",
     "openrouter": "google/gemma-4-31b-it",
 }

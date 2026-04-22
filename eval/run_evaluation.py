@@ -24,7 +24,7 @@ from tqdm import tqdm
 DEFAULT_API_URL = "http://localhost:8000"
 DEFAULT_PROFILE = {"name": "eval", "expertise": "intermediate"}
 DEFAULT_CONCURRENT = 1  # Requests simultaneos (1 = sequencial)
-DEFAULT_TIMEOUT = 60.0  # Timeout por request em segundos
+DEFAULT_TIMEOUT = 300.0  # Timeout por request em segundos (5 min para Ollama local)
 
 
 async def call_chat_api(
