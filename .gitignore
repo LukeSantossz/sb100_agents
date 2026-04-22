@@ -30,7 +30,7 @@ build/
 .env.local
 
 # Qdrant storage (optional - uncomment if you want to track)
-# qdrant_storage/
+/qdrant_storage
 
 # Node
 node_modules/
@@ -63,3 +63,5 @@ CLAUDE.md
 # Miscellaneous
 /tutor.md 
 /review.md
+task.md
+smart_boletim.pdf

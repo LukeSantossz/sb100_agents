@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     hallucination_threshold: float = 0.5
     verification_enabled: bool = True
     openai_api_key: str = ""
+    groq_api_key: str = ""
+    openrouter_api_key: str = ""
 
     @property
     def collection(self) -> str:
