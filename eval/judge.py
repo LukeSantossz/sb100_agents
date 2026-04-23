@@ -6,8 +6,14 @@ O juiz fornece score numerico (0-10), justificativa e veredicto.
 
 Uso:
     python eval/judge.py
-    python eval/judge.py --model llama-3.1-70b-versatile --provider groq
+    python eval/judge.py --model llama-3.3-70b-versatile --provider groq
 """
+
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Carrega variaveis de ambiente do .env
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 import argparse
 import json
@@ -24,9 +30,13 @@ DEFAULT_PROVIDER = "groq"
 
 # Modelo juiz padrao (distinto dos modelos de referencia)
 DEFAULT_JUDGE_MODELS = {
-    "groq": "llama-3.1-70b-versatile",
+    "groq": "llama-3.3-70b-versatile",
     "ollama": "llama3:70b",
+    "openrouter": "google/gemma-4-31b-it",
 }
+
+# Configuracao OpenRouter
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # Prompt do juiz - solicita score, justificativa e veredicto
 JUDGE_PROMPT_TEMPLATE = """Voce e um avaliador especializado em agronomia. Sua tarefa e comparar duas respostas para uma pergunta tecnica e determinar qual e melhor.
@@ -106,6 +116,36 @@ def judge_ollama(
     return parse_judge_response(response["message"]["content"])
 
 
+def judge_openrouter(
+    question: str,
+    answer_a: str,
+    answer_b: str,
+    model: str,
+) -> dict:
+    """Executa julgamento usando OpenRouter API (Gemma 4, etc)."""
+    from openai import OpenAI
+
+    client = OpenAI(
+        base_url=OPENROUTER_BASE_URL,
+        api_key=os.environ.get("OPENROUTER_API_KEY"),
+    )
+
+    prompt = JUDGE_PROMPT_TEMPLATE.format(
+        question=question,
+        answer_a=answer_a,
+        answer_b=answer_b,
+    )
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1,
+        max_tokens=500,
+    )
+
+    return parse_judge_response(response.choices[0].message.content)
+
+
 def parse_judge_response(content: str) -> dict:
     """Extrai campos do JSON de resposta do juiz."""
     # Tenta extrair JSON
@@ -177,7 +217,12 @@ def run_judge(
     if model is None:
         model = DEFAULT_JUDGE_MODELS[provider]
 
-    judge_fn = judge_groq if provider == "groq" else judge_ollama
+    judge_fns = {
+        "groq": judge_groq,
+        "ollama": judge_ollama,
+        "openrouter": judge_openrouter,
+    }
+    judge_fn = judge_fns[provider]
 
     # Carrega dataset
     with open(input_path, "r", encoding="utf-8") as f:
@@ -314,7 +359,7 @@ def main():
     )
     parser.add_argument(
         "--provider",
-        choices=["groq", "ollama"],
+        choices=["groq", "ollama", "openrouter"],
         default=DEFAULT_PROVIDER,
         help=f"Provider LLM (padrao: {DEFAULT_PROVIDER})",
     )
@@ -328,6 +373,10 @@ def main():
     # Valida provider
     if args.provider == "groq" and not os.environ.get("GROQ_API_KEY"):
         print("Erro: GROQ_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
+        return 1
+
+    if args.provider == "openrouter" and not os.environ.get("OPENROUTER_API_KEY"):
+        print("Erro: OPENROUTER_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
         return 1
 
     # Verifica se arquivo de entrada existe

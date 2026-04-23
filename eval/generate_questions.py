@@ -9,6 +9,12 @@ Uso:
     python eval/generate_questions.py ./archives/ --num-questions 300 --provider ollama
 """
 
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Carrega variaveis de ambiente do .env
+load_dotenv(Path(__file__).parent.parent / ".env")
+
 import argparse
 import json
 import os
@@ -20,10 +26,14 @@ from typing import Optional
 
 import fitz  # PyMuPDF
 
-# Providers disponiveis: groq, ollama
+# Providers disponiveis: groq, ollama, openrouter
 DEFAULT_PROVIDER = "groq"
-DEFAULT_GROQ_MODEL = "llama-3.1-70b-versatile"
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 DEFAULT_OLLAMA_MODEL = "llama3.2:3b"
+DEFAULT_OPENROUTER_MODEL = "google/gemma-4-31b-it"
+
+# Configuracao OpenRouter
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # Prompt para geracao de perguntas
 QUESTION_GENERATION_PROMPT = """Voce e um especialista em agronomia e agricultura brasileira.
@@ -135,6 +145,35 @@ def generate_questions_ollama(
     return parse_questions_json(content)
 
 
+def generate_questions_openrouter(
+    text_chunk: str,
+    num_questions: int,
+    model: str = DEFAULT_OPENROUTER_MODEL,
+) -> list[str]:
+    """Gera perguntas usando OpenRouter API (Gemma 4, etc)."""
+    from openai import OpenAI
+
+    client = OpenAI(
+        base_url=OPENROUTER_BASE_URL,
+        api_key=os.environ.get("OPENROUTER_API_KEY"),
+    )
+
+    prompt = QUESTION_GENERATION_PROMPT.format(
+        text_chunk=text_chunk,
+        num_questions=num_questions,
+    )
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+        max_tokens=2000,
+    )
+
+    content = response.choices[0].message.content.strip()
+    return parse_questions_json(content)
+
+
 def parse_questions_json(content: str) -> list[str]:
     """Extrai lista de perguntas do JSON retornado pelo LLM."""
     # Tenta extrair JSON array do conteudo
@@ -187,9 +226,19 @@ def generate_questions_from_files(
         Dataset estruturado com metadata e questions
     """
     if model is None:
-        model = DEFAULT_GROQ_MODEL if provider == "groq" else DEFAULT_OLLAMA_MODEL
+        model_defaults = {
+            "groq": DEFAULT_GROQ_MODEL,
+            "ollama": DEFAULT_OLLAMA_MODEL,
+            "openrouter": DEFAULT_OPENROUTER_MODEL,
+        }
+        model = model_defaults[provider]
 
-    generate_fn = generate_questions_groq if provider == "groq" else generate_questions_ollama
+    generate_fns = {
+        "groq": generate_questions_groq,
+        "ollama": generate_questions_ollama,
+        "openrouter": generate_questions_openrouter,
+    }
+    generate_fn = generate_fns[provider]
 
     # Extrai texto de todos os arquivos
     all_text = ""
@@ -272,7 +321,7 @@ def main():
     )
     parser.add_argument(
         "--provider",
-        choices=["groq", "ollama"],
+        choices=["groq", "ollama", "openrouter"],
         default=DEFAULT_PROVIDER,
         help=f"Provider LLM (padrao: {DEFAULT_PROVIDER})",
     )
@@ -291,6 +340,10 @@ def main():
     # Valida provider
     if args.provider == "groq" and not os.environ.get("GROQ_API_KEY"):
         print("Erro: GROQ_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
+        return 1
+
+    if args.provider == "openrouter" and not os.environ.get("OPENROUTER_API_KEY"):
+        print("Erro: OPENROUTER_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
         return 1
 
     # Coleta arquivos
