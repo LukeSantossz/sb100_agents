@@ -76,8 +76,10 @@ class TestConversationBuffer(unittest.TestCase):
         buffer.add("user", "Teste")
 
         messages = buffer.to_messages()
+        messages[0]["content"] = "Alterado"
         messages.append({"role": "fake", "content": "Intruso"})
 
+        self.assertEqual(buffer.to_messages()[0]["content"], "Teste")
         self.assertEqual(len(buffer.to_messages()), 1)
 
 
