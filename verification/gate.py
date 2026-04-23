@@ -32,10 +32,9 @@ def evaluate(
     Returns:
         ChatResponse com answer e hallucination_score.
     """
-    last_answer = ""
     last_score = 0.0
 
-    for attempt in range(MAX_RETRIES):
+    for _ in range(MAX_RETRIES):
         answer = generate(
             question=question,
             context=context,
@@ -43,19 +42,15 @@ def evaluate(
             profile=profile,
         )
 
-        score = compute_entropy_score(
-            response=answer,
-            context=context,
+        last_score = compute_entropy_score(
             question=question,
+            context=context,
         )
 
-        last_answer = answer
-        last_score = score
-
-        if score <= settings.hallucination_threshold:
+        if last_score <= settings.hallucination_threshold:
             return ChatResponse(
                 answer=answer,
-                hallucination_score=score,
+                hallucination_score=last_score,
             )
 
     return ChatResponse(
