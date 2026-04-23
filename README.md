@@ -26,7 +26,9 @@ For architecture details and design decisions, see [`ARCHITECTURE.md`](./ARCHITE
 | Document ingestion | PyMuPDF + semantic chunker |
 | Frontend | React + Vite |
 | Agent orchestration | LangGraph (migration in progress) |
+| Conversation memory | FIFO rolling window buffer |
 | Hallucination verification | Semantic Entropy + Claim Verification (in development) |
+| Eval providers | Groq, OpenRouter (Gemma 4) |
 
 ## Getting Started
 
@@ -87,6 +89,10 @@ sb100_agents/
 │   ├── db.py                       # SQLAlchemy engine + session
 │   ├── models.py                   # User, Conversation, Message models
 │   └── semantic_chunker.py         # PDF ingestion and semantic chunking
+├── generation/
+│   └── llm.py                      # Multi-turn LLM with profile-aware prompts
+├── memory/
+│   └── conversation.py             # ConversationBuffer (FIFO rolling window)
 ├── eval/                           # Automated evaluation pipeline
 │   ├── dataset/                    # Generated questions and reference answers
 │   ├── results/                    # Evaluation results and reports
@@ -137,8 +143,10 @@ sb100_agents/
 | `ARCHITECTURE.md` with Mermaid diagrams | Done |
 | Evaluation pipeline structure (`eval/`) | Done |
 | Question generator from documents | Done |
-| Reference answer collector (open-source models) | Done |
+| Reference answer collector (OpenRouter/Gemma 4, Groq) | Done |
 | LLM-as-judge evaluation | Done |
+| Multi-turn conversation memory (FIFO buffer) | Done |
+| Profile-aware LLM generation | Done |
 | Evaluation dataset (300 questions) | Pending PDF |
 | Hybrid search (dense + sparse vectors, RRF fusion) | In progress |
 | LangGraph skeleton with agricultural intent filter | In progress |
