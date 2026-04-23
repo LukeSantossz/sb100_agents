@@ -15,7 +15,11 @@ TEMPERATURE = 0.7
 
 
 def _generate_samples(question: str, context: str, n: int = NUM_SAMPLES) -> list[str]:
-    """Gera N respostas para a mesma pergunta com temperatura > 0."""
+    """Gera N respostas para a mesma pergunta com temperatura > 0.
+
+    Custo: N chamadas sequenciais à API (gpt-4o-mini ~$0.15/1M tokens).
+    Otimização futura: usar `n` parameter da API para gerar múltiplas em uma chamada.
+    """
     client = OpenAI(api_key=settings.openai_api_key)
 
     prompt = f"Contexto:\n{context}\n\nPergunta: {question}" if context else question
@@ -59,7 +63,13 @@ def _compute_similarity(text1: str, text2: str) -> float:
 
 
 def _cluster_responses(responses: list[str], threshold: float = 0.85) -> list[list[str]]:
-    """Agrupa respostas por similaridade semântica."""
+    """Agrupa respostas por similaridade semântica.
+
+    Complexidade: O(n*k) onde n=respostas e k=clusters. No pior caso O(n²).
+    Para NUM_SAMPLES=5, são no máximo 10 chamadas de embedding.
+
+    Otimização futura: batch embeddings e usar matriz de similaridade.
+    """
     if not responses:
         return []
 
@@ -94,14 +104,16 @@ def _shannon_entropy(clusters: list[list[str]], total: int) -> float:
     return entropy / max_entropy if max_entropy > 0 else 0.0
 
 
-def compute_entropy_score(response: str, context: str, question: str = "") -> float:
+def compute_entropy_score(question: str, context: str) -> float:
     """Calcula score de entropia semântica para detecção de alucinações.
 
+    Gera múltiplas respostas para a mesma pergunta, agrupa por similaridade
+    semântica e calcula entropia de Shannon sobre a distribuição dos clusters.
+    Alta entropia indica incerteza/possível alucinação.
+
     Args:
-        response: Resposta gerada pelo modelo principal (não usada diretamente,
-                  mas preservada na assinatura para consistência).
-        context: Contexto RAG usado na geração.
         question: Pergunta original do usuário.
+        context: Contexto RAG usado na geração.
 
     Returns:
         Score entre 0.0 (baixa incerteza) e 1.0 (alta incerteza/possível alucinação).
