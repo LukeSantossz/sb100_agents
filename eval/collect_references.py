@@ -7,8 +7,14 @@ e coleta respostas de ao menos dois modelos open-source.
 Uso:
     python eval/collect_references.py
     python eval/collect_references.py --models llama3:8b,mistral:7b --provider ollama
-    python eval/collect_references.py --models llama-3.1-8b-instant,mixtral-8x7b-32768 --provider groq
+    python eval/collect_references.py --models llama-3.1-8b-instant,gemma2-9b-it --provider groq
 """
+
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Carrega variaveis de ambiente do .env
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 import argparse
 import json
@@ -19,14 +25,18 @@ from typing import Optional
 
 from tqdm import tqdm
 
-# Providers disponiveis: groq, ollama
+# Providers disponiveis: groq, ollama, openrouter
 DEFAULT_PROVIDER = "groq"
 
 # Modelos padrao por provider
 DEFAULT_MODELS = {
-    "groq": ["llama-3.1-8b-instant", "mixtral-8x7b-32768"],
+    "groq": ["llama-3.1-8b-instant", "gemma2-9b-it"],
     "ollama": ["llama3:8b", "mistral:7b"],
+    "openrouter": ["google/gemma-4-31b-it", "google/gemma-4-26b-a4b-it"],
 }
+
+# Configuracao OpenRouter
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # Prompt para resposta de referencia
 REFERENCE_ANSWER_PROMPT = """Voce e um assistente especializado em agronomia e agricultura brasileira.
@@ -76,6 +86,30 @@ def get_reference_ollama(
     return response["message"]["content"].strip()
 
 
+def get_reference_openrouter(
+    question: str,
+    model: str,
+) -> str:
+    """Obtem resposta de referencia usando OpenRouter API (Gemma 4, etc)."""
+    from openai import OpenAI
+
+    client = OpenAI(
+        base_url=OPENROUTER_BASE_URL,
+        api_key=os.environ.get("OPENROUTER_API_KEY"),
+    )
+
+    prompt = REFERENCE_ANSWER_PROMPT.format(question=question)
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+        max_tokens=1000,
+    )
+
+    return response.choices[0].message.content.strip()
+
+
 def collect_references(
     questions_path: str = "eval/dataset/questions.json",
     output_path: str = "eval/dataset/reference_answers.json",
@@ -97,7 +131,12 @@ def collect_references(
     if models is None:
         models = DEFAULT_MODELS[provider]
 
-    get_reference_fn = get_reference_groq if provider == "groq" else get_reference_ollama
+    get_reference_fns = {
+        "groq": get_reference_groq,
+        "ollama": get_reference_ollama,
+        "openrouter": get_reference_openrouter,
+    }
+    get_reference_fn = get_reference_fns[provider]
 
     # Carrega dataset de perguntas
     with open(questions_path, "r", encoding="utf-8") as f:
@@ -171,7 +210,7 @@ def main():
     )
     parser.add_argument(
         "--provider",
-        choices=["groq", "ollama"],
+        choices=["groq", "ollama", "openrouter"],
         default=DEFAULT_PROVIDER,
         help=f"Provider LLM (padrao: {DEFAULT_PROVIDER})",
     )
@@ -185,6 +224,10 @@ def main():
     # Valida provider
     if args.provider == "groq" and not os.environ.get("GROQ_API_KEY"):
         print("Erro: GROQ_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
+        return 1
+
+    if args.provider == "openrouter" and not os.environ.get("OPENROUTER_API_KEY"):
+        print("Erro: OPENROUTER_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
         return 1
 
     # Verifica se arquivo de entrada existe
