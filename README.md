@@ -45,6 +45,12 @@ For architecture details and design decisions, see [`ARCHITECTURE.md`](./ARCHITE
 ollama pull llama3.2:3b
 ollama pull nomic-embed-text
 
+# Create Python virtual environment (choose one)
+uv sync                # if using uv (recommended)
+# or
+python -m venv .venv && .venv\Scripts\pip install -e .  # Windows
+python -m venv .venv && .venv/bin/pip install -e .      # Linux/Mac
+
 # Install root and frontend dependencies
 npm install
 npm run install:frontend
