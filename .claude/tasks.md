@@ -85,7 +85,7 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
 ### TASK-000
-- **Status:** em andamento
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** major
 - **Data de criação:** 2026-04-24
@@ -134,14 +134,14 @@ As regras do `instructions.md` dependem do agente segui-las voluntariamente. Est
 
 | Data | Sessão | Ação Realizada | Status ao Final |
 |------|--------|----------------|-----------------|
-| 2026-04-24 | 1 | Reconhecimento da codebase, criação de branch, início da implementação | em andamento |
+| 2026-04-24 | 1 | Reconhecimento da codebase, criação de branch, implementação completa dos 4 hooks + enforcement.conf, testes, commit | concluída |
 
 #### Resultado (preenchido ao concluir)
-- **Data de conclusão:** [YYYY-MM-DD]
+- **Data de conclusão:** 2026-04-24
 - **Branch:** chore/TASK-000-enforcement-hooks
-- **Commit(s):** [hash ou mensagem]
-- **Avaliação pós-implementação:** [aprovado / aprovado com ressalvas / reprovado]
-- **Observações:** [notas relevantes para futuras tasks]
+- **Commit(s):** 266aed0 chore(hooks): add git hooks for workflow enforcement
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** Hooks testados e funcionais. .gitignore ajustado para permitir versionamento de .claude/. O hook pre-commit executou automaticamente no commit.
 
 ---
 
@@ -149,7 +149,11 @@ As regras do `instructions.md` dependem do agente segui-las voluntariamente. Est
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
 
-[nenhuma task concluída]
+### TASK-000 — Enforcement Hooks ✓
+- **Concluída em:** 2026-04-24
+- **Branch:** chore/TASK-000-enforcement-hooks
+- **Commit:** 266aed0
+- **Detalhes:** Ver seção Tasks Ativas (mantida para referência)
 
 ---
 
