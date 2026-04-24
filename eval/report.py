@@ -37,20 +37,25 @@ def extract_all_judgments(results: list[dict]) -> list[dict]:
 
         for j in result.get("judgments", []):
             if j.get("judge_score") is not None:
-                judgments.append({
-                    "question": question,
-                    "sb100_answer": sb100_answer,
-                    "reference_model": j.get("reference_model", ""),
-                    "reference_answer": next(
-                        (r["reference_answer"] for r in result.get("reference_answers", [])
-                         if r["reference_model"] == j["reference_model"]),
-                        ""
-                    ),
-                    "judge_score": j["judge_score"],
-                    "reference_score": j.get("reference_score", 0),
-                    "judge_verdict": j["judge_verdict"],
-                    "judge_justification": j.get("judge_justification", ""),
-                })
+                judgments.append(
+                    {
+                        "question": question,
+                        "sb100_answer": sb100_answer,
+                        "reference_model": j.get("reference_model", ""),
+                        "reference_answer": next(
+                            (
+                                r["reference_answer"]
+                                for r in result.get("reference_answers", [])
+                                if r["reference_model"] == j["reference_model"]
+                            ),
+                            "",
+                        ),
+                        "judge_score": j["judge_score"],
+                        "reference_score": j.get("reference_score", 0),
+                        "judge_verdict": j["judge_verdict"],
+                        "judge_justification": j.get("judge_justification", ""),
+                    }
+                )
 
     return judgments
 
@@ -110,16 +115,16 @@ def generate_report_markdown(
 
     report = f"""# Relatorio de Avaliacao - SB100
 
-**Gerado em:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+**Gerado em:** {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}
 
 ## Resumo
 
 | Metrica | Valor |
 |---------|-------|
-| Total de perguntas | {metadata.get('total_questions', len(judgments))} |
+| Total de perguntas | {metadata.get("total_questions", len(judgments))} |
 | Total de julgamentos | {len(judgments)} |
-| Modelo juiz | {metadata.get('judge_model', 'N/A')} |
-| Provider | {metadata.get('judge_provider', 'N/A')} |
+| Modelo juiz | {metadata.get("judge_model", "N/A")} |
+| Provider | {metadata.get("judge_provider", "N/A")} |
 
 ## Scores do SB100
 
@@ -169,12 +174,12 @@ def generate_report_markdown(
 
 | Veredicto | Quantidade | Percentual |
 |-----------|------------|------------|
-| SB100 Melhor | {total_better} | {round(100*total_better/grand_total, 1)}% |
-| Equivalente | {total_equiv} | {round(100*total_equiv/grand_total, 1)}% |
-| SB100 Pior | {total_worse} | {round(100*total_worse/grand_total, 1)}% |
+| SB100 Melhor | {total_better} | {round(100 * total_better / grand_total, 1)}% |
+| Equivalente | {total_equiv} | {round(100 * total_equiv / grand_total, 1)}% |
+| SB100 Pior | {total_worse} | {round(100 * total_worse / grand_total, 1)}% |
 """
 
-    report += f"""
+    report += """
 ## Notas
 
 - **Better**: SB100 teve resposta melhor que o modelo de referencia
@@ -232,15 +237,17 @@ def export_human_sample(
         writer.writeheader()
 
         for item in sample:
-            writer.writerow({
-                "question": item["question"],
-                "sb100_answer": item["sb100_answer"],
-                "reference_model": item["reference_model"],
-                "reference_answer": item["reference_answer"],
-                "judge_score": item["judge_score"],
-                "judge_verdict": item["judge_verdict"],
-                "judge_justification": item["judge_justification"],
-            })
+            writer.writerow(
+                {
+                    "question": item["question"],
+                    "sb100_answer": item["sb100_answer"],
+                    "reference_model": item["reference_model"],
+                    "reference_answer": item["reference_answer"],
+                    "judge_score": item["judge_score"],
+                    "judge_verdict": item["judge_verdict"],
+                    "judge_justification": item["judge_justification"],
+                }
+            )
 
     return sample
 
@@ -299,9 +306,7 @@ def generate_report(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Gera relatorio sumario da avaliacao"
-    )
+    parser = argparse.ArgumentParser(description="Gera relatorio sumario da avaliacao")
     parser.add_argument(
         "--input",
         default="eval/results/judged_results.json",

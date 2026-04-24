@@ -177,7 +177,7 @@ def generate_questions_openrouter(
 def parse_questions_json(content: str) -> list[str]:
     """Extrai lista de perguntas do JSON retornado pelo LLM."""
     # Tenta extrair JSON array do conteudo
-    json_match = re.search(r'\[.*\]', content, re.DOTALL)
+    json_match = re.search(r"\[.*\]", content, re.DOTALL)
     if json_match:
         try:
             questions = json.loads(json_match.group())
@@ -187,15 +187,15 @@ def parse_questions_json(content: str) -> list[str]:
             pass
 
     # Fallback: extrai linhas que parecem perguntas
-    lines = content.split('\n')
+    lines = content.split("\n")
     questions = []
     for line in lines:
         line = line.strip()
         # Remove prefixos numerados
-        line = re.sub(r'^[\d]+[.\-\)]\s*', '', line)
-        line = re.sub(r'^["\']\s*', '', line)
-        line = re.sub(r'\s*["\']$', '', line)
-        if line and '?' in line:
+        line = re.sub(r"^[\d]+[.\-\)]\s*", "", line)
+        line = re.sub(r'^["\']\s*', "", line)
+        line = re.sub(r'\s*["\']$', "", line)
+        if line and "?" in line:
             questions.append(line)
 
     return questions
@@ -261,7 +261,7 @@ def generate_questions_from_files(
     all_questions = []
     for i, chunk in enumerate(chunks):
         target = questions_per_chunk + (1 if i < extra_questions else 0)
-        print(f"Gerando {target} perguntas do chunk {i+1}/{len(chunks)}...")
+        print(f"Gerando {target} perguntas do chunk {i + 1}/{len(chunks)}...")
 
         try:
             questions = generate_fn(chunk, target, model)

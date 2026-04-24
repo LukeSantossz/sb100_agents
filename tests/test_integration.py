@@ -45,6 +45,7 @@ def mock_verification_disabled():
 @pytest.fixture
 def mock_generate_by_expertise():
     """Mock de generate que retorna respostas distintas por expertise."""
+
     def _generate(question, context, history, profile):
         responses = {
             ExpertiseLevel.beginner: "Resposta simples para iniciante sobre calagem.",
@@ -58,11 +59,14 @@ def mock_generate_by_expertise():
         yield mock
 
 
-@pytest.mark.parametrize("expertise,expected_keyword", [
-    (ExpertiseLevel.beginner, "simples"),
-    (ExpertiseLevel.intermediate, "técnica"),
-    (ExpertiseLevel.expert, "avançada"),
-])
+@pytest.mark.parametrize(
+    "expertise,expected_keyword",
+    [
+        (ExpertiseLevel.beginner, "simples"),
+        (ExpertiseLevel.intermediate, "técnica"),
+        (ExpertiseLevel.expert, "avançada"),
+    ],
+)
 def test_expertise_levels_produce_distinct_responses(
     client,
     mock_embedding,
