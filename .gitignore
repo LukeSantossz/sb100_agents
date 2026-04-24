@@ -61,7 +61,19 @@ frontend/smartb100/*.local
 CLAUDE.md
 
 # Miscellaneous
-/tutor.md 
+/tutor.md
 /review.md
 task.md
 smart_boletim.pdf
+
+# Runtime data - do not version
+/qdrant_storage/
+/archives/
+
+# Out of scope for MVP
+/auth/
+/frontend/
+/nginx/
+
+# Duplicate verification module (to be consolidated)
+/semantic_entropy/
