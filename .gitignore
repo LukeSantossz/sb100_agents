@@ -9,7 +9,7 @@ venv/
 ENV/
 env/
 Lib/
-Scripts/
+.venv/Scripts/
 Include/
 pyvenv.cfg
 .python-version
