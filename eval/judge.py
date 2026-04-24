@@ -149,7 +149,7 @@ def judge_openrouter(
 def parse_judge_response(content: str) -> dict:
     """Extrai campos do JSON de resposta do juiz."""
     # Tenta extrair JSON
-    json_match = re.search(r'\{.*\}', content, re.DOTALL)
+    json_match = re.search(r"\{.*\}", content, re.DOTALL)
     if json_match:
         try:
             data = json.loads(json_match.group())
@@ -242,10 +242,12 @@ def run_judge(
 
         if not result.get("sb100_success", True):
             # Pula resultados com erro
-            judged_results.append({
-                **result,
-                "judgments": [],
-            })
+            judged_results.append(
+                {
+                    **result,
+                    "judgments": [],
+                }
+            )
             continue
 
         judgments = []
@@ -283,29 +285,35 @@ def run_judge(
 
                 verdict = normalize_verdict(judge_result["verdict"], sb100_is_a)
 
-                judgments.append({
-                    "reference_model": ref_model,
-                    "judge_score": sb100_score,
-                    "reference_score": ref_score,
-                    "judge_verdict": verdict,
-                    "judge_justification": judge_result["justification"],
-                    "sb100_position": "A" if sb100_is_a else "B",
-                })
+                judgments.append(
+                    {
+                        "reference_model": ref_model,
+                        "judge_score": sb100_score,
+                        "reference_score": ref_score,
+                        "judge_verdict": verdict,
+                        "judge_justification": judge_result["justification"],
+                        "sb100_position": "A" if sb100_is_a else "B",
+                    }
+                )
 
             except Exception as e:
-                judgments.append({
-                    "reference_model": ref_model,
-                    "judge_score": None,
-                    "reference_score": None,
-                    "judge_verdict": "error",
-                    "judge_justification": f"[ERRO] {str(e)}",
-                    "sb100_position": "A" if sb100_is_a else "B",
-                })
+                judgments.append(
+                    {
+                        "reference_model": ref_model,
+                        "judge_score": None,
+                        "reference_score": None,
+                        "judge_verdict": "error",
+                        "judge_justification": f"[ERRO] {str(e)}",
+                        "sb100_position": "A" if sb100_is_a else "B",
+                    }
+                )
 
-        judged_results.append({
-            **result,
-            "judgments": judgments,
-        })
+        judged_results.append(
+            {
+                **result,
+                "judgments": judgments,
+            }
+        )
 
     # Monta dataset final
     judged_dataset = {
@@ -344,9 +352,7 @@ def run_judge(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Executa julgamento automatico das respostas"
-    )
+    parser = argparse.ArgumentParser(description="Executa julgamento automatico das respostas")
     parser.add_argument(
         "--input",
         default="eval/results/evaluation_results.json",
