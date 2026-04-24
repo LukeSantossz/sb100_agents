@@ -144,3 +144,60 @@ def test_multiturn_session_maintains_context(
 
     # Turno 3: histórico com 4 mensagens (turnos 1 e 2)
     assert len(histories[2]) == 4
+
+
+@pytest.fixture
+def mock_verification_enabled():
+    """Mock que habilita verificação com score fixo."""
+    with patch("api.routes.chat.settings") as mock_settings:
+        mock_settings.verification_enabled = True
+        mock_settings.buffer_maxlen = 10
+
+        with patch("api.routes.chat.verify_and_generate") as mock_verify:
+            mock_verify.return_value = ChatResponse(
+                answer="Resposta verificada",
+                hallucination_score=0.25,
+            )
+            yield mock_verify
+
+
+def test_hallucination_score_present_and_valid(
+    client,
+    mock_embedding,
+    mock_context,
+    mock_verification_enabled,
+):
+    """hallucination_score presente e entre 0.0 e 1.0 em todas as respostas."""
+    payload = {
+        "session_id": "test-score",
+        "question": "Como corrigir acidez do solo?",
+        "profile": {"name": "TestUser", "expertise": "beginner"},
+    }
+
+    response = client.post("/chat", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "hallucination_score" in data
+    assert 0.0 <= data["hallucination_score"] <= 1.0
+
+
+def test_hallucination_score_zero_when_verification_disabled(
+    client,
+    mock_embedding,
+    mock_context,
+    mock_verification_disabled,
+    mock_generate_by_expertise,
+):
+    """hallucination_score é 0.0 quando verificação está desabilitada."""
+    payload = {
+        "session_id": "test-score-disabled",
+        "question": "Como corrigir acidez do solo?",
+        "profile": {"name": "TestUser", "expertise": "beginner"},
+    }
+
+    response = client.post("/chat", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["hallucination_score"] == 0.0
