@@ -153,12 +153,13 @@ sb100_agents/
 | LLM-as-judge evaluation | Done |
 | Multi-turn conversation memory (FIFO buffer) | Done |
 | Profile-aware LLM generation | Done |
+| Session-based conversation isolation | Done |
+| Semantic Entropy Pipeline (hallucination verifier) | Done |
+| Hallucination risk score in API response | Done |
 | Evaluation dataset (300 questions) | Pending PDF |
 | Hybrid search (dense + sparse vectors, RRF fusion) | In progress |
 | LangGraph skeleton with agricultural intent filter | In progress |
-| Semantic Entropy Pipeline (hallucination verifier) | In progress |
 | Claim Verification Pipeline (atomic decomposition + RAG) | In progress |
-| Hallucination risk score in API response | Pending |
 
 ## Service URLs
 
