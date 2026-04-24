@@ -40,3 +40,51 @@ def mock_verification_disabled():
         mock_settings.verification_enabled = False
         mock_settings.buffer_maxlen = 10
         yield mock_settings
+
+
+@pytest.fixture
+def mock_generate_by_expertise():
+    """Mock de generate que retorna respostas distintas por expertise."""
+    def _generate(question, context, history, profile):
+        responses = {
+            ExpertiseLevel.beginner: "Resposta simples para iniciante sobre calagem.",
+            ExpertiseLevel.intermediate: "Resposta técnica intermediária: calcário dolomítico, PRNT 85%.",
+            ExpertiseLevel.expert: "Resposta avançada: CTC, V%, saturação de bases, dosagem 2t/ha.",
+        }
+        return responses.get(profile.expertise, "Resposta padrão")
+
+    with patch("api.routes.chat.generate") as mock:
+        mock.side_effect = _generate
+        yield mock
+
+
+@pytest.mark.parametrize("expertise,expected_keyword", [
+    (ExpertiseLevel.beginner, "simples"),
+    (ExpertiseLevel.intermediate, "técnica"),
+    (ExpertiseLevel.expert, "avançada"),
+])
+def test_expertise_levels_produce_distinct_responses(
+    client,
+    mock_embedding,
+    mock_context,
+    mock_verification_disabled,
+    mock_generate_by_expertise,
+    expertise,
+    expected_keyword,
+):
+    """3 perfis de expertise produzem respostas visivelmente distintas."""
+    payload = {
+        "session_id": "test-expertise",
+        "question": "Como corrigir acidez do solo?",
+        "profile": {
+            "name": "TestUser",
+            "expertise": expertise.value,
+        },
+    }
+
+    response = client.post("/chat", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert expected_keyword in data["answer"].lower()
+    assert "hallucination_score" in data
