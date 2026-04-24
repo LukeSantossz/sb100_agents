@@ -57,7 +57,9 @@ def generate(
         messages.append({"role": msg["role"], "content": msg["content"]})
 
     # Pergunta atual com contexto RAG injetado
-    user_content = f"Contexto:\n{context}\n\nPergunta: {question}" if context else f"Pergunta: {question}"
+    user_content = (
+        f"Contexto:\n{context}\n\nPergunta: {question}" if context else f"Pergunta: {question}"
+    )
     messages.append({"role": "user", "content": user_content})
 
     response = ollama.chat(model=settings.chat_model, messages=messages)

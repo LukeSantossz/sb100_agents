@@ -154,24 +154,27 @@ def collect_references(
         for model in models:
             # Verifica se ja tem resposta deste modelo
             existing = [
-                r for r in question_obj["reference_answers"]
-                if r["reference_model"] == model
+                r for r in question_obj["reference_answers"] if r["reference_model"] == model
             ]
             if existing:
                 continue
 
             try:
                 answer = get_reference_fn(question, model)
-                question_obj["reference_answers"].append({
-                    "reference_model": model,
-                    "reference_answer": answer,
-                })
+                question_obj["reference_answers"].append(
+                    {
+                        "reference_model": model,
+                        "reference_answer": answer,
+                    }
+                )
             except Exception as e:
                 print(f"\nErro com modelo {model}: {e}")
-                question_obj["reference_answers"].append({
-                    "reference_model": model,
-                    "reference_answer": f"[ERRO] {str(e)}",
-                })
+                question_obj["reference_answers"].append(
+                    {
+                        "reference_model": model,
+                        "reference_answer": f"[ERRO] {str(e)}",
+                    }
+                )
 
     # Atualiza metadata
     dataset["metadata"]["reference_models"] = models

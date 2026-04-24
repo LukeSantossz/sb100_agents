@@ -172,9 +172,7 @@ def run_evaluation(
     print(f"Requests simultaneos: {concurrent}")
 
     # Executa avaliacao
-    results = asyncio.run(
-        run_evaluation_async(questions, api_url, concurrent)
-    )
+    results = asyncio.run(run_evaluation_async(questions, api_url, concurrent))
 
     if not results:
         print("Nenhum resultado obtido. Verifique se a API esta disponivel.")

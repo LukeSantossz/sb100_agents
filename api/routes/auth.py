@@ -1,21 +1,48 @@
-from datetime import timedelta
+import hashlib
+import os
+from datetime import datetime, timedelta
+from typing import Optional
+
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from database.db import get_db
 from database.models import User
-from auth.security import (
-    get_password_hash,
-    verify_password,
-    create_access_token,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-)
+
+# Configuration
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "super-secret-key-replace-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+# Security utilities (internalized from auth/security.py)
+def get_password_hash(password: str) -> str:
+    """Hash password using SHA-256."""
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify password against hash."""
+    return get_password_hash(plain_password) == hashed_password
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """Create JWT access token."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+# Pydantic models
 class UserCreate(BaseModel):
     username: str
     password: str
@@ -26,6 +53,7 @@ class Token(BaseModel):
     token_type: str
 
 
+# Routes
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.username == user_data.username).first()
