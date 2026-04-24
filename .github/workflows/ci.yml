@@ -39,13 +39,14 @@ jobs:
       - name: Install dependencies
         run: |
           pip install mypy types-requests
-          pip install -e .
 
       - name: Run mypy on critical modules
         run: |
           mypy retrieval/ generation/ memory/ \
             --ignore-missing-imports \
             --no-error-summary
+        env:
+          PYTHONPATH: ${{ github.workspace }}
 
   test:
     runs-on: ubuntu-latest
@@ -59,7 +60,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e ".[dev]"
+          pip install -e .
           pip install pytest pytest-cov httpx
 
       - name: Run unit tests
