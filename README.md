@@ -84,11 +84,9 @@ sb100_agents/
 ├── api/
 │   ├── main.py                     # FastAPI app entry (CORS + routers + lifespan)
 │   └── routes/
-│       ├── auth.py                 # POST /auth/register, /auth/token (JWT)
+│       ├── auth.py                 # POST /auth/register, /auth/token (JWT + security utils)
 │       ├── chat.py                 # POST /chat (RAG pipeline integrated)
 │       └── health.py               # GET /health
-├── auth/
-│   └── security.py                 # JWT tokens, password hashing, OAuth2
 ├── core/
 │   ├── config.py                   # Pydantic settings (env vars)
 │   └── schemas.py                  # Pydantic API contract (ChatRequest, etc.)
@@ -96,10 +94,6 @@ sb100_agents/
 │   ├── db.py                       # SQLAlchemy engine + session
 │   ├── models.py                   # User, Conversation, Message models
 │   └── semantic_chunker.py         # PDF ingestion and semantic chunking
-├── generation/
-│   └── llm.py                      # Multi-turn LLM with profile-aware prompts
-├── memory/
-│   └── conversation.py             # ConversationBuffer (FIFO rolling window)
 ├── eval/                           # Automated evaluation pipeline
 │   ├── dataset/                    # Generated questions and reference answers
 │   ├── results/                    # Evaluation results and reports
@@ -109,24 +103,22 @@ sb100_agents/
 │   ├── judge.py                    # LLM-as-judge comparison
 │   ├── report.py                   # Summary report and human sample generator
 │   └── README.md                   # Pipeline documentation
+├── generation/
+│   └── llm.py                      # Multi-turn LLM with profile-aware prompts
+├── memory/
+│   └── conversation.py             # ConversationBuffer (FIFO rolling window)
+├── profiling/                      # User adaptation and intent filtering
+│   ├── intent_filter.py            # Agricultural domain classification (stub)
+│   └── profile.py                  # Expertise-based response adaptation (stub)
 ├── retrieval/
 │   ├── embedder.py                 # Ollama embedding generation
 │   └── vector_store.py             # Qdrant context search
-├── semantic_entropy/               # Hallucination verifier (in development)
-│   ├── compute_entropy.py          # Main entropy pipeline orchestrator
-│   ├── response_generator.py       # Multi-response generation
-│   ├── shannon_entropy.py          # Entropy calculation
-│   └── similarity_clustering.py    # Embedding clustering
-├── frontend/
-│   └── smartb100/src/
-│       ├── components/             # React components (StartScreen, ChatScreen)
-│       ├── contexts/               # AuthContext.jsx
-│       ├── hooks/                  # useChat.js
-│       ├── pages/                  # Dashboard, Login, Register
-│       ├── services/               # api.js
-│       └── assets/images/          # background.png, logo.png
-├── archives/                       # PDF files to be indexed
-├── qdrant_storage/                 # Qdrant persistent data
+├── scripts/
+│   └── ingest.py                   # PDF ingestion wrapper
+├── tests/                          # Unit and integration tests
+├── verification/                   # Hallucination detection
+│   ├── entropy.py                  # Semantic entropy scoring
+│   └── gate.py                     # Retry logic with fallback
 ├── ARCHITECTURE.md                 # Architecture diagrams and decisions (Mermaid)
 ├── docker-compose.yml
 ├── package.json
