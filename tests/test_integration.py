@@ -1,7 +1,7 @@
 """Testes de integração end-to-end do pipeline RAG."""
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from api.main import app
@@ -120,7 +120,7 @@ def test_multiturn_session_maintains_context(
         "Quanto tempo antes do plantio?",
     ]
 
-    for i, question in enumerate(questions):
+    for question in questions:
         payload = {
             "session_id": session_id,
             "question": question,
