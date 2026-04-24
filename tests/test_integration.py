@@ -201,3 +201,35 @@ def test_hallucination_score_zero_when_verification_disabled(
     assert response.status_code == 200
     data = response.json()
     assert data["hallucination_score"] == 0.0
+
+
+def test_nominal_flow_no_500_errors(
+    client,
+    mock_embedding,
+    mock_context,
+    mock_verification_disabled,
+    mock_generate_by_expertise,
+):
+    """Fluxo nominal completo não produz HTTP 500."""
+    payloads = [
+        {
+            "session_id": "nominal-1",
+            "question": "Qual o pH ideal?",
+            "profile": {"name": "User1", "expertise": "beginner"},
+        },
+        {
+            "session_id": "nominal-1",
+            "question": "Como aplicar calcário?",
+            "profile": {"name": "User1", "expertise": "beginner"},
+        },
+        {
+            "session_id": "nominal-2",
+            "question": "Dosagem de calcário?",
+            "profile": {"name": "User2", "expertise": "expert"},
+        },
+    ]
+
+    for payload in payloads:
+        response = client.post("/chat", json=payload)
+        assert response.status_code != 500, f"HTTP 500 em payload: {payload}"
+        assert response.status_code == 200
