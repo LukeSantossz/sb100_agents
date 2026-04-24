@@ -1,0 +1,81 @@
+#!/bin/bash
+# commit-msg hook — Validates Conventional Commits format
+# Reference: .claude/instructions.md Section 5.2, Section 11.1
+
+set -e
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Colors for output
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# Valid commit types
+VALID_TYPES="feat|fix|docs|style|refactor|perf|test|chore|build|ci|revert"
+
+# Get first line (subject)
+SUBJECT=$(echo "$COMMIT_MSG" | head -n 1)
+
+# Get line count
+LINE_COUNT=$(echo "$COMMIT_MSG" | wc -l)
+
+# Check for body/footer (more than one non-empty line)
+CONTENT_LINES=$(echo "$COMMIT_MSG" | sed '/^$/d' | wc -l)
+if [ "$CONTENT_LINES" -gt 1 ]; then
+    echo -e "${RED}ERROR: Commit message must be a single line (no body or footer).${NC}"
+    echo "Your commit has $CONTENT_LINES content lines."
+    echo "Reference: .claude/instructions.md Section 5.2"
+    exit 1
+fi
+
+# Check for co-authorship trailers
+if echo "$COMMIT_MSG" | grep -qiE "(Co-authored-by|Signed-off-by):"; then
+    echo -e "${RED}ERROR: Co-authorship trailers are not allowed.${NC}"
+    echo "Remove 'Co-authored-by' or 'Signed-off-by' lines."
+    echo "Reference: .claude/instructions.md Section 5.2"
+    exit 1
+fi
+
+# Validate Conventional Commits format: type(scope): subject or type: subject
+if ! echo "$SUBJECT" | grep -qE "^($VALID_TYPES)(\([a-zA-Z0-9_-]+\))?: .+$"; then
+    echo -e "${RED}ERROR: Commit message does not follow Conventional Commits format.${NC}"
+    echo ""
+    echo "Expected format: type(scope): subject"
+    echo "  - type: $VALID_TYPES"
+    echo "  - scope: optional, in parentheses"
+    echo "  - subject: imperative description"
+    echo ""
+    echo "Your message: $SUBJECT"
+    echo ""
+    echo "Examples:"
+    echo "  feat(auth): add Google OAuth integration"
+    echo "  fix: resolve null pointer in user service"
+    echo "  docs(readme): update installation steps"
+    echo ""
+    echo "Reference: .claude/instructions.md Section 5.2"
+    exit 1
+fi
+
+# Extract subject text (after the colon and space)
+SUBJECT_TEXT=$(echo "$SUBJECT" | sed -E "s/^($VALID_TYPES)(\([a-zA-Z0-9_-]+\))?: //")
+SUBJECT_LEN=${#SUBJECT_TEXT}
+
+# Validate subject length (10-100 characters)
+if [ "$SUBJECT_LEN" -lt 10 ]; then
+    echo -e "${YELLOW}WARNING: Subject is very short ($SUBJECT_LEN chars). Consider being more descriptive.${NC}"
+fi
+
+if [ "$SUBJECT_LEN" -gt 100 ]; then
+    echo -e "${RED}ERROR: Subject exceeds 100 characters ($SUBJECT_LEN chars).${NC}"
+    echo "Keep the subject line concise. Break into smaller commits if needed."
+    exit 1
+fi
+
+# Check if subject starts with lowercase (Conventional Commits convention)
+if echo "$SUBJECT_TEXT" | grep -qE "^[A-Z]"; then
+    echo -e "${YELLOW}WARNING: Subject should start with lowercase letter.${NC}"
+fi
+
+exit 0
