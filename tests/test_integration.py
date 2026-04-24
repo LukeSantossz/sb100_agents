@@ -88,3 +88,59 @@ def test_expertise_levels_produce_distinct_responses(
     data = response.json()
     assert expected_keyword in data["answer"].lower()
     assert "hallucination_score" in data
+
+
+@pytest.fixture
+def mock_generate_captures_history():
+    """Mock de generate que captura e valida histórico."""
+    captured_histories = []
+
+    def _generate(question, context, history, profile):
+        captured_histories.append(list(history))
+        return f"Resposta para: {question}"
+
+    with patch("api.routes.chat.generate") as mock:
+        mock.side_effect = _generate
+        mock.captured_histories = captured_histories
+        yield mock
+
+
+def test_multiturn_session_maintains_context(
+    client,
+    mock_embedding,
+    mock_context,
+    mock_verification_disabled,
+    mock_generate_captures_history,
+):
+    """Sessão com 3 turnos consecutivos mantém contexto ao longo dos turnos."""
+    session_id = "test-multiturn-session"
+    questions = [
+        "Qual o pH ideal do solo?",
+        "E como faço a correção?",
+        "Quanto tempo antes do plantio?",
+    ]
+
+    for i, question in enumerate(questions):
+        payload = {
+            "session_id": session_id,
+            "question": question,
+            "profile": {"name": "TestUser", "expertise": "beginner"},
+        }
+
+        response = client.post("/chat", json=payload)
+
+        assert response.status_code == 200
+
+    # Verificar histórico crescente
+    histories = mock_generate_captures_history.captured_histories
+
+    # Turno 1: histórico vazio
+    assert len(histories[0]) == 0
+
+    # Turno 2: histórico com 2 mensagens (user + assistant do turno 1)
+    assert len(histories[1]) == 2
+    assert histories[1][0]["role"] == "user"
+    assert histories[1][1]["role"] == "assistant"
+
+    # Turno 3: histórico com 4 mensagens (turnos 1 e 2)
+    assert len(histories[2]) == 4
