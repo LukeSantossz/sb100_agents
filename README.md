@@ -2,6 +2,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111%2B-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-18%2B-61DAFB?logo=react&logoColor=black)
 ![Status](https://img.shields.io/badge/status-in%20development-yellow)
+![CI](https://github.com/LukeSantossz/sb100_agents/actions/workflows/ci.yml/badge.svg)
 
 # SmartB100 — Agriculture RAG Agent
 
@@ -156,6 +157,7 @@ sb100_agents/
 | Session-based conversation isolation | Done |
 | Semantic Entropy Pipeline (hallucination verifier) | Done |
 | Hallucination risk score in API response | Done |
+| Integration tests (end-to-end validation) | Done |
 | Evaluation dataset (300 questions) | Pending PDF |
 | Hybrid search (dense + sparse vectors, RRF fusion) | In progress |
 | LangGraph skeleton with agricultural intent filter | In progress |
@@ -193,6 +195,12 @@ curl -X POST "http://localhost:8000/auth/token" \
 # Chat (JSON body — contract in core/schemas.py)
 curl -X POST "http://localhost:8000/chat" -H "Content-Type: application/json" \
   -d '{"session_id":"demo-session","question":"What should I use to correct soil acidity?","profile":{"name":"User","expertise":"beginner"}}'
+
+# Response example
+# {
+#   "answer": "To correct soil acidity, you can use agricultural lime (calcium carbonate) or hydrated lime...",
+#   "hallucination_score": 0.25
+# }
 
 # Health check
 curl "http://localhost:8000/health"
