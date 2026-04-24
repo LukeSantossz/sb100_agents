@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff check
+        run: ruff check .
+
+      - name: Run ruff format check
+        run: ruff format --check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install mypy types-requests
+
+      - name: Run mypy on critical modules
+        run: |
+          mypy retrieval/ generation/ memory/ \
+            --ignore-missing-imports \
+            --no-error-summary
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install pytest pytest-cov httpx
+
+      - name: Run unit tests
+        run: |
+          pytest tests/ -v \
+            --ignore=tests/test_integration.py
+        env:
+          QDRANT_URL: "http://localhost:6333"
+          CHAT_MODEL: "llama3.2:3b"
+          EMBED_MODEL: "nomic-embed-text"
