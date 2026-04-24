@@ -2,6 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## REGRA ABSOLUTA — OBEDIÊNCIA AO `.claude/`
+
+**O diretório `.claude/` contém as diretrizes mandatórias deste projeto. NUNCA desvie dessas regras.**
+
+Antes de qualquer ação, o agente DEVE:
+1. **Consultar os templates** — Usar `.claude/pr-template.md` para PRs, `.claude/issue-template.md` para issues
+2. **Seguir o fluxo** — Obedecer `.claude/instructions.md` integralmente, sem adaptações ou "melhorias"
+3. **Registrar em tasks** — Toda implementação passa por `.claude/tasks.md`
+
+**Violações comuns a evitar:**
+- Criar formatos próprios de PR/issue ignorando os templates
+- Pular etapas do fluxo por "eficiência"
+- Assumir convenções genéricas ao invés de ler as convenções do projeto
+- Usar padrões de outros projetos sem verificar se aplicam aqui
+
+**Se houver dúvida sobre o formato correto, LEIA o arquivo correspondente em `.claude/` antes de agir.**
+
+---
+
 ## Mandatory Workflow (`.claude/instructions.md`)
 
 **CRITICAL: No code implementation is allowed without following the workflow defined in `.claude/instructions.md`.**
