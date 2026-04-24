@@ -59,7 +59,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e ".[dev]"
+          pip install -e .
           pip install pytest pytest-cov httpx
 
       - name: Run unit tests
