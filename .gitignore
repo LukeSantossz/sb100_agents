@@ -56,9 +56,8 @@ frontend/smartb100/*.local
 .env
 .env.local
 
-# AI
-.claude/
-CLAUDE.md
+# AI - track .claude/ workflow files, ignore local settings
+.claude/settings.local.json
 
 # Miscellaneous
 /tutor.md
