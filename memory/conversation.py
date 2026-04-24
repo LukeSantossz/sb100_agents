@@ -33,4 +33,4 @@ class ConversationBuffer:
         Returns:
             Lista de dicts no formato [{"role": ..., "content": ...}].
         """
-        return list(self._buffer)
+        return [msg.copy() for msg in self._buffer]

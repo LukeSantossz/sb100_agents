@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     collection_name: str = "archives_v2"
     top_k: int = 3
+    buffer_maxlen: int = 10
     hallucination_threshold: float = 0.5
     verification_enabled: bool = True
     openai_api_key: str = ""
