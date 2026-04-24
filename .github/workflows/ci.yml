@@ -45,7 +45,7 @@ jobs:
         run: |
           mypy retrieval/ generation/ memory/ \
             --ignore-missing-imports \
-            --no-error-summary || true
+            --no-error-summary
 
   test:
     runs-on: ubuntu-latest
