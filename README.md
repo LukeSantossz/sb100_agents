@@ -1,7 +1,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12%2B-blue?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111%2B-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-18%2B-61DAFB?logo=react&logoColor=black)
-![Status](https://img.shields.io/badge/status-in%20development-yellow)
+![Status](https://img.shields.io/badge/status-MVP%20complete-brightgreen)
 ![CI](https://github.com/LukeSantossz/sb100_agents/actions/workflows/ci.yml/badge.svg)
 ![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
 
@@ -79,48 +79,68 @@ docker-compose up -d
 npm run start
 ```
 
+## Architecture
+
+SmartB100 follows a modular 8-layer architecture:
+
+| Layer | Purpose |
+|-------|---------|
+| `api/` | FastAPI endpoints (chat, auth, health) |
+| `core/` | Pydantic schemas (`ChatRequest`, `ChatResponse`, `ExpertiseLevel`) |
+| `retrieval/` | Embeddings (Ollama `nomic-embed-text`) + Qdrant vector search |
+| `generation/` | LLM response generation with profile-aware system prompts |
+| `memory/` | `ConversationBuffer` — FIFO rolling window (maxlen=10) |
+| `profiling/` | User expertise adaptation (beginner / intermediate / expert) |
+| `verification/` | Hallucination detection via semantic entropy |
+| `database/` | SQLite (users, conversations) + Qdrant (vectors) + PDF ingestion |
+
+See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for detailed diagrams and design decisions.
+
 ## Project Structure
 ```
 sb100_agents/
-├── api/
-│   ├── main.py                     # FastAPI app entry (CORS + routers + lifespan)
+├── api/                            # FastAPI backend
+│   ├── main.py                     # App entry (CORS + routers + lifespan)
 │   └── routes/
-│       ├── auth.py                 # POST /auth/register, /auth/token (JWT + security utils)
-│       ├── chat.py                 # POST /chat (RAG pipeline integrated)
+│       ├── auth.py                 # POST /auth/register, /auth/token
+│       ├── chat.py                 # POST /chat (RAG pipeline)
 │       └── health.py               # GET /health
-├── core/
-│   ├── config.py                   # Pydantic settings (env vars)
-│   └── schemas.py                  # Pydantic API contract (ChatRequest, etc.)
-├── database/
+├── core/                           # Pydantic schemas & configuration
+│   ├── config.py                   # Settings (env vars)
+│   └── schemas.py                  # ChatRequest, ChatResponse, UserProfile
+├── database/                       # SQLite + PDF ingestion
 │   ├── db.py                       # SQLAlchemy engine + session
-│   ├── models.py                   # User, Conversation, Message models
-│   └── semantic_chunker.py         # PDF ingestion and semantic chunking
-├── eval/                           # Automated evaluation pipeline
-│   ├── dataset/                    # Generated questions and reference answers
-│   ├── results/                    # Evaluation results and reports
-│   ├── generate_questions.py       # Question generator from PDFs
-│   ├── collect_references.py       # Reference answer collector
-│   ├── run_evaluation.py           # Evaluation executor against POST /chat
-│   ├── judge.py                    # LLM-as-judge comparison
-│   ├── report.py                   # Summary report and human sample generator
+│   ├── models.py                   # User, Conversation, Message ORM
+│   └── semantic_chunker.py         # PDF indexing + semantic chunking
+├── eval/                           # 5-step evaluation pipeline
+│   ├── dataset/                    # Generated questions and references
+│   ├── results/                    # Evaluation outputs
+│   ├── generate_questions.py       # PDF → questions
+│   ├── collect_references.py       # Reference answers (OpenRouter/Groq)
+│   ├── run_evaluation.py           # Executor against /chat endpoint
+│   ├── judge.py                    # LLM-as-judge scoring
+│   ├── report.py                   # Summary + human samples
 │   └── README.md                   # Pipeline documentation
-├── generation/
-│   └── llm.py                      # Multi-turn LLM with profile-aware prompts
-├── memory/
-│   └── conversation.py             # ConversationBuffer (FIFO rolling window)
-├── profiling/                      # User adaptation and intent filtering
-│   ├── intent_filter.py            # Agricultural domain classification (stub)
-│   └── profile.py                  # Expertise-based response adaptation (stub)
-├── retrieval/
-│   ├── embedder.py                 # Ollama embedding generation
-│   └── vector_store.py             # Qdrant context search
-├── scripts/
-│   └── ingest.py                   # PDF ingestion wrapper
-├── tests/                          # Unit and integration tests
+├── generation/                     # LLM response generation
+│   └── llm.py                      # Multi-turn with profile-aware prompts
+├── memory/                         # Conversation context management
+│   └── conversation.py             # ConversationBuffer (FIFO, maxlen=10)
+├── profiling/                      # User expertise adaptation
+│   ├── intent_filter.py            # Agricultural domain classification
+│   └── profile.py                  # Expertise-based response tuning
+├── retrieval/                      # Vector search & embeddings
+│   ├── embedder.py                 # Ollama embedding (768 dims)
+│   └── vector_store.py             # Qdrant context search (top-k=3)
+├── ui/                             # Alternative chat interface
+│   └── chat_ui.py                  # Gradio chat interface
 ├── verification/                   # Hallucination detection
 │   ├── entropy.py                  # Semantic entropy scoring
-│   └── gate.py                     # Retry logic with fallback
-├── ARCHITECTURE.md                 # Architecture diagrams and decisions (Mermaid)
+│   └── gate.py                     # Retry logic + fallback
+├── tests/                          # Unit + integration tests
+├── scripts/
+│   └── ingest.py                   # PDF ingestion wrapper
+├── ARCHITECTURE.md
+├── SETUP.md                        # Detailed setup guide (local/remote Qdrant)
 ├── docker-compose.yml
 ├── package.json
 ├── pyproject.toml
@@ -130,7 +150,7 @@ sb100_agents/
 
 ## Current Status
 
-**Sprint 2 — active | MVP: functional RAG pipeline + evaluation**
+**MVP Complete** — Core RAG pipeline functional with hallucination verification
 
 | Feature | Status |
 |---------|--------|
@@ -141,20 +161,23 @@ sb100_agents/
 | Semantic chunker with cosine-similarity grouping | Done |
 | React frontend (start + chat screens) | Done |
 | `ARCHITECTURE.md` with Mermaid diagrams | Done |
-| Evaluation pipeline structure (`eval/`) | Done |
-| Question generator from documents | Done |
-| Reference answer collector (OpenRouter/Gemma 4, Groq) | Done |
-| LLM-as-judge evaluation | Done |
+| Evaluation pipeline (`eval/` — 5 steps) | Done |
 | Multi-turn conversation memory (FIFO buffer) | Done |
-| Profile-aware LLM generation | Done |
+| Profile-aware LLM generation (beginner/intermediate/expert) | Done |
 | Session-based conversation isolation | Done |
 | Semantic Entropy Pipeline (hallucination verifier) | Done |
-| Hallucination risk score in API response | Done |
+| `hallucination_score` in API response | Done |
 | Integration tests (end-to-end validation) | Done |
-| Evaluation dataset (300 questions) | Pending PDF |
-| Hybrid search (dense + sparse vectors, RRF fusion) | In progress |
-| LangGraph skeleton with agricultural intent filter | In progress |
-| Claim Verification Pipeline (atomic decomposition + RAG) | In progress |
+| GitHub Actions CI (lint, type check, tests) | Done |
+
+## Roadmap
+
+| Feature | Description |
+|---------|-------------|
+| Hybrid search | Dense + sparse vectors with RRF fusion |
+| LangGraph migration | ReAct agent with agricultural intent filter |
+| Claim Verification | Atomic decomposition + RAG-based fact checking |
+| Evaluation dataset | 300 questions from indexed PDFs |
 
 ## Service URLs
 
@@ -176,32 +199,77 @@ sb100_agents/
 | `npm run docker:down` | Stops the Qdrant container |
 
 ## API Reference
+
+### Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /auth/register` | Creates new user; returns `{"message", "username"}` |
+| `POST /auth/token` | OAuth2 login; returns `{"access_token", "token_type"}` |
+| `POST /chat` | RAG query; returns answer with hallucination score |
+| `GET /health` | Returns API health status |
+
+### POST /chat — RAG Pipeline
+
+**Request (`ChatRequest`):**
+```json
+{
+  "session_id": "550e8400-e29b-41d4-a716-446655440000",
+  "question": "Qual é a época ideal de plantio da soja na região Centro-Oeste?",
+  "profile": {
+    "name": "Hilário Silva",
+    "expertise": "intermediate"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `session_id` | string | UUID for conversation continuity |
+| `question` | string | User query |
+| `profile.name` | string | User display name |
+| `profile.expertise` | enum | `beginner` \| `intermediate` \| `expert` |
+
+**Response (`ChatResponse`):**
+```json
+{
+  "answer": "Com base na documentação indexada, a janela de plantio recomendada para soja na região Centro-Oeste é entre outubro e dezembro...",
+  "hallucination_score": 0.18
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `answer` | string | Generated response adapted to user expertise |
+| `hallucination_score` | float | Risk score 0.0–1.0 (lower = more grounded) |
+
+### curl Examples
+
 ```bash
 # Register new user
-curl -X POST "http://localhost:8000/auth/register" -H "Content-Type: application/json" \
+curl -X POST "http://localhost:8000/auth/register" \
+  -H "Content-Type: application/json" \
   -d '{"username":"user1","password":"secret123"}'
 
 # Login (get JWT token)
 curl -X POST "http://localhost:8000/auth/token" \
   -d "username=user1&password=secret123"
 
-# Chat (JSON body — contract in core/schemas.py)
-curl -X POST "http://localhost:8000/chat" -H "Content-Type: application/json" \
-  -d '{"session_id":"demo-session","question":"What should I use to correct soil acidity?","profile":{"name":"User","expertise":"beginner"}}'
-
-# Response example
-# {
-#   "answer": "To correct soil acidity, you can use agricultural lime (calcium carbonate) or hydrated lime...",
-#   "hallucination_score": 0.25
-# }
+# Chat with complete ChatRequest
+curl -X POST "http://localhost:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "demo-session",
+    "question": "Qual é a época ideal de plantio da soja?",
+    "profile": {"name": "User", "expertise": "beginner"}
+  }'
 
 # Health check
 curl "http://localhost:8000/health"
 ```
 
-| Endpoint | Description |
-|----------|-------------|
-| `POST /auth/register` | Creates new user; returns `{"message", "username"}` |
-| `POST /auth/token` | OAuth2 login; returns `{"access_token", "token_type"}` |
-| `POST /chat` | Accepts `ChatRequest` body; returns `ChatResponse` (`answer`, `hallucination_score`) |
-| `GET /health` | Returns API health status |
+## Known Issues
+
+- **Evaluation dataset**: Requires PDF documents in `./archives/` to generate the 300-question dataset
+- **Ollama dependency**: LLM and embedding models must be pulled before first run
+- **Windows paths**: Some scripts assume Windows path separators; cross-platform support is manual

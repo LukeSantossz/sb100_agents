@@ -84,18 +84,20 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T18 — Atualizar README.md para MVP
-- **Status:** pendente
-- **Complexidade:** minor
-- **Data de criação:** 2026-04-06
-- **Detalhes:** `.claude/tasks/TASK-T18.md`
-- **Nota:** Task recuperada — estava em `.claude/tasks/` mas ausente desta lista
+[nenhuma task ativa no momento]
 
 ---
 
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T18 — Atualização README MVP ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** docs/TASK-T18-readme-mvp
+- **Commit:** f055c2a docs: update README for MVP release
+- **Detalhes:** `.claude/tasks/TASK-T18.md`
+- **Nota:** README completo com estrutura de diretórios, exemplos de API e Known Issues
 
 ### TASK-T26 — Fix Caminhos Hardcoded Ollama ✓
 - **Concluída em:** 2026-04-25
