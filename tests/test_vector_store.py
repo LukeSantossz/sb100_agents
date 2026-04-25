@@ -25,7 +25,7 @@ class TestSearchContext(unittest.TestCase):
         self.assertEqual(len(out), settings.top_k)
         self.assertEqual(out, [f"chunk-{i}" for i in range(settings.top_k)])
         mock_client.query_points.assert_called_once_with(
-            collection_name=settings.collection,
+            collection_name=settings.collection_name,
             query=embedding,
             limit=settings.top_k,
             with_payload=True,

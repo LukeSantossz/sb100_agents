@@ -502,6 +502,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 5 | 2026-04-25 | TASK-T27 | patch | 1 arquivo — ui/chat_ui.py | aprovado c/ ressalvas | Fix formatação ruff. Task retroativa — violação de fluxo documentada |
 | 6 | 2026-04-24 | TASK-T23 | major | 0 arquivos — verificação apenas | aprovado | Contratos já tipados; mypy --strict passa em 22 arquivos |
 | 7 | 2026-04-25 | TASK-T17 | major | 3 arquivos — .github/workflows/ci.yml, requirements.txt | aprovado | CI com 4 jobs: lint, test, validate-requirements, typecheck |
+| 8 | 2026-04-25 | TASK-T24 | major | 4 arquivos — core/config.py, database/models.py, retrieval/vector_store.py, tests/ | aprovado | Auditoria Clean Code + fixes (datetime.UTC, remoção alias) |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -511,9 +512,9 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 - **Última atualização:** 2026-04-25
 - **Último responsável:** Claude Code (Opus 4.5)
-- **Branch ativa:** dev (sincronizada com main)
-- **Dependências alteradas recentemente:** gradio>=4.0.0 adicionado (T24-UI)
-- **Testes passando:** sim (18/18 testes unitários, CI verde)
+- **Branch ativa:** refactor/TASK-T24-clean-code-audit
+- **Dependências alteradas recentemente:** nenhuma (T24 não adicionou deps)
+- **Testes passando:** sim (18/18 testes unitários)
 - **Divergências externas pendentes:** nenhuma
 - **PRs mergeados nesta sessão:** #19 (sync tasks), #20 (fix Gradio 6.x)
 
