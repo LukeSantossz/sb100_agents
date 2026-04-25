@@ -92,6 +92,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T26 — Fix Caminhos Hardcoded Ollama ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** fix/TASK-T26-hardcoded-paths
+- **Commit:** 76503b3 fix(scripts): replace hardcoded Ollama paths with dynamic PATH resolution
+- **Detalhes:** `.claude/tasks/TASK-T26.md`
+- **Nota:** Resolução dinâmica via PATH — portabilidade restaurada
+
 ### TASK-T25 — Guia de Setup com Modos Local e Remoto ✓
 - **Concluída em:** 2026-04-25
 - **Branch:** docs/TASK-T25-setup-guide

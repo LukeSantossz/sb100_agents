@@ -2,8 +2,16 @@
 echo === SmartB100 Startup ===
 echo.
 
-REM Adicionar Ollama ao PATH
-set PATH=%PATH%;C:\Users\lucas\AppData\Local\Programs\Ollama
+REM Localizar Ollama dinamicamente via PATH
+for /f "tokens=*" %%i in ('where ollama 2^>nul') do set OLLAMA_EXE=%%i
+
+if not defined OLLAMA_EXE (
+    echo ERRO: Ollama nao encontrado no PATH do sistema.
+    echo.
+    echo Instale o Ollama em: https://ollama.com
+    echo Apos instalar, reinicie o terminal e execute este script novamente.
+    exit /b 1
+)
 
 echo [1/5] Verificando Qdrant...
 docker-compose up -d
@@ -15,16 +23,16 @@ if %ERRORLEVEL% EQU 0 (
 
 echo.
 echo [2/5] Verificando modelos Ollama...
-"C:\Users\lucas\AppData\Local\Programs\Ollama\ollama.exe" list | findstr "nomic-embed-text" >nul
+"%OLLAMA_EXE%" list | findstr "nomic-embed-text" >nul
 if %ERRORLEVEL% NEQ 0 (
     echo Baixando modelo de embeddings...
-    "C:\Users\lucas\AppData\Local\Programs\Ollama\ollama.exe" pull nomic-embed-text
+    "%OLLAMA_EXE%" pull nomic-embed-text
 )
 
-"C:\Users\lucas\AppData\Local\Programs\Ollama\ollama.exe" list | findstr "llama3.1:8b" >nul
+"%OLLAMA_EXE%" list | findstr "llama3.1:8b" >nul
 if %ERRORLEVEL% NEQ 0 (
     echo Baixando modelo de chat...
-    "C:\Users\lucas\AppData\Local\Programs\Ollama\ollama.exe" pull llama3.1:8b
+    "%OLLAMA_EXE%" pull llama3.1:8b
 )
 echo Ollama: OK
 
