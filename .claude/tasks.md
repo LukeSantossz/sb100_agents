@@ -84,13 +84,53 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-[nenhuma task ativa no momento]
+### TASK-T30 — Alinhar COLLECTION_NAME entre config.py e .env.example
+- **Status:** pendente
+- **Complexidade:** patch
+- **Detalhes:** `.claude/tasks/TASK-T30.md`
+
+### TASK-T31 — Corrigir auth.py para Usar settings.jwt_secret_key
+- **Status:** pendente
+- **Complexidade:** minor
+- **Detalhes:** `.claude/tasks/TASK-T31.md`
+
+### TASK-T32 — Remover Ollama do Docker e Documentar Uso Local Exclusivo
+- **Status:** pendente
+- **Complexidade:** minor
+- **Detalhes:** `.claude/tasks/TASK-T32.md`
+
+### TASK-T33 — Refatorar Caminho do Banco de Dados para Usar Pathlib
+- **Status:** pendente
+- **Complexidade:** minor
+- **Detalhes:** `.claude/tasks/TASK-T33.md`
+
+### TASK-T34 — Substituir datetime.utcnow() por datetime.now(UTC)
+- **Status:** pendente
+- **Complexidade:** patch
+- **Detalhes:** `.claude/tasks/TASK-T34.md`
+
+### TASK-T35 — Corrigir Badge de Coverage no README
+- **Status:** pendente
+- **Complexidade:** patch
+- **Detalhes:** `.claude/tasks/TASK-T35.md`
+
+### TASK-T36 — Remover Módulo Duplicado semantic_entropy
+- **Status:** pendente
+- **Complexidade:** minor
+- **Detalhes:** `.claude/tasks/TASK-T36.md`
 
 ---
 
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T29 — Alinhar CHAT_MODEL em Todos os Arquivos ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** main (pendente de commit)
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** .env.example e docker-compose.yml alinhados para llama3.2:3b
 
 ### TASK-T28 — Remoção completa de referências ao frontend React/npm ✓
 - **Concluída em:** 2026-04-25
