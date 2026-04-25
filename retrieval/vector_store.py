@@ -28,7 +28,7 @@ def search_context(embedding: list[float]) -> list[str]:
     """
     client = QdrantClient(url=settings.qdrant_url)
     resultados = client.query_points(
-        collection_name=settings.collection,
+        collection_name=settings.collection_name,
         query=embedding,
         limit=settings.top_k,
         with_payload=True,

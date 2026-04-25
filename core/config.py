@@ -47,10 +47,5 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     jwt_secret_key: str = ""
 
-    @property
-    def collection(self) -> str:
-        """Nome da coleção Qdrant (alias de ``collection_name``)."""
-        return self.collection_name
-
 
 settings = Settings()
