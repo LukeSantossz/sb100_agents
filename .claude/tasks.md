@@ -84,7 +84,12 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-[nenhuma task ativa no momento]
+### TASK-T18 — Atualizar README.md para MVP
+- **Status:** pendente
+- **Complexidade:** minor
+- **Data de criação:** 2026-04-06
+- **Detalhes:** `.claude/tasks/TASK-T18.md`
+- **Nota:** Task recuperada — estava em `.claude/tasks/` mas ausente desta lista
 
 ---
 
