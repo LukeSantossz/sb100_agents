@@ -1,6 +1,6 @@
 ![Python](https://img.shields.io/badge/Python-3.12%2B-blue?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111%2B-009688?logo=fastapi&logoColor=white)
-![React](https://img.shields.io/badge/React-18%2B-61DAFB?logo=react&logoColor=black)
+![Gradio](https://img.shields.io/badge/Gradio-5%2B-orange?logo=gradio&logoColor=white)
 ![Status](https://img.shields.io/badge/status-MVP%20complete-brightgreen)
 ![CI](https://github.com/LukeSantossz/sb100_agents/actions/workflows/ci.yml/badge.svg)
 ![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
@@ -11,7 +11,7 @@
 
 ## Overview
 
-SmartB100 is a Retrieval-Augmented Generation (RAG) system specialized in agronomy. It answers technical agricultural questions by retrieving relevant context from indexed PDF documents and generating responses via a local LLM. It exposes a FastAPI backend and a React frontend, orchestrated through npm scripts with Docker for the vector database.
+SmartB100 is a Retrieval-Augmented Generation (RAG) system specialized in agronomy. It answers technical agricultural questions by retrieving relevant context from indexed PDF documents and generating responses via a local LLM. It exposes a FastAPI backend and a Gradio chat interface, with Docker for the vector database.
 
 The evolving architecture targets migration to a ReAct graph with LangGraph, hybrid search (dense + sparse vectors with RRF fusion), and a dual-pipeline hallucination verifier — semantic entropy and atomic claim verification.
 
@@ -26,7 +26,7 @@ For architecture details and design decisions, see [`ARCHITECTURE.md`](./ARCHITE
 | Embeddings | Ollama (`nomic-embed-text`, 768 dims) |
 | Vector database | Qdrant (Docker) |
 | Document ingestion | PyMuPDF + semantic chunker |
-| Frontend | React + Vite |
+| Chat UI | Gradio |
 | Agent orchestration | LangGraph (migration in progress) |
 | Conversation memory | FIFO rolling window buffer |
 | Hallucination verification | Semantic Entropy + Claim Verification (in development) |
@@ -39,7 +39,6 @@ For architecture details and design decisions, see [`ARCHITECTURE.md`](./ARCHITE
 - **Docker Desktop** (for Qdrant)
 - **Ollama** (for local LLM inference)
 - **Python 3.12+**
-- **Node.js 18+**
 
 ### Installation
 ```bash
@@ -52,10 +51,6 @@ uv sync                # if using uv (recommended)
 # or
 python -m venv .venv && .venv\Scripts\pip install -e .  # Windows
 python -m venv .venv && .venv/bin/pip install -e .      # Linux/Mac
-
-# Install root and frontend dependencies
-npm install
-npm run install:frontend
 ```
 
 ### Running
@@ -69,14 +64,23 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 
 **Manual (step by step):**
 ```bash
-# 1. Start the vector database
-docker-compose up -d
+# 1. Start infrastructure (Qdrant + Ollama via Docker)
+docker compose --profile infra up -d
 
 # 2. Index PDF documents (first run only)
 .venv\Scripts\python.exe database\semantic_chunker.py index ./archives/
 
-# 3. Start API + Frontend
-npm run start
+# 3. Start the API
+.venv\Scripts\python.exe -m uvicorn api.main:app --reload
+
+# 4. (Optional) Start Gradio chat interface
+.venv\Scripts\python.exe ui/chat_ui.py
+```
+
+**Full Docker deployment:**
+```bash
+# Start everything (infra + app)
+docker compose --profile infra --profile app up -d
 ```
 
 ## Architecture
@@ -99,6 +103,12 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for detailed diagrams and design deci
 ## Project Structure
 ```
 sb100_agents/
+├── .claude/                        # Agent workflow enforcement
+│   ├── instructions.md             # Mandatory workflow rules
+│   ├── tasks.md                    # Task registry
+│   ├── pr-template.md              # Pull request template
+│   ├── issue-template.md           # Issue template
+│   └── hooks/                      # Git hooks (commit-msg, pre-commit, etc.)
 ├── api/                            # FastAPI backend
 │   ├── main.py                     # App entry (CORS + routers + lifespan)
 │   └── routes/
@@ -131,7 +141,7 @@ sb100_agents/
 ├── retrieval/                      # Vector search & embeddings
 │   ├── embedder.py                 # Ollama embedding (768 dims)
 │   └── vector_store.py             # Qdrant context search (top-k=3)
-├── ui/                             # Alternative chat interface
+├── ui/                             # Chat interface
 │   └── chat_ui.py                  # Gradio chat interface
 ├── verification/                   # Hallucination detection
 │   ├── entropy.py                  # Semantic entropy scoring
@@ -139,13 +149,13 @@ sb100_agents/
 ├── tests/                          # Unit + integration tests
 ├── scripts/
 │   └── ingest.py                   # PDF ingestion wrapper
+├── .github/workflows/ci.yml        # GitHub Actions CI pipeline
 ├── ARCHITECTURE.md
 ├── SETUP.md                        # Detailed setup guide (local/remote Qdrant)
-├── docker-compose.yml
-├── package.json
+├── docker-compose.yml              # Docker services with profiles (infra/app)
 ├── pyproject.toml
-├── start.bat
-└── start.ps1
+├── start.bat                       # Windows startup script
+└── start.ps1                       # PowerShell startup script
 ```
 
 ## Current Status
@@ -159,7 +169,7 @@ sb100_agents/
 | JWT authentication (`POST /auth/register`, `/auth/token`) | Done |
 | SQLite persistence (users, conversations, messages) | Done |
 | Semantic chunker with cosine-similarity grouping | Done |
-| React frontend (start + chat screens) | Done |
+| Gradio chat interface | Done |
 | `ARCHITECTURE.md` with Mermaid diagrams | Done |
 | Evaluation pipeline (`eval/` — 5 steps) | Done |
 | Multi-turn conversation memory (FIFO buffer) | Done |
@@ -184,19 +194,8 @@ sb100_agents/
 | Service | URL |
 |---------|-----|
 | API | http://localhost:8000 |
-| Frontend | http://localhost:5173 |
+| Gradio UI | http://localhost:7860 |
 | Qdrant Dashboard | http://localhost:6333/dashboard |
-
-## npm Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run start` | Starts API and Frontend simultaneously |
-| `npm run api` | Starts the API only |
-| `npm run frontend` | Starts the Frontend only |
-| `npm run setup` | Installs frontend dependencies |
-| `npm run docker:up` | Starts the Qdrant container |
-| `npm run docker:down` | Stops the Qdrant container |
 
 ## API Reference
 
