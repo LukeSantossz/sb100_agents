@@ -25,7 +25,15 @@ Se o contexto não contiver informação suficiente, indique isso ao usuário.""
 
 
 def build_system_prompt(profile: UserProfile) -> str:
-    """Retorna o system prompt adequado ao nível de expertise do usuário."""
+    """Seleciona o system prompt adequado ao nível de expertise do usuário.
+
+    Args:
+        profile: Perfil do usuário contendo o nível de expertise.
+
+    Returns:
+        String do system prompt correspondente ao nível de expertise.
+        Retorna prompt de nível intermediário como fallback se o nível não for reconhecido.
+    """
     return SYSTEM_PROMPTS.get(profile.expertise, SYSTEM_PROMPTS[ExpertiseLevel.intermediate])
 
 
