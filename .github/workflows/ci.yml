@@ -22,11 +22,11 @@ jobs:
 
       - name: Validate requirements.txt sync with uv.lock
         run: |
-          uv export --frozen --no-dev -o /tmp/requirements-check.txt
-          if ! diff -q requirements.txt /tmp/requirements-check.txt > /dev/null 2>&1; then
+          uv export --frozen --no-dev -o requirements.txt
+          if ! git diff --quiet requirements.txt; then
             echo "ERROR: requirements.txt is out of sync with uv.lock"
             echo "Run 'uv export --frozen --no-dev -o requirements.txt' and commit the changes"
-            diff requirements.txt /tmp/requirements-check.txt || true
+            git diff requirements.txt
             exit 1
           fi
           echo "requirements.txt is in sync with uv.lock"
