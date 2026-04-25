@@ -92,6 +92,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T24 — Auditoria Clean Code, SOLID e Design Patterns ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** refactor/TASK-T24-clean-code-audit
+- **Commit:** refactor(quality): apply clean code and SOLID audit across codebase
+- **Detalhes:** `.claude/tasks/TASK-T24.md`
+- **Nota:** Auditoria completa + fixes menores (datetime.UTC, remoção alias redundante)
+
 ### TASK-T27 — Fix Formatação Ruff ✓
 - **Concluída em:** 2026-04-25
 - **Branch:** dev (commit direto — violação documentada)
