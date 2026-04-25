@@ -26,7 +26,7 @@ def search_context(embedding: list[float]) -> list[str]:
         qdrant_client.http.exceptions.UnexpectedResponse: Se a coleção não existir.
         requests.exceptions.ConnectionError: Se o Qdrant estiver offline.
     """
-    client = QdrantClient(url=settings.qdrant_url)
+    client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
     resultados = client.query_points(
         collection_name=settings.collection_name,
         query=embedding,

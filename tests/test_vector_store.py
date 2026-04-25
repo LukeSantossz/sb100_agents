@@ -30,7 +30,9 @@ class TestSearchContext(unittest.TestCase):
             limit=settings.top_k,
             with_payload=True,
         )
-        mock_client_cls.assert_called_once_with(url=settings.qdrant_url)
+        mock_client_cls.assert_called_once_with(
+            url=settings.qdrant_url, api_key=settings.qdrant_api_key
+        )
 
     @patch("retrieval.vector_store.QdrantClient")
     def test_missing_text_payload_returns_empty_string(self, mock_client_cls):
