@@ -28,8 +28,8 @@ A arquitetura é organizada em **oito camadas modulares**, cada uma com responsa
 ```mermaid
 flowchart TD
     subgraph CLIENT["Cliente"]
-        REACT["Frontend React\n:5173"]
         GRADIO["Gradio UI\n:7860"]
+        CURL["curl / HTTP Client"]
     end
 
     subgraph API["Camada API"]
@@ -68,8 +68,8 @@ flowchart TD
         SQLITE[("SQLite\nusers / conversations / messages")]
     end
 
-    REACT -->|HTTP JSON| ENDPOINT
     GRADIO -->|HTTP JSON| ENDPOINT
+    CURL -->|HTTP JSON| ENDPOINT
 
     ENDPOINT --> SESSION
     SESSION --> BUFFER
@@ -527,21 +527,18 @@ flowchart LR
 | Auth | PyJWT + bcrypt | - |
 | Verification | OpenAI API | gpt-4o-mini |
 
-### Frontend
+### Interface
 
 | Componente | Tecnologia |
 |------------|------------|
-| Framework | React 18+ |
-| Build | Vite |
-| Alt UI | Gradio 4+ |
+| Chat UI | Gradio 5+ |
 
 ### Infraestrutura
 
 | Serviço | Porta | Descrição |
 |---------|-------|-----------|
 | FastAPI | 8000 | Backend API |
-| React/Vite | 5173 | Frontend dev |
-| Gradio | 7860 | UI alternativa |
+| Gradio | 7860 | Chat interface |
 | Qdrant | 6333 | Vector database |
 | Ollama | 11434 | LLM inference |
 

@@ -60,9 +60,6 @@ cd sb100_agents
 uv sync                          # Recomendado (mais rápido)
 # ou
 pip install -e .                 # Alternativa com pip
-
-# Instalar dependências do frontend (opcional, para interface React)
-npm install && npm run setup
 ```
 
 ---
@@ -188,11 +185,17 @@ uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-### 7.3 Via npm (API + Frontend React)
+### 7.3 Via Scripts de Inicialização
 
 ```bash
-npm run start
+# Windows (CMD)
+.\start.bat
+
+# Windows (PowerShell)
+.\start.ps1
 ```
+
+Esses scripts iniciam automaticamente a API e a interface Gradio.
 
 ---
 
@@ -273,7 +276,6 @@ Acesse:
 | API Docs | http://localhost:8000/docs | Swagger UI |
 | Gradio UI | http://localhost:7860 | Interface de chat |
 | Qdrant Dashboard | http://localhost:6333/dashboard | Gerenciamento de vetores |
-| Frontend React | http://localhost:5173 | Interface web (se npm run start) |
 
 ---
 

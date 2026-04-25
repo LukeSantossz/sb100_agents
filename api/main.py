@@ -2,7 +2,7 @@
 
 Este módulo configura a aplicação FastAPI com:
 
-- Middleware CORS para permitir acesso do frontend.
+- Middleware CORS para permitir acesso da interface Gradio.
 - Routers de chat, autenticação e health check.
 - Lifespan handler para inicialização do banco de dados.
 
@@ -20,10 +20,10 @@ from api.routes import auth, chat, health
 from database.db import Base, engine
 
 ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    "http://localhost:7860",
+    "http://127.0.0.1:7860",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 
 

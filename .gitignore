@@ -32,11 +32,6 @@ build/
 # Qdrant storage (optional - uncomment if you want to track)
 /qdrant_storage
 
-# Node
-node_modules/
-.npm
-*.log
-
 # OS
 .DS_Store
 Thumbs.db
@@ -44,12 +39,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
-
-# Frontend
-frontend/smartb100/node_modules/
-frontend/smartb100/dist/
-frontend/smartb100/dist-ssr/
-frontend/smartb100/*.local
+*.log
 
 # API
 .venv/
@@ -71,7 +61,6 @@ smart_boletim.pdf
 
 # Out of scope for MVP
 /auth/
-/frontend/
 /nginx/
 
 # Duplicate verification module (to be consolidated)
