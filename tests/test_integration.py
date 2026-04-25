@@ -78,7 +78,7 @@ def test_expertise_levels_produce_distinct_responses(
 ):
     """3 perfis de expertise produzem respostas visivelmente distintas."""
     payload = {
-        "session_id": "test-expertise",
+        "session_id": f"test-expertise-{expertise.value}",
         "question": "Como corrigir acidez do solo?",
         "profile": {
             "name": "TestUser",
