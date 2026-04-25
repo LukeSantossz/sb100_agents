@@ -497,6 +497,15 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 |---|------|------|--------------|-----------------|-----------|-------------|
 | 1 | 2026-04-24 | TASK-000 | major | 6 arquivos — .claude/hooks/, enforcement.conf | aprovado | Hooks funcionais, .gitignore ajustado |
 | 2 | 2026-04-25 | TASK-T18 | minor | 1 arquivo — README.md | aprovado | Documentação MVP completa |
+| 3 | 2026-04-24 | TASK-T21 | minor | 4 arquivos — pyproject.toml, ci.yml, README.md, TASK-T21.md | aprovado c/ ressalvas | Ruff, mypy --strict, pytest-cov configurados. CI pode falhar até correção de tipos |
+| 4 | 2026-04-24 | TASK-T22 | major | 13 arquivos — core, retrieval, generation, verification, api | aprovado | Docstrings Google Style em todos os módulos públicos |
+| 5 | 2026-04-25 | TASK-T24-UI | major | 7 arquivos — ui/, docker-compose.yml, pyproject.toml, requirements.txt | aprovado | Interface Gradio + Docker Compose com profiles infra/app |
+| 6 | 2026-04-25 | TASK-T27 | patch | 1 arquivo — ui/chat_ui.py | aprovado c/ ressalvas | Fix formatação ruff. Task retroativa — violação de fluxo documentada |
+| 7 | 2026-04-24 | TASK-T23 | major | 0 arquivos — verificação apenas | aprovado | Contratos já tipados; mypy --strict passa em 22 arquivos |
+| 8 | 2026-04-25 | TASK-T17 | major | 3 arquivos — .github/workflows/ci.yml, requirements.txt | aprovado | CI com 4 jobs: lint, test, validate-requirements, typecheck |
+| 9 | 2026-04-25 | TASK-T24 | major | 4 arquivos — core/config.py, database/models.py, retrieval/vector_store.py, tests/ | aprovado | Auditoria Clean Code + fixes (datetime.UTC, remoção alias) |
+| 10 | 2026-04-25 | TASK-T25 | minor | 6 arquivos — SETUP.md, .env.example, core/, retrieval/, database/, tests/ | aprovado | Guia setup local/remoto + suporte QDRANT_API_KEY |
+| 11 | 2026-04-25 | TASK-T26 | patch | 2 arquivos — start.bat, start.ps1 | aprovado | Resolução dinâmica Ollama via PATH |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -510,6 +519,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18/18 testes unitários)
 - **Divergências externas pendentes:** nenhuma
+- **PRs mergeados nesta sessão:** #19 (sync tasks), #20 (fix Gradio 6.x), #21 (clean code audit)
 
 ### 9.5 Pendências Conhecidas
 
@@ -519,13 +529,15 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 > Decisões tomadas durante implementações que afetam futuras tasks. Inclua justificativa breve.
 
-- [nenhuma registrada]
+- **mypy ignore_missing_imports=true** (T21): Necessário porque ollama, qdrant-client e outras dependências não possuem type stubs. Evita falsos positivos sem comprometer a verificação do código próprio.
 
 ### 9.7 Padrões Recorrentes Observados
 
 | Padrão | Frequência | Impacto | Ação Corretiva |
 |--------|------------|---------|----------------|
-| —      | —          | —       | —              |
+| Commit sem task registrada | 1x (T27) | Médio — quebra rastreabilidade | Agente deve recusar modificações até task existir. Criar task retroativa se violação ocorrer |
+| Commit direto em branch protegida (dev) | 1x (T27) | Médio — pula review | Sempre criar branch dedicada, mesmo para fixes urgentes |
+| Modo de operação não declarado | 1x | Baixo — ambiguidade de contexto | Agente deve perguntar modo antes de qualquer ação |
 
 ---
 

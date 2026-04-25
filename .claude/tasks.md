@@ -99,11 +99,69 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 - **Detalhes:** `.claude/tasks/TASK-T18.md`
 - **Nota:** README completo com estrutura de diretórios, exemplos de API e Known Issues
 
+### TASK-T26 — Fix Caminhos Hardcoded Ollama ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** fix/TASK-T26-hardcoded-paths
+- **Commit:** 76503b3 fix(scripts): replace hardcoded Ollama paths with dynamic PATH resolution
+- **Detalhes:** `.claude/tasks/TASK-T26.md`
+- **Nota:** Resolução dinâmica via PATH — portabilidade restaurada
+
+### TASK-T25 — Guia de Setup com Modos Local e Remoto ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** docs/TASK-T25-setup-guide
+- **Commit:** 261a509 docs: add SETUP.md with local and remote Qdrant modes
+- **Detalhes:** `.claude/tasks/TASK-T25.md`
+- **Nota:** Escopo expandido: suporte QDRANT_API_KEY adicionado ao código
+
+### TASK-T24 — Auditoria Clean Code, SOLID e Design Patterns ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** refactor/TASK-T24-clean-code-audit
+- **Commit:** refactor(quality): apply clean code and SOLID audit across codebase
+- **Detalhes:** `.claude/tasks/TASK-T24.md`
+- **Nota:** Auditoria completa + fixes menores (datetime.UTC, remoção alias redundante)
+
+### TASK-T27 — Fix Formatação Ruff ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** dev (commit direto — violação documentada)
+- **Commit:** 76997b4 style(ui): format chat_ui.py with ruff
+- **Detalhes:** `.claude/tasks/TASK-T27.md`
+- **Nota:** Task retroativa — violações de fluxo documentadas
+
+### TASK-T24-UI — Interface Gradio Chat ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** feat/TASK-T24UI-gradio-interface
+- **Commit:** d4922f6 feat(ui): add Gradio chat interface and refactor docker-compose with profiles
+- **Detalhes:** `.claude/tasks/TASK-T24-UI.md`
+
+### TASK-T17 — CI GitHub Actions ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** ci/TASK-T17-github-actions
+- **Commit:** 0e962f2 ci: add GitHub Actions workflow with lint, type check and RAG pipeline tests
+- **Detalhes:** `.claude/tasks/TASK-T17.md`
+
+### TASK-T23 — Contratos Tipados ✓
+- **Concluída em:** 2026-04-24
+- **Branch:** refactor/TASK-T23-typed-contracts
+- **Commit:** docs(tasks): verify typed contracts and update task registry
+- **Detalhes:** `.claude/tasks/TASK-T23.md`
+
+### TASK-T22 — Docstrings e Comentários ✓
+- **Concluída em:** 2026-04-24
+- **Branch:** docs/TASK-T22-docstrings
+- **Commit:** 1ee802c docs(modules): add docstrings and inline comments across all modules
+- **Detalhes:** `.claude/tasks/TASK-T22.md`
+
+### TASK-T21 — Configuração de Qualidade ✓
+- **Concluída em:** 2026-04-24
+- **Branch:** chore/TASK-T21-static-analysis-coverage
+- **Commit:** c530b42 chore(quality): configure ruff, mypy and pytest-cov with coverage threshold
+- **Detalhes:** `.claude/tasks/TASK-T21.md`
+
 ### TASK-000 — Enforcement Hooks ✓
 - **Concluída em:** 2026-04-24
 - **Branch:** chore/TASK-000-enforcement-hooks
 - **Commit:** 266aed0
-- **Detalhes:** Ver seção Tasks Ativas (mantida para referência)
+- **Detalhes:** Hooks git para enforcement do fluxo de trabalho
 
 ---
 

@@ -1,3 +1,19 @@
+"""Endpoint de chat com pipeline RAG completo.
+
+Este módulo implementa o endpoint principal de conversação:
+
+1. Recebe pergunta do usuário com session_id e perfil.
+2. Gera embedding da pergunta via Ollama.
+3. Busca chunks relevantes no Qdrant.
+4. Gera resposta adaptada ao perfil do usuário.
+5. (Opcional) Verifica alucinações via entropia semântica.
+6. Mantém histórico de conversação por sessão em memória.
+
+Cache de sessões:
+    - TTL: 1 hora de inatividade.
+    - Máximo: 1000 sessões simultâneas (LRU eviction).
+"""
+
 import time
 from collections import OrderedDict
 
@@ -13,16 +29,24 @@ from verification.gate import evaluate as verify_and_generate
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-# Configuração do cache de sessões
 _SESSION_TTL_SECONDS = 3600  # 1 hora
 _SESSION_MAX_SIZE = 1000
 
-# Armazena buffers por sessão com timestamps
 _sessions: OrderedDict[str, tuple[ConversationBuffer, float]] = OrderedDict()
 
 
 def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
-    """Recupera ou cria buffer para a sessão com cleanup de entradas expiradas."""
+    """Recupera ou cria buffer de conversação para a sessão.
+
+    Implementa cache LRU com TTL para gerenciar memória de sessões.
+    Cleanup lazy de sessões expiradas (até 10 por chamada).
+
+    Args:
+        session_id: Identificador único da sessão.
+
+    Returns:
+        Buffer de conversação associado à sessão.
+    """
     now = time.time()
 
     # Cleanup de sessões expiradas (lazy, até 10 por chamada)
@@ -51,7 +75,25 @@ def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
 
 
 @router.post("", response_model=ChatResponse)
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest) -> ChatResponse:
+    """Processa pergunta do usuário e retorna resposta do assistente.
+
+    Pipeline RAG completo:
+    1. Recupera/cria buffer de conversação para a sessão.
+    2. Gera embedding da pergunta.
+    3. Busca contexto relevante no Qdrant.
+    4. Gera resposta via LLM (com verificação opcional de alucinações).
+    5. Atualiza histórico de conversação.
+
+    Args:
+        req: Requisição contendo session_id, question e profile.
+
+    Returns:
+        Resposta do assistente com score de alucinação.
+
+    Raises:
+        HTTPException(503): Se Ollama ou Qdrant estiverem indisponíveis.
+    """
     buffer = _get_or_create_buffer(req.session_id)
 
     try:
@@ -60,7 +102,7 @@ async def chat(req: ChatRequest):
         raise HTTPException(
             status_code=503,
             detail=f"Erro ao gerar embedding: {str(e)}. Verifique se o Ollama está rodando.",
-        )
+        ) from e
 
     try:
         context_chunks = search_context(embedding)
@@ -68,7 +110,7 @@ async def chat(req: ChatRequest):
         raise HTTPException(
             status_code=503,
             detail=f"Erro ao buscar contexto: {str(e)}. Verifique se o Qdrant está rodando.",
-        )
+        ) from e
 
     context_text = "\n\n".join(context_chunks) if context_chunks else ""
     history = buffer.to_messages()
@@ -93,7 +135,7 @@ async def chat(req: ChatRequest):
         raise HTTPException(
             status_code=503,
             detail=f"Erro ao gerar resposta: {str(e)}. Verifique se o Ollama está rodando.",
-        )
+        ) from e
 
     # Atualiza buffer somente após sucesso
     buffer.add("user", req.question)

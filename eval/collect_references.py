@@ -11,6 +11,7 @@ Uso:
 """
 
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Carrega variaveis de ambiente do .env
@@ -19,9 +20,8 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 import argparse
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 from tqdm import tqdm
 
@@ -114,7 +114,7 @@ def collect_references(
     questions_path: str = "eval/dataset/questions.json",
     output_path: str = "eval/dataset/reference_answers.json",
     provider: str = DEFAULT_PROVIDER,
-    models: Optional[list[str]] = None,
+    models: list[str] | None = None,
 ) -> dict:
     """
     Coleta respostas de referencia para todas as perguntas.
@@ -139,7 +139,7 @@ def collect_references(
     get_reference_fn = get_reference_fns[provider]
 
     # Carrega dataset de perguntas
-    with open(questions_path, "r", encoding="utf-8") as f:
+    with open(questions_path, encoding="utf-8") as f:
         dataset = json.load(f)
 
     questions = dataset["questions"]
@@ -178,7 +178,7 @@ def collect_references(
 
     # Atualiza metadata
     dataset["metadata"]["reference_models"] = models
-    dataset["metadata"]["references_collected_at"] = datetime.now(timezone.utc).isoformat()
+    dataset["metadata"]["references_collected_at"] = datetime.now(UTC).isoformat()
     dataset["metadata"]["reference_provider"] = provider
 
     # Salva dataset

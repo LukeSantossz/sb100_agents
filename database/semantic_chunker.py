@@ -1,17 +1,16 @@
+import argparse
 import re
 import uuid
-import argparse
-import numpy as np
-from pathlib import Path
-from typing import List, Dict, Any
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
 
 import fitz  # PyMuPDF
-from tqdm import tqdm
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+import numpy as np
 import ollama
-
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, PointStruct, VectorParams
+from tqdm import tqdm
 
 # ─────────────────────────────────────────────
 # Configurações globais
@@ -20,6 +19,7 @@ import ollama
 OLLAMA_MODEL = "nomic-embed-text"  # modelo de embeddings via Ollama
 EMBED_DIM = 768  # dimensão do nomic-embed-text
 QDRANT_URL = "http://localhost:6333"
+QDRANT_API_KEY: str | None = None  # para servidores Qdrant autenticados
 COLLECTION_NAME = "archives_v2"
 
 # Thresholds do chunking semântico
@@ -42,9 +42,9 @@ class Sentence:
 @dataclass
 class Chunk:
     text: str
-    sentences: List[str]
+    sentences: list[str]
     embedding: np.ndarray = field(default=None, repr=False)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 # ─────────────────────────────────────────────
@@ -63,7 +63,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     return "\n".join(pages_text)
 
 
-def split_into_sentences(text: str) -> List[str]:
+def split_into_sentences(text: str) -> list[str]:
     """
     Divide o texto em frases usando regex simples (sem NLTK).
     Funciona bem para textos em português e inglês.
@@ -91,7 +91,7 @@ def get_embedding(text: str) -> np.ndarray:
     return np.array(response["embedding"], dtype=np.float32)
 
 
-def get_embeddings_batch(texts: List[str], batch_size: int = 16) -> List[np.ndarray]:
+def get_embeddings_batch(texts: list[str], batch_size: int = 16) -> list[np.ndarray]:
     """Gera embeddings em lotes para eficiência."""
     embeddings = []
     for i in tqdm(range(0, len(texts), batch_size), desc="  Gerando embeddings", leave=False):
@@ -116,7 +116,7 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 # ─────────────────────────────────────────────
 
 
-def semantic_chunking(sentences: List[Sentence]) -> List[List[Sentence]]:
+def semantic_chunking(sentences: list[Sentence]) -> list[list[Sentence]]:
     """
     Agrupa frases em chunks com base na similaridade semântica.
 
@@ -129,8 +129,8 @@ def semantic_chunking(sentences: List[Sentence]) -> List[List[Sentence]]:
     if not sentences:
         return []
 
-    chunks: List[List[Sentence]] = []
-    current_chunk: List[Sentence] = [sentences[0]]
+    chunks: list[list[Sentence]] = []
+    current_chunk: list[Sentence] = [sentences[0]]
 
     for i in range(1, len(sentences)):
         sentence = sentences[i]
@@ -157,7 +157,7 @@ def semantic_chunking(sentences: List[Sentence]) -> List[List[Sentence]]:
     return chunks
 
 
-def build_chunks(sentence_groups: List[List[Sentence]], metadata: Dict) -> List[Chunk]:
+def build_chunks(sentence_groups: list[list[Sentence]], metadata: dict) -> list[Chunk]:
     """Converte grupos de frases em objetos Chunk com embedding representativo."""
     chunks = []
     for group in sentence_groups:
@@ -195,7 +195,7 @@ def init_qdrant(client: QdrantClient, embed_dim: int):
         print(f"  ✓ Collection '{COLLECTION_NAME}' já existe, reutilizando.")
 
 
-def upsert_chunks(client: QdrantClient, chunks: List[Chunk]):
+def upsert_chunks(client: QdrantClient, chunks: list[Chunk]):
     """Insere chunks no Qdrant."""
     points = []
     for chunk in chunks:
@@ -240,10 +240,12 @@ def process_pdf(pdf_path: str, client: QdrantClient) -> int:
 
     # 3. Embeddings das frases
     print(f"  → Gerando embeddings via {OLLAMA_MODEL}...")
-    texts = [s for s in raw_sentences]
+    texts = list(raw_sentences)
     embeddings = get_embeddings_batch(texts)
 
-    sentences = [Sentence(text=t, embedding=e) for t, e in zip(raw_sentences, embeddings)]
+    sentences = [
+        Sentence(text=t, embedding=e) for t, e in zip(raw_sentences, embeddings, strict=True)
+    ]
 
     # 4. Chunking semântico
     sentence_groups = semantic_chunking(sentences)
@@ -272,7 +274,7 @@ def process_folder(folder_path: str):
     print(f"🔍 {len(pdf_files)} PDFs encontrados em '{folder_path}'")
 
     # Inicializa Qdrant
-    client = QdrantClient(url=QDRANT_URL)
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     init_qdrant(client, EMBED_DIM)
 
     total_chunks = 0
@@ -293,7 +295,7 @@ def process_folder(folder_path: str):
 
 def search(query: str, top_k: int = 5):
     """Busca semântica na collection."""
-    client = QdrantClient(url=QDRANT_URL)
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     query_embedding = get_embedding(query)
 
     results = client.query_points(
@@ -329,6 +331,9 @@ if __name__ == "__main__":
         help="Threshold de similaridade para novo chunk (padrão: 0.75)",
     )
     index_parser.add_argument("--qdrant-url", default=QDRANT_URL, help="URL do Qdrant")
+    index_parser.add_argument(
+        "--api-key", default=QDRANT_API_KEY, help="API key do Qdrant (opcional)"
+    )
     index_parser.add_argument("--collection", default=COLLECTION_NAME, help="Nome da collection")
 
     # Comando: buscar
@@ -336,6 +341,9 @@ if __name__ == "__main__":
     search_parser.add_argument("query", help="Texto da busca")
     search_parser.add_argument("--top-k", type=int, default=5, help="Número de resultados")
     search_parser.add_argument("--qdrant-url", default=QDRANT_URL)
+    search_parser.add_argument(
+        "--api-key", default=QDRANT_API_KEY, help="API key do Qdrant (opcional)"
+    )
     search_parser.add_argument("--collection", default=COLLECTION_NAME)
 
     args = parser.parse_args()
@@ -344,11 +352,13 @@ if __name__ == "__main__":
         OLLAMA_MODEL = args.model
         SIMILARITY_THRESHOLD = args.threshold
         QDRANT_URL = args.qdrant_url
+        QDRANT_API_KEY = args.api_key
         COLLECTION_NAME = args.collection
         process_folder(args.folder)
 
     elif args.command == "search":
         QDRANT_URL = args.qdrant_url
+        QDRANT_API_KEY = args.api_key
         COLLECTION_NAME = args.collection
         search(args.query, top_k=args.top_k)
 

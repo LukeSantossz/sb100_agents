@@ -1,5 +1,5 @@
 ### TASK-T26
-- **Status:** pendente
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** patch
 - **Data de criação:** 2026-04-24
@@ -37,11 +37,13 @@ Ambos os scripts assumem que o Ollama está instalado em `C:\Users\lucas\AppData
 | Data | Sessão | Ação Realizada | Status ao Final |
 |------|--------|----------------|-----------------|
 | 2026-04-24 | — | Task criada. Bloqueador de portabilidade identificado | pendente |
+| 2026-04-25 | 1 | Iniciando implementação. Reconhecimento: 5 ocorrências em start.bat, 2 em start.ps1 | em andamento |
+| 2026-04-25 | 1 | Implementação concluída. Todos critérios atendidos | concluída |
 
 #### Resultado (preenchido ao concluir)
-- **Data de conclusão:** [YYYY-MM-DD]
+- **Data de conclusão:** 2026-04-25
 - **Branch:** fix/TASK-T26-hardcoded-paths
-- **Commit(s):** [hash ou mensagem]
-- **Avaliação pós-implementação:** [aprovado / aprovado com ressalvas / reprovado]
-- **Observações:** [notas relevantes]
+- **Commit(s):** 76503b3 fix(scripts): replace hardcoded Ollama paths with dynamic PATH resolution
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** Scripts agora usam `where ollama` (bat) e `Get-Command ollama` (ps1) para resolução dinâmica. Mensagem de erro clara com link para instalação.
 
