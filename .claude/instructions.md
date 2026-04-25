@@ -504,6 +504,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 7 | 2026-04-25 | TASK-T17 | major | 3 arquivos — .github/workflows/ci.yml, requirements.txt | aprovado | CI com 4 jobs: lint, test, validate-requirements, typecheck |
 | 8 | 2026-04-25 | TASK-T24 | major | 4 arquivos — core/config.py, database/models.py, retrieval/vector_store.py, tests/ | aprovado | Auditoria Clean Code + fixes (datetime.UTC, remoção alias) |
 | 9 | 2026-04-25 | TASK-T25 | minor | 6 arquivos — SETUP.md, .env.example, core/, retrieval/, database/, tests/ | aprovado | Guia setup local/remoto + suporte QDRANT_API_KEY |
+| 10 | 2026-04-25 | TASK-T26 | patch | 2 arquivos — start.bat, start.ps1 | aprovado | Resolução dinâmica Ollama via PATH |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -513,7 +514,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 - **Última atualização:** 2026-04-25
 - **Último responsável:** Claude Code (Opus 4.5)
-- **Branch ativa:** docs/TASK-T25-setup-guide
+- **Branch ativa:** fix/TASK-T26-hardcoded-paths
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18/18 testes unitários)
 - **Divergências externas pendentes:** nenhuma
