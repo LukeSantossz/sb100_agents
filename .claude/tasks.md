@@ -90,6 +90,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 ## Tasks Concluídas
 
+### TASK-T28 — Sincronização README com estado real da codebase ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** docs/TASK-T28-readme-sync
+- **Commit:** (pendente)
+- **Avaliação:** aprovado
+- **Nota:** Removidas referências ao frontend React inexistente; substituído por Gradio UI; removida seção npm Scripts; ajustados Prerequisites, Installation, Running, Project Structure e Service URLs
+
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
 
 ### TASK-T18 — Atualização README MVP ✓
