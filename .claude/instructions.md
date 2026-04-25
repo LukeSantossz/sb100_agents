@@ -522,7 +522,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18/18 testes unitários)
 - **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T28 — README sincronizado com estado real da codebase
+- **Última task concluída:** TASK-T29 — CHAT_MODEL alinhado para llama3.2:3b
 
 ### 9.5 Pendências Conhecidas
 
