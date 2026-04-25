@@ -511,10 +511,11 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 - **Última atualização:** 2026-04-25
 - **Último responsável:** Claude Code (Opus 4.5)
-- **Branch ativa:** dev
+- **Branch ativa:** dev (sincronizada com main)
 - **Dependências alteradas recentemente:** gradio>=4.0.0 adicionado (T24-UI)
 - **Testes passando:** sim (18/18 testes unitários, CI verde)
-- **Divergências externas pendentes:** PR #18 (dev → main) aguardando merge
+- **Divergências externas pendentes:** nenhuma
+- **PRs mergeados nesta sessão:** #19 (sync tasks), #20 (fix Gradio 6.x)
 
 ### 9.5 Pendências Conhecidas
 
