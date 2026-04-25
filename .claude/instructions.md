@@ -498,6 +498,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 1 | 2026-04-24 | TASK-000 | major | 6 arquivos — .claude/hooks/, enforcement.conf | aprovado | Hooks funcionais, .gitignore ajustado |
 | 2 | 2026-04-24 | TASK-T21 | minor | 4 arquivos — pyproject.toml, ci.yml, README.md, TASK-T21.md | aprovado c/ ressalvas | Ruff, mypy --strict, pytest-cov configurados. CI pode falhar até correção de tipos |
 | 3 | 2026-04-24 | TASK-T22 | major | 13 arquivos — core, retrieval, generation, verification, api | aprovado | Docstrings Google Style em todos os módulos públicos |
+| 4 | 2026-04-25 | TASK-T24-UI | major | 7 arquivos — ui/, docker-compose.yml, pyproject.toml, requirements.txt | aprovado | Interface Gradio + Docker Compose com profiles infra/app |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -505,11 +506,11 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-04-24
+- **Última atualização:** 2026-04-25
 - **Último responsável:** Claude Code (Opus 4.5)
-- **Branch ativa:** docs/TASK-T22-docstrings
-- **Dependências alteradas recentemente:** nenhuma (T22 é apenas documentação)
-- **Testes passando:** sim (testes unitários)
+- **Branch ativa:** feat/TASK-T24UI-gradio-interface
+- **Dependências alteradas recentemente:** gradio>=4.0.0 adicionado (T24-UI)
+- **Testes passando:** sim (18/18 testes unitários)
 - **Divergências externas pendentes:** nenhuma
 
 ### 9.5 Pendências Conhecidas
