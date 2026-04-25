@@ -90,15 +90,15 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 ## Tasks Concluídas
 
-### TASK-T28 — Sincronização README com estado real da codebase ✓
+> Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T28 — Remoção completa de referências ao frontend React/npm ✓
 - **Concluída em:** 2026-04-25
 - **Branch:** docs/TASK-T28-readme-sync
-- **Commit:** 870152e
-- **PR:** [#27](https://github.com/LukeSantossz/sb100_agents/pull/27)
+- **Commits:** 870152e, 1be0a84, 0bff84b
+- **PRs:** [#27](https://github.com/LukeSantossz/sb100_agents/pull/27), [#28](https://github.com/LukeSantossz/sb100_agents/pull/28)
 - **Avaliação:** aprovado
-- **Nota:** Removidas referências ao frontend React inexistente; substituído por Gradio UI; removida seção npm Scripts; ajustados Prerequisites, Installation, Running, Project Structure e Service URLs
-
-> Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+- **Nota:** 12 arquivos alterados, package.json e package-lock.json removidos. Node.js não é mais dependência do projeto.
 
 ### TASK-T18 — Atualização README MVP ✓
 - **Concluída em:** 2026-04-25

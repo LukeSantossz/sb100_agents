@@ -483,7 +483,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 ### 9.2 Informações do Projeto
 
 - **Nome:** SmartB100
-- **Stack:** Python 3.12+ (FastAPI, Ollama, Qdrant), React 18+ (Vite)
+- **Stack:** Python 3.12+ (FastAPI, Ollama, Qdrant, Gradio)
 - **Repositório:** LukeSantossz/sb100_agents
 - **Estrutura:** RAG system — api/, core/, retrieval/, memory/, profiling/, generation/, verification/, database/, eval/
 
@@ -506,7 +506,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 9 | 2026-04-25 | TASK-T24 | major | 4 arquivos — core/config.py, database/models.py, retrieval/vector_store.py, tests/ | aprovado | Auditoria Clean Code + fixes (datetime.UTC, remoção alias) |
 | 10 | 2026-04-25 | TASK-T25 | minor | 6 arquivos — SETUP.md, .env.example, core/, retrieval/, database/, tests/ | aprovado | Guia setup local/remoto + suporte QDRANT_API_KEY |
 | 11 | 2026-04-25 | TASK-T26 | patch | 2 arquivos — start.bat, start.ps1 | aprovado | Resolução dinâmica Ollama via PATH |
-| 12 | 2026-04-25 | TASK-T28 | minor | 1 arquivo — README.md | aprovado | Removidas referências ao frontend React inexistente; alinhado com Gradio UI |
+| 12 | 2026-04-25 | TASK-T28 | major | 11 arquivos + 2 removidos — codebase completa | aprovado | Remoção completa de React/npm/Node.js; scripts reescritos para Python puro |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
