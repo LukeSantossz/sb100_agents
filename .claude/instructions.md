@@ -507,7 +507,9 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 10 | 2026-04-25 | TASK-T25 | minor | 6 arquivos — SETUP.md, .env.example, core/, retrieval/, database/, tests/ | aprovado | Guia setup local/remoto + suporte QDRANT_API_KEY |
 | 11 | 2026-04-25 | TASK-T26 | patch | 2 arquivos — start.bat, start.ps1 | aprovado | Resolução dinâmica Ollama via PATH |
 | 12 | 2026-04-25 | TASK-T28 | major | 11 arquivos + 2 removidos — codebase completa | aprovado | Remoção completa de React/npm/Node.js; scripts reescritos para Python puro |
-| 13 | 2026-04-25 | TASK-T31 | minor | 1 arquivo — api/routes/auth.py | aprovado | JWT_SECRET_KEY via settings + validação de erro |
+| 13 | 2026-04-25 | TASK-T29 | patch | 2 arquivos — .env.example, docker-compose.yml | aprovado | CHAT_MODEL alinhado para llama3.2:3b |
+| 14 | 2026-04-25 | TASK-T30 | patch | 1 arquivo — .env.example | aprovado | COLLECTION_NAME alinhado para archives_v2 |
+| 15 | 2026-04-25 | TASK-T31 | minor | 1 arquivo — api/routes/auth.py | aprovado | JWT_SECRET_KEY via settings + validação de erro |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
