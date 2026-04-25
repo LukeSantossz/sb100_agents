@@ -14,7 +14,7 @@ import argparse
 import asyncio
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -163,7 +163,7 @@ def run_evaluation(
         Dataset de resultados
     """
     # Carrega dataset
-    with open(input_path, "r", encoding="utf-8") as f:
+    with open(input_path, encoding="utf-8") as f:
         dataset = json.load(f)
 
     questions = dataset["questions"]
@@ -186,7 +186,7 @@ def run_evaluation(
     results_dataset = {
         "metadata": {
             **dataset.get("metadata", {}),
-            "evaluation_run_at": datetime.now(timezone.utc).isoformat(),
+            "evaluation_run_at": datetime.now(UTC).isoformat(),
             "api_url": api_url,
             "total_questions": len(results),
             "successful_requests": successful,

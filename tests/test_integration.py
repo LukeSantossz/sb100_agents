@@ -1,7 +1,8 @@
 """Testes de integração end-to-end do pipeline RAG."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app

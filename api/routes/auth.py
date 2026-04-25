@@ -1,7 +1,7 @@
 import hashlib
 import os
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -31,7 +31,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return get_password_hash(plain_password) == hashed_password
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """Create JWT access token."""
     to_encode = data.copy()
     if expires_delta:
@@ -55,7 +55,7 @@ class Token(BaseModel):
 
 # Routes
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
+def register(user_data: UserCreate, db: Session = Depends(get_db)) -> dict[str, str]:
     existing = db.query(User).filter(User.username == user_data.username).first()
     if existing:
         raise HTTPException(
@@ -70,16 +70,16 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    return {"message": "User created successfully", "username": user.username}
+    return {"message": "User created successfully", "username": str(user.username)}
 
 
 @router.post("/token", response_model=Token)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
-):
+) -> dict[str, str]:
     user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user or not verify_password(form_data.password, str(user.hashed_password)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
