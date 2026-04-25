@@ -1,5 +1,5 @@
 ### TASK-T22
-- **Status:** pendente
+- **Status:** em andamento
 - **Modo:** desenvolvimento
 - **Complexidade:** major
 - **Data de criação:** 2026-04-24
@@ -18,12 +18,12 @@ Garantir que qualquer desenvolvedor consiga entender o propósito e o comportame
 - **Impacto em funcionalidades existentes:** nenhum — documentação apenas
 
 #### Critérios de Aceite (!obrigatório)
-- [ ] Todas as funções e métodos públicos com docstring no padrão Google Style (Args, Returns, Raises)
-- [ ] Classes com docstring descrevendo responsabilidade e comportamento principal
-- [ ] Trechos de lógica não trivial com comentário inline explicando o porquê, não o quê
-- [ ] Zero docstrings genéricas (ex: "Retorna o valor") — todas devem ter conteúdo informativo
-- [ ] Módulos cobertos: `api`, `core`, `retrieval`, `generation`, `memory`, `profiling`, `verification`
-- [ ] Nenhuma função pública sem docstring
+- [x] Todas as funções e métodos públicos com docstring no padrão Google Style (Args, Returns, Raises)
+- [x] Classes com docstring descrevendo responsabilidade e comportamento principal
+- [x] Trechos de lógica não trivial com comentário inline explicando o porquê, não o quê
+- [x] Zero docstrings genéricas (ex: "Retorna o valor") — todas devem ter conteúdo informativo
+- [x] Módulos cobertos: `api`, `core`, `retrieval`, `generation`, `memory`, `profiling`, `verification`
+- [x] Nenhuma função pública sem docstring
 - [ ] Commit: `docs(modules): add docstrings and inline comments across all modules`
 
 #### Restrições
@@ -43,6 +43,7 @@ Garantir que qualquer desenvolvedor consiga entender o propósito e o comportame
 | Data | Sessão | Ação Realizada | Status ao Final |
 |------|--------|----------------|-----------------|
 | 2026-04-24 | — | Task criada como parte do ciclo de qualidade pós-auditoria estrutural (T19) | pendente |
+| 2026-04-24 | 1 | Docstrings Google Style adicionadas em 13 arquivos: core (2), retrieval (3), generation (1), verification (1), api (6). Ruff e testes OK. | em andamento |
 
 #### Resultado (preenchido ao concluir)
 - **Data de conclusão:** [YYYY-MM-DD]
