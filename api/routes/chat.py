@@ -51,7 +51,7 @@ def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
 
 
 @router.post("", response_model=ChatResponse)
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest) -> ChatResponse:
     buffer = _get_or_create_buffer(req.session_id)
 
     try:
@@ -60,7 +60,7 @@ async def chat(req: ChatRequest):
         raise HTTPException(
             status_code=503,
             detail=f"Erro ao gerar embedding: {str(e)}. Verifique se o Ollama está rodando.",
-        )
+        ) from e
 
     try:
         context_chunks = search_context(embedding)
@@ -68,7 +68,7 @@ async def chat(req: ChatRequest):
         raise HTTPException(
             status_code=503,
             detail=f"Erro ao buscar contexto: {str(e)}. Verifique se o Qdrant está rodando.",
-        )
+        ) from e
 
     context_text = "\n\n".join(context_chunks) if context_chunks else ""
     history = buffer.to_messages()
@@ -93,7 +93,7 @@ async def chat(req: ChatRequest):
         raise HTTPException(
             status_code=503,
             detail=f"Erro ao gerar resposta: {str(e)}. Verifique se o Ollama está rodando.",
-        )
+        ) from e
 
     # Atualiza buffer somente após sucesso
     buffer.add("user", req.question)

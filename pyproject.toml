@@ -55,7 +55,10 @@ select = [
     "C4",     # flake8-comprehensions
     "SIM",    # flake8-simplify
 ]
-ignore = ["E501"]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in default argument (required for FastAPI Depends)
+]
 
 [tool.ruff.lint.per-file-ignores]
 "eval/*.py" = ["E402"]

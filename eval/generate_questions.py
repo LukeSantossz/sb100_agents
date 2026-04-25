@@ -10,6 +10,7 @@ Uso:
 """
 
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Carrega variaveis de ambiente do .env
@@ -20,9 +21,8 @@ import json
 import os
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 import fitz  # PyMuPDF
 
@@ -69,7 +69,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
 def extract_text_from_txt(txt_path: str) -> str:
     """Le conteudo de arquivo TXT."""
-    with open(txt_path, "r", encoding="utf-8") as f:
+    with open(txt_path, encoding="utf-8") as f:
         return f.read()
 
 
@@ -217,7 +217,7 @@ def generate_questions_from_files(
     file_paths: list[str],
     num_questions: int = 300,
     provider: str = DEFAULT_PROVIDER,
-    model: Optional[str] = None,
+    model: str | None = None,
 ) -> dict:
     """
     Gera perguntas a partir de uma lista de arquivos.
@@ -287,7 +287,7 @@ def generate_questions_from_files(
     dataset = {
         "metadata": {
             "source_documents": source_files,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "total_questions": len(unique_questions),
             "provider": provider,
             "model": model,

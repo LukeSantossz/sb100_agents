@@ -16,7 +16,7 @@ class ConversationBuffer:
         Args:
             maxlen: Número máximo de turnos no buffer.
         """
-        self._buffer: deque[dict] = deque(maxlen=maxlen)
+        self._buffer: deque[dict[str, str]] = deque(maxlen=maxlen)
 
     def add(self, role: str, content: str) -> None:
         """Adiciona um turno ao buffer.
@@ -27,7 +27,7 @@ class ConversationBuffer:
         """
         self._buffer.append({"role": role, "content": content})
 
-    def to_messages(self) -> list[dict]:
+    def to_messages(self) -> list[dict[str, str]]:
         """Retorna o histórico como lista de mensagens.
 
         Returns:

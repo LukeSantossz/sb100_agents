@@ -10,6 +10,7 @@ Uso:
 """
 
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Carrega variaveis de ambiente do .env
@@ -20,7 +21,7 @@ import json
 import os
 import random
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from tqdm import tqdm
@@ -225,7 +226,7 @@ def run_judge(
     judge_fn = judge_fns[provider]
 
     # Carrega dataset
-    with open(input_path, "r", encoding="utf-8") as f:
+    with open(input_path, encoding="utf-8") as f:
         dataset = json.load(f)
 
     results = dataset["results"]
@@ -321,7 +322,7 @@ def run_judge(
             **dataset.get("metadata", {}),
             "judge_model": model,
             "judge_provider": provider,
-            "judged_at": datetime.now(timezone.utc).isoformat(),
+            "judged_at": datetime.now(UTC).isoformat(),
         },
         "results": judged_results,
     }
