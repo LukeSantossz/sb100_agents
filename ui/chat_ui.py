@@ -155,7 +155,10 @@ def create_interface(api_url: str) -> gr.Blocks:
             error_msg = f"Erro de conexão: {e}"
             history = history + [
                 {"role": "user", "content": message},
-                {"role": "assistant", "content": f"Erro: Não foi possível conectar à API em {api_url}"},
+                {
+                    "role": "assistant",
+                    "content": f"Erro: Não foi possível conectar à API em {api_url}",
+                },
             ]
             yield history, error_msg
 
