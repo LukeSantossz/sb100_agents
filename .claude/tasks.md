@@ -84,16 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T30 — Alinhar COLLECTION_NAME entre config.py e .env.example
-- **Status:** pendente
-- **Complexidade:** patch
-- **Detalhes:** `.claude/tasks/TASK-T30.md`
-
-### TASK-T31 — Corrigir auth.py para Usar settings.jwt_secret_key
-- **Status:** pendente
-- **Complexidade:** minor
-- **Detalhes:** `.claude/tasks/TASK-T31.md`
-
 ### TASK-T32 — Remover Ollama do Docker e Documentar Uso Local Exclusivo
 - **Status:** pendente
 - **Complexidade:** minor
