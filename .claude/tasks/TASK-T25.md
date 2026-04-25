@@ -1,5 +1,5 @@
 ### TASK-T25
-- **Status:** em andamento
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** minor
 - **Data de criação:** 2026-04-24
@@ -44,12 +44,13 @@ Qualquer membro da equipe deve conseguir clonar o repositório e ter o sistema S
 | 2026-04-24 | — | Task criada. Dois modos de execução definidos | pendente |
 | 2026-04-25 | 1 | Reconhecimento: .env.example existe, SETUP.md não existe, scripts de ingestão ok | em andamento |
 | 2026-04-25 | 1 | Criado SETUP.md, atualizado .env.example, adicionado suporte QDRANT_API_KEY em config/vector_store/chunker | validando |
+| 2026-04-25 | 1 | Testes passando (18/18), lint aprovado, commit realizado | concluída |
 
 #### Resultado (preenchido ao concluir)
-- **Data de conclusão:** [YYYY-MM-DD]
+- **Data de conclusão:** 2026-04-25
 - **Branch:** docs/TASK-T25-setup-guide
-- **Commit(s):** [hash ou mensagem]
-- **Avaliação pós-implementação:** [aprovado / aprovado com ressalvas / reprovado]
-- **Observações:** [notas relevantes]
+- **Commit(s):** 261a509 docs: add SETUP.md with local and remote Qdrant modes
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** Escopo expandido para incluir suporte a QDRANT_API_KEY no código. Testes atualizados (18/18 passando). Mudança retrocompatível.
 
 ---
