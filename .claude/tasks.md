@@ -125,6 +125,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T31 — Corrigir auth.py para Usar settings.jwt_secret_key ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** fix/TASK-T31-jwt-secret-settings
+- **Commit:** a66cc61
+- **Avaliação:** aprovado
+- **Nota:** Substituído os.environ.get() por settings.jwt_secret_key com validação de erro claro
+
 ### TASK-T30 — Alinhar COLLECTION_NAME entre config.py e .env.example ✓
 - **Concluída em:** 2026-04-25
 - **Branch:** fix/TASK-T30-align-collection-name
