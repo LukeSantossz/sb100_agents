@@ -11,7 +11,6 @@ Segurança:
 """
 
 import hashlib
-import os
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -21,10 +20,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from core.config import settings
 from database.db import get_db
 from database.models import User
 
-SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "super-secret-key-replace-in-production")
+if not settings.jwt_secret_key:
+    raise ValueError("JWT_SECRET_KEY must be configured in .env or environment variables")
+
+SECRET_KEY = settings.jwt_secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 dias
 
