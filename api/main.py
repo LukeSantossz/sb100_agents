@@ -1,3 +1,15 @@
+"""Ponto de entrada da aplicação FastAPI SmartB100.
+
+Este módulo configura a aplicação FastAPI com:
+
+- Middleware CORS para permitir acesso do frontend.
+- Routers de chat, autenticação e health check.
+- Lifespan handler para inicialização do banco de dados.
+
+Uso:
+    uvicorn api.main:app --reload
+"""
+
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -17,6 +29,16 @@ ALLOWED_ORIGINS = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Gerencia o ciclo de vida da aplicação FastAPI.
+
+    Executa setup (criação de tabelas) no startup e cleanup no shutdown.
+
+    Args:
+        app: Instância da aplicação FastAPI.
+
+    Yields:
+        None: Controle retorna à aplicação após o setup.
+    """
     Base.metadata.create_all(bind=engine)
     yield
 
