@@ -22,15 +22,15 @@ Escopo expandido em 2026-04-24:
 - **Impacto em funcionalidades existentes:** nenhum — infraestrutura de CI nova
 
 #### Critérios de Aceite (!obrigatório)
-- [ ] Pipeline verde sem dependências externas em tempo de CI
-- [ ] `ruff check` sem erros
-- [ ] `mypy` sem erros nos módulos críticos do pipeline (retriever, reranker, validator)
-- [ ] Testes de unidade dos três componentes passam com mocks via `unittest.mock`
-- [ ] Badge de CI visível no README
-- [ ] `.github/pipeline.yml` deletado
-- [ ] `requirements.txt` gerado via `uv export --frozen --no-dev -o requirements.txt`
-- [ ] Step de validação no CI verifica sincronização `requirements.txt` vs `uv.lock`
-- [ ] Commit: `ci: add GitHub Actions workflow with lint, type check and RAG pipeline tests`
+- [x] Pipeline verde sem dependências externas em tempo de CI
+- [x] `ruff check` sem erros
+- [x] `mypy` sem erros nos módulos críticos do pipeline (retriever, reranker, validator)
+- [x] Testes de unidade dos três componentes passam com mocks via `unittest.mock`
+- [x] Badge de CI visível no README
+- [x] `.github/pipeline.yml` deletado
+- [x] `requirements.txt` gerado via `uv export --frozen --no-dev -o requirements.txt`
+- [x] Step de validação no CI verifica sincronização `requirements.txt` vs `uv.lock`
+- [x] Commit: `ci: add GitHub Actions workflow with lint, type check and RAG pipeline tests`
 
 #### Restrições
 - Trigger: `on: [push, pull_request]` para `main`

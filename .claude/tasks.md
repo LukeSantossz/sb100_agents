@@ -97,6 +97,25 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T27 — Fix Formatação Ruff ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** dev (commit direto — violação documentada)
+- **Commit:** 76997b4 style(ui): format chat_ui.py with ruff
+- **Detalhes:** `.claude/tasks/TASK-T27.md`
+- **Nota:** Task retroativa — violações de fluxo documentadas
+
+### TASK-T24-UI — Interface Gradio Chat ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** feat/TASK-T24UI-gradio-interface
+- **Commit:** d4922f6 feat(ui): add Gradio chat interface and refactor docker-compose with profiles
+- **Detalhes:** `.claude/tasks/TASK-T24-UI.md`
+
+### TASK-T17 — CI GitHub Actions ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** ci/TASK-T17-github-actions
+- **Commit:** 0e962f2 ci: add GitHub Actions workflow with lint, type check and RAG pipeline tests
+- **Detalhes:** `.claude/tasks/TASK-T17.md`
+
 ### TASK-T23 — Contratos Tipados ✓
 - **Concluída em:** 2026-04-24
 - **Branch:** refactor/TASK-T23-typed-contracts
