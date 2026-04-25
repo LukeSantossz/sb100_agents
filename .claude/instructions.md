@@ -497,6 +497,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 |---|------|------|--------------|-----------------|-----------|-------------|
 | 1 | 2026-04-24 | TASK-000 | major | 6 arquivos — .claude/hooks/, enforcement.conf | aprovado | Hooks funcionais, .gitignore ajustado |
 | 2 | 2026-04-24 | TASK-T21 | minor | 4 arquivos — pyproject.toml, ci.yml, README.md, TASK-T21.md | aprovado c/ ressalvas | Ruff, mypy --strict, pytest-cov configurados. CI pode falhar até correção de tipos |
+| 3 | 2026-04-24 | TASK-T22 | major | 13 arquivos — core, retrieval, generation, verification, api | aprovado | Docstrings Google Style em todos os módulos públicos |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -506,9 +507,9 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 - **Última atualização:** 2026-04-24
 - **Último responsável:** Claude Code (Opus 4.5)
-- **Branch ativa:** chore/TASK-T21-static-analysis-coverage
-- **Dependências alteradas recentemente:** dev deps (ruff, mypy, pytest-cov, types-requests)
-- **Testes passando:** pendente validação CI (mypy --strict pode revelar erros)
+- **Branch ativa:** docs/TASK-T22-docstrings
+- **Dependências alteradas recentemente:** nenhuma (T22 é apenas documentação)
+- **Testes passando:** sim (testes unitários)
 - **Divergências externas pendentes:** nenhuma
 
 ### 9.5 Pendências Conhecidas
