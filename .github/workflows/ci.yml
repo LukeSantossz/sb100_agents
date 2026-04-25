@@ -7,6 +7,30 @@ on:
     branches: [main]
 
 jobs:
+  validate-requirements:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Validate requirements.txt sync with uv.lock
+        run: |
+          uv export --frozen --no-dev -o /tmp/requirements-check.txt
+          if ! diff -q requirements.txt /tmp/requirements-check.txt > /dev/null 2>&1; then
+            echo "ERROR: requirements.txt is out of sync with uv.lock"
+            echo "Run 'uv export --frozen --no-dev -o requirements.txt' and commit the changes"
+            diff requirements.txt /tmp/requirements-check.txt || true
+            exit 1
+          fi
+          echo "requirements.txt is in sync with uv.lock"
+
   lint:
     runs-on: ubuntu-latest
     steps:
