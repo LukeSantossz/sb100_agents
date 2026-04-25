@@ -1,5 +1,5 @@
 ### TASK-T24-UI
-- **Status:** pendente
+- **Status:** em andamento
 - **Modo:** desenvolvimento
 - **Complexidade:** major
 - **Data de criação:** 2026-04-24
@@ -51,6 +51,7 @@ Escopo expandido em 2026-04-24: inclui refatoração do docker-compose.yml com p
 | Data | Sessão | Ação Realizada | Status ao Final |
 |------|--------|----------------|-----------------|
 | 2026-04-24 | — | Task criada. Stack Gradio definida. Escopo expandido com refatoração docker-compose | pendente |
+| 2026-04-25 | 1 | Implementação completa: ui/chat_ui.py criado, docker-compose.yml refatorado com profiles infra/app, pyproject.toml e requirements.txt atualizados com gradio>=4.0. Ruff check OK, 18 testes passando. | em andamento |
 
 #### Resultado (preenchido ao concluir)
 - **Data de conclusão:** [YYYY-MM-DD]
