@@ -84,11 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-## Tasks Ativas
-
-> Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
-> **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
-
 [nenhuma task ativa no momento]
 
 ---
@@ -96,6 +91,34 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T18 — Atualização README MVP ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** docs/TASK-T18-readme-mvp
+- **Commit:** f055c2a docs: update README for MVP release
+- **Detalhes:** `.claude/tasks/TASK-T18.md`
+- **Nota:** README completo com estrutura de diretórios, exemplos de API e Known Issues
+
+### TASK-T26 — Fix Caminhos Hardcoded Ollama ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** fix/TASK-T26-hardcoded-paths
+- **Commit:** 76503b3 fix(scripts): replace hardcoded Ollama paths with dynamic PATH resolution
+- **Detalhes:** `.claude/tasks/TASK-T26.md`
+- **Nota:** Resolução dinâmica via PATH — portabilidade restaurada
+
+### TASK-T25 — Guia de Setup com Modos Local e Remoto ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** docs/TASK-T25-setup-guide
+- **Commit:** 261a509 docs: add SETUP.md with local and remote Qdrant modes
+- **Detalhes:** `.claude/tasks/TASK-T25.md`
+- **Nota:** Escopo expandido: suporte QDRANT_API_KEY adicionado ao código
+
+### TASK-T24 — Auditoria Clean Code, SOLID e Design Patterns ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** refactor/TASK-T24-clean-code-audit
+- **Commit:** refactor(quality): apply clean code and SOLID audit across codebase
+- **Detalhes:** `.claude/tasks/TASK-T24.md`
+- **Nota:** Auditoria completa + fixes menores (datetime.UTC, remoção alias redundante)
 
 ### TASK-T27 — Fix Formatação Ruff ✓
 - **Concluída em:** 2026-04-25

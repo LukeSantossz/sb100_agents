@@ -21,6 +21,7 @@ class Settings(BaseSettings):
         chat_model: Modelo Ollama para geração de respostas.
         embed_model: Modelo Ollama para geração de embeddings.
         qdrant_url: URL do servidor Qdrant para busca vetorial.
+        qdrant_api_key: Chave de API do Qdrant (opcional, para servidores autenticados).
         collection_name: Nome da coleção no Qdrant.
         top_k: Número de chunks retornados na busca por similaridade.
         buffer_maxlen: Tamanho máximo do buffer de conversação.
@@ -37,6 +38,7 @@ class Settings(BaseSettings):
     chat_model: str = "llama3.2:3b"
     embed_model: str = "nomic-embed-text"
     qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str | None = None
     collection_name: str = "archives_v2"
     top_k: int = 3
     buffer_maxlen: int = 10
@@ -46,11 +48,6 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     openrouter_api_key: str = ""
     jwt_secret_key: str = ""
-
-    @property
-    def collection(self) -> str:
-        """Nome da coleção Qdrant (alias de ``collection_name``)."""
-        return self.collection_name
 
 
 settings = Settings()
