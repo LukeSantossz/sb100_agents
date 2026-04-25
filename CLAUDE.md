@@ -69,7 +69,7 @@ Check `.claude/tasks.md` for the current active task (TASK-000: Implement git ho
 
 ## Project Overview
 
-SmartB100 is a RAG (Retrieval-Augmented Generation) system for agricultural technical support. It retrieves context from indexed PDF documents and generates expertise-adapted responses via a local LLM (Ollama). The system exposes a FastAPI backend and React frontend.
+SmartB100 is a RAG (Retrieval-Augmented Generation) system for agricultural technical support. It retrieves context from indexed PDF documents and generates expertise-adapted responses via a local LLM (Ollama). The system exposes a FastAPI backend and Gradio chat interface.
 
 ## Commands
 
@@ -77,18 +77,22 @@ SmartB100 is a RAG (Retrieval-Augmented Generation) system for agricultural tech
 ```bash
 # Install dependencies (first time setup)
 uv sync                          # Python (recommended)
-npm install && npm run setup     # Node + frontend
 
-# Start everything (API + Frontend)
-npm run start
-
-# Start components individually
-npm run api                      # FastAPI on :8000
-npm run frontend                 # React/Vite on :5173
-npm run docker:up                # Qdrant on :6333
+# Start infrastructure (Qdrant via Docker)
+docker compose --profile infra up -d
 
 # Index PDFs (required before first chat)
 .venv\Scripts\python.exe database\semantic_chunker.py index ./archives/
+
+# Start API
+.venv\Scripts\python.exe -m uvicorn api.main:app --reload
+
+# Start Gradio UI (optional)
+.venv\Scripts\python.exe ui/chat_ui.py
+
+# Or use startup scripts (Windows)
+.\start.bat                      # CMD
+.\start.ps1                      # PowerShell
 ```
 
 ### Testing

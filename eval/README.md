@@ -69,7 +69,8 @@ Executa todas as perguntas contra o endpoint `POST /chat`:
 
 ```bash
 # Certifique-se de que o SB100 esta rodando
-npm run start
+# Inicie a API: .venv\Scripts\python.exe -m uvicorn api.main:app --reload
+# Ou use: .\start.bat (Windows)
 
 # Em outro terminal, execute a avaliacao
 python eval/run_evaluation.py
