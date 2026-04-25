@@ -1,5 +1,5 @@
 ### TASK-T18
-- **Status:** em andamento
+- **Status:** pendente
 - **Modo:** desenvolvimento
 - **Complexidade:** minor
 - **Data de criação:** 2026-04-06
@@ -38,6 +38,7 @@ O README atual não reflete o estado pós-MVP do projeto. Precisa documentar a n
 | Data | Sessão | Ação Realizada | Status ao Final |
 |------|--------|----------------|-----------------|
 | 2026-04-06 | — | Task criada como parte da FASE 5 do MVP | pendente |
+| 2026-04-25 | — | Task recuperada — ausente de tasks.md, status corrigido | pendente |
 
 #### Resultado (preenchido ao concluir)
 - **Data de conclusão:** [YYYY-MM-DD]
