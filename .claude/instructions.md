@@ -496,6 +496,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | # | Data | Task | Complexidade | Escopo Alterado | Resultado | Observações |
 |---|------|------|--------------|-----------------|-----------|-------------|
 | 1 | 2026-04-24 | TASK-000 | major | 6 arquivos — .claude/hooks/, enforcement.conf | aprovado | Hooks funcionais, .gitignore ajustado |
+| 2 | 2026-04-25 | TASK-T18 | minor | 1 arquivo — README.md | aprovado | Documentação MVP completa |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -503,11 +504,11 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-04-24 20:55
+- **Última atualização:** 2026-04-25
 - **Último responsável:** Claude Code (Opus 4.5)
-- **Branch ativa:** chore/TASK-000-enforcement-hooks
+- **Branch ativa:** docs/TASK-T18-readme-mvp
 - **Dependências alteradas recentemente:** nenhuma
-- **Testes passando:** não verificado (hooks não afetam testes)
+- **Testes passando:** sim (18/18 testes unitários)
 - **Divergências externas pendentes:** nenhuma
 
 ### 9.5 Pendências Conhecidas
