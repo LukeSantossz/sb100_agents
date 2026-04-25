@@ -508,6 +508,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 11 | 2026-04-25 | TASK-T26 | patch | 2 arquivos — start.bat, start.ps1 | aprovado | Resolução dinâmica Ollama via PATH |
 | 12 | 2026-04-25 | TASK-T28 | major | 11 arquivos + 2 removidos — codebase completa | aprovado | Remoção completa de React/npm/Node.js; scripts reescritos para Python puro |
 | 13 | 2026-04-25 | TASK-T29 | patch | 2 arquivos — .env.example, docker-compose.yml | aprovado | CHAT_MODEL alinhado para llama3.2:3b |
+| 14 | 2026-04-25 | TASK-T30 | patch | 1 arquivo — .env.example | aprovado | COLLECTION_NAME alinhado para archives_v2 |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -517,7 +518,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 - **Última atualização:** 2026-04-25
 - **Último responsável:** Claude Code (Opus 4.5)
-- **Branch ativa:** dev (TASK-T28 pendente de commit)
+- **Branch ativa:** fix/TASK-T30-align-collection-name
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18/18 testes unitários)
 - **Divergências externas pendentes:** nenhuma

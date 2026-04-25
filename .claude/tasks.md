@@ -125,10 +125,18 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T30 — Alinhar COLLECTION_NAME entre config.py e .env.example ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** fix/TASK-T30-align-collection-name
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** .env.example alinhado para archives_v2
+
 ### TASK-T29 — Alinhar CHAT_MODEL em Todos os Arquivos ✓
 - **Concluída em:** 2026-04-25
-- **Branch:** main (pendente de commit)
-- **Commit:** pendente
+- **Branch:** fix/TASK-T29-align-chat-model
+- **Commit:** bef939a
+- **PR:** [#29](https://github.com/LukeSantossz/sb100_agents/pull/29)
 - **Avaliação:** aprovado
 - **Nota:** .env.example e docker-compose.yml alinhados para llama3.2:3b
 
