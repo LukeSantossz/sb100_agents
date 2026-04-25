@@ -331,7 +331,9 @@ if __name__ == "__main__":
         help="Threshold de similaridade para novo chunk (padrão: 0.75)",
     )
     index_parser.add_argument("--qdrant-url", default=QDRANT_URL, help="URL do Qdrant")
-    index_parser.add_argument("--api-key", default=QDRANT_API_KEY, help="API key do Qdrant (opcional)")
+    index_parser.add_argument(
+        "--api-key", default=QDRANT_API_KEY, help="API key do Qdrant (opcional)"
+    )
     index_parser.add_argument("--collection", default=COLLECTION_NAME, help="Nome da collection")
 
     # Comando: buscar
@@ -339,7 +341,9 @@ if __name__ == "__main__":
     search_parser.add_argument("query", help="Texto da busca")
     search_parser.add_argument("--top-k", type=int, default=5, help="Número de resultados")
     search_parser.add_argument("--qdrant-url", default=QDRANT_URL)
-    search_parser.add_argument("--api-key", default=QDRANT_API_KEY, help="API key do Qdrant (opcional)")
+    search_parser.add_argument(
+        "--api-key", default=QDRANT_API_KEY, help="API key do Qdrant (opcional)"
+    )
     search_parser.add_argument("--collection", default=COLLECTION_NAME)
 
     args = parser.parse_args()
