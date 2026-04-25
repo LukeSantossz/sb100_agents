@@ -63,13 +63,14 @@ jobs:
       - name: Install dependencies
         run: |
           pip install mypy types-requests
-          pip install -e .
 
       - name: Run mypy on critical modules
         run: |
           mypy retrieval/ generation/ memory/ \
             --ignore-missing-imports \
             --no-error-summary
+        env:
+          PYTHONPATH: ${{ github.workspace }}
 
   test:
     runs-on: ubuntu-latest
@@ -86,11 +87,17 @@ jobs:
           pip install -e .
           pip install pytest pytest-cov httpx
 
-      - name: Run unit tests
+      - name: Run unit tests with coverage
         run: |
-          pytest tests/ -v \
-            --ignore=tests/test_integration.py
+          pytest tests/ --ignore=tests/test_integration.py
         env:
           QDRANT_URL: "http://localhost:6333"
           CHAT_MODEL: "llama3.2:3b"
           EMBED_MODEL: "nomic-embed-text"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          if-no-files-found: warn

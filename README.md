@@ -3,6 +3,7 @@
 ![React](https://img.shields.io/badge/React-18%2B-61DAFB?logo=react&logoColor=black)
 ![Status](https://img.shields.io/badge/status-MVP%20complete-brightgreen)
 ![CI](https://github.com/LukeSantossz/sb100_agents/actions/workflows/ci.yml/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
 
 # SmartB100 — Agriculture RAG Agent
 

@@ -2,8 +2,18 @@
 Write-Host "=== SmartB100 Startup ===" -ForegroundColor Green
 Write-Host ""
 
-# Configurar PATH do Ollama
-$env:PATH += ";C:\Users\lucas\AppData\Local\Programs\Ollama"
+# Localizar Ollama dinamicamente via PATH
+$ollamaCmd = Get-Command ollama -ErrorAction SilentlyContinue
+
+if (-not $ollamaCmd) {
+    Write-Host "ERRO: Ollama nao encontrado no PATH do sistema." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Instale o Ollama em: https://ollama.com" -ForegroundColor Yellow
+    Write-Host "Apos instalar, reinicie o terminal e execute este script novamente."
+    exit 1
+}
+
+$ollamaPath = $ollamaCmd.Source
 
 # 1. Verificar Qdrant
 Write-Host "[1/5] Verificando Qdrant..." -ForegroundColor Yellow
@@ -17,7 +27,6 @@ try {
 # 2. Verificar modelos Ollama
 Write-Host ""
 Write-Host "[2/5] Verificando modelos Ollama..." -ForegroundColor Yellow
-$ollamaPath = "C:\Users\lucas\AppData\Local\Programs\Ollama\ollama.exe"
 
 $models = & $ollamaPath list 2>$null
 if ($models -notmatch "nomic-embed-text") {

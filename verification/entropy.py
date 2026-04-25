@@ -17,8 +17,19 @@ TEMPERATURE = 0.7
 def _generate_samples(question: str, context: str, n: int = NUM_SAMPLES) -> list[str]:
     """Gera N respostas para a mesma pergunta com temperatura > 0.
 
+    Usado para calcular variância semântica entre respostas do modelo.
     Custo: N chamadas sequenciais à API (gpt-4o-mini ~$0.15/1M tokens).
-    Otimização futura: usar `n` parameter da API para gerar múltiplas em uma chamada.
+
+    Args:
+        question: Pergunta do usuário.
+        context: Contexto RAG (pode ser vazio).
+        n: Número de amostras a gerar.
+
+    Returns:
+        Lista de strings com as respostas geradas.
+
+    Note:
+        Otimização futura: usar parâmetro `n` da API para gerar múltiplas em uma chamada.
     """
     client = OpenAI(api_key=settings.openai_api_key)
 
@@ -44,7 +55,15 @@ def _generate_samples(question: str, context: str, n: int = NUM_SAMPLES) -> list
 
 
 def _compute_similarity(text1: str, text2: str) -> float:
-    """Calcula similaridade semântica entre dois textos usando embeddings."""
+    """Calcula similaridade de cosseno entre dois textos via embeddings.
+
+    Args:
+        text1: Primeiro texto.
+        text2: Segundo texto.
+
+    Returns:
+        Similaridade de cosseno entre 0.0 (ortogonais) e 1.0 (idênticos).
+    """
     client = OpenAI(api_key=settings.openai_api_key)
 
     embeddings = client.embeddings.create(
@@ -55,7 +74,7 @@ def _compute_similarity(text1: str, text2: str) -> float:
     vec1 = embeddings.data[0].embedding
     vec2 = embeddings.data[1].embedding
 
-    dot_product = sum(a * b for a, b in zip(vec1, vec2))
+    dot_product = sum(a * b for a, b in zip(vec1, vec2, strict=True))
     norm1 = math.sqrt(sum(a * a for a in vec1))
     norm2 = math.sqrt(sum(b * b for b in vec2))
 
@@ -63,12 +82,23 @@ def _compute_similarity(text1: str, text2: str) -> float:
 
 
 def _cluster_responses(responses: list[str], threshold: float = 0.85) -> list[list[str]]:
-    """Agrupa respostas por similaridade semântica.
+    """Agrupa respostas por similaridade semântica usando clustering guloso.
 
-    Complexidade: O(n*k) onde n=respostas e k=clusters. No pior caso O(n²).
-    Para NUM_SAMPLES=5, são no máximo 10 chamadas de embedding.
+    Cada resposta é comparada com o representante de cada cluster existente.
+    Se a similaridade for >= threshold, a resposta é adicionada ao cluster.
+    Caso contrário, um novo cluster é criado.
 
-    Otimização futura: batch embeddings e usar matriz de similaridade.
+    Args:
+        responses: Lista de respostas a serem agrupadas.
+        threshold: Limiar de similaridade para pertencer ao mesmo cluster.
+
+    Returns:
+        Lista de clusters, onde cada cluster é uma lista de respostas similares.
+
+    Note:
+        Complexidade: O(n*k) onde n=respostas e k=clusters. No pior caso O(n²).
+        Para NUM_SAMPLES=5, são no máximo 10 chamadas de embedding.
+        Otimização futura: batch embeddings e usar matriz de similaridade.
     """
     if not responses:
         return []
@@ -90,7 +120,18 @@ def _cluster_responses(responses: list[str], threshold: float = 0.85) -> list[li
 
 
 def _shannon_entropy(clusters: list[list[str]], total: int) -> float:
-    """Calcula entropia de Shannon normalizada sobre a distribuição de clusters."""
+    """Calcula entropia de Shannon normalizada sobre a distribuição de clusters.
+
+    A entropia mede a incerteza na distribuição das respostas entre clusters.
+    Alta entropia indica que as respostas estão dispersas (possível alucinação).
+
+    Args:
+        clusters: Lista de clusters de respostas.
+        total: Número total de respostas.
+
+    Returns:
+        Entropia normalizada entre 0.0 (todas respostas iguais) e 1.0 (máxima dispersão).
+    """
     if total == 0 or len(clusters) == 0:
         return 0.0
 

@@ -1,7 +1,14 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from datetime import UTC, datetime
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
-import datetime
+
 from .db import Base
+
+
+def _utc_now() -> datetime:
+    """Return current UTC datetime (timezone-aware)."""
+    return datetime.now(UTC)
 
 
 class User(Base):
@@ -10,7 +17,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=_utc_now)
 
     conversations = relationship("Conversation", back_populates="user")
 
@@ -21,7 +28,7 @@ class Conversation(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     title = Column(String, default="New Conversation")
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=_utc_now)
 
     user = relationship("User", back_populates="conversations")
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
@@ -35,6 +42,6 @@ class Message(Base):
     role = Column(String)  # 'user' or 'assistant'
     content = Column(Text)
     is_hallucinated = Column(Integer, nullable=True)  # 0 for No, 1 for Yes (Hallucinated)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=_utc_now)
 
     conversation = relationship("Conversation", back_populates="messages")

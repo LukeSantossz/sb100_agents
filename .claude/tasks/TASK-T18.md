@@ -39,6 +39,7 @@ O README atual não reflete o estado pós-MVP do projeto. Precisa documentar a n
 |------|--------|----------------|-----------------|
 | 2026-04-06 | — | Task criada como parte da FASE 5 do MVP | pendente |
 | 2026-04-25 | 1 | Atualização completa do README: adição de ui/ e SETUP.md na estrutura, verificação de todos os critérios | concluída |
+| 2026-04-25 | — | Task recuperada — ausente de tasks.md, status corrigido | pendente |
 
 #### Resultado (preenchido ao concluir)
 - **Data de conclusão:** 2026-04-25

@@ -5,7 +5,6 @@ import ollama
 from core.config import settings
 from core.schemas import ExpertiseLevel, UserProfile
 
-
 SYSTEM_PROMPTS = {
     ExpertiseLevel.beginner: """Você é um assistente especializado em agronomia e agricultura.
 Responda de forma clara e didática, usando linguagem simples e acessível.
@@ -26,14 +25,22 @@ Se o contexto não contiver informação suficiente, indique isso ao usuário.""
 
 
 def build_system_prompt(profile: UserProfile) -> str:
-    """Retorna o system prompt adequado ao nível de expertise do usuário."""
+    """Seleciona o system prompt adequado ao nível de expertise do usuário.
+
+    Args:
+        profile: Perfil do usuário contendo o nível de expertise.
+
+    Returns:
+        String do system prompt correspondente ao nível de expertise.
+        Retorna prompt de nível intermediário como fallback se o nível não for reconhecido.
+    """
     return SYSTEM_PROMPTS.get(profile.expertise, SYSTEM_PROMPTS[ExpertiseLevel.intermediate])
 
 
 def generate(
     question: str,
     context: str,
-    history: list[dict],
+    history: list[dict[str, str]],
     profile: UserProfile,
 ) -> str:
     """Gera resposta do LLM considerando contexto RAG, histórico e perfil do usuário.
@@ -47,7 +54,7 @@ def generate(
     Returns:
         Texto da resposta gerada pelo LLM.
     """
-    messages: list[dict] = []
+    messages: list[dict[str, str]] = []
 
     # System prompt baseado no perfil
     messages.append({"role": "system", "content": build_system_prompt(profile)})
@@ -64,4 +71,4 @@ def generate(
 
     response = ollama.chat(model=settings.chat_model, messages=messages)
 
-    return response["message"]["content"]
+    return str(response["message"]["content"])
