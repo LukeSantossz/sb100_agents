@@ -499,6 +499,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 2 | 2026-04-24 | TASK-T21 | minor | 4 arquivos — pyproject.toml, ci.yml, README.md, TASK-T21.md | aprovado c/ ressalvas | Ruff, mypy --strict, pytest-cov configurados. CI pode falhar até correção de tipos |
 | 3 | 2026-04-24 | TASK-T22 | major | 13 arquivos — core, retrieval, generation, verification, api | aprovado | Docstrings Google Style em todos os módulos públicos |
 | 4 | 2026-04-25 | TASK-T24-UI | major | 7 arquivos — ui/, docker-compose.yml, pyproject.toml, requirements.txt | aprovado | Interface Gradio + Docker Compose com profiles infra/app |
+| 5 | 2026-04-25 | TASK-T27 | patch | 1 arquivo — ui/chat_ui.py | aprovado c/ ressalvas | Fix formatação ruff. Task retroativa — violação de fluxo documentada |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -508,10 +509,10 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 - **Última atualização:** 2026-04-25
 - **Último responsável:** Claude Code (Opus 4.5)
-- **Branch ativa:** feat/TASK-T24UI-gradio-interface
+- **Branch ativa:** dev
 - **Dependências alteradas recentemente:** gradio>=4.0.0 adicionado (T24-UI)
-- **Testes passando:** sim (18/18 testes unitários)
-- **Divergências externas pendentes:** nenhuma
+- **Testes passando:** sim (18/18 testes unitários, CI verde)
+- **Divergências externas pendentes:** PR #18 (dev → main) aguardando merge
 
 ### 9.5 Pendências Conhecidas
 
@@ -527,7 +528,9 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 | Padrão | Frequência | Impacto | Ação Corretiva |
 |--------|------------|---------|----------------|
-| —      | —          | —       | —              |
+| Commit sem task registrada | 1x (T27) | Médio — quebra rastreabilidade | Agente deve recusar modificações até task existir. Criar task retroativa se violação ocorrer |
+| Commit direto em branch protegida (dev) | 1x (T27) | Médio — pula review | Sempre criar branch dedicada, mesmo para fixes urgentes |
+| Modo de operação não declarado | 1x | Baixo — ambiguidade de contexto | Agente deve perguntar modo antes de qualquer ação |
 
 ---
 
