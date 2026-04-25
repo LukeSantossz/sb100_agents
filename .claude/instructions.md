@@ -496,6 +496,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | # | Data | Task | Complexidade | Escopo Alterado | Resultado | Observações |
 |---|------|------|--------------|-----------------|-----------|-------------|
 | 1 | 2026-04-24 | TASK-000 | major | 6 arquivos — .claude/hooks/, enforcement.conf | aprovado | Hooks funcionais, .gitignore ajustado |
+| 2 | 2026-04-24 | TASK-T21 | minor | 4 arquivos — pyproject.toml, ci.yml, README.md, TASK-T21.md | aprovado c/ ressalvas | Ruff, mypy --strict, pytest-cov configurados. CI pode falhar até correção de tipos |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -503,11 +504,11 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-04-24 20:55
+- **Última atualização:** 2026-04-24
 - **Último responsável:** Claude Code (Opus 4.5)
-- **Branch ativa:** chore/TASK-000-enforcement-hooks
-- **Dependências alteradas recentemente:** nenhuma
-- **Testes passando:** não verificado (hooks não afetam testes)
+- **Branch ativa:** chore/TASK-T21-static-analysis-coverage
+- **Dependências alteradas recentemente:** dev deps (ruff, mypy, pytest-cov, types-requests)
+- **Testes passando:** pendente validação CI (mypy --strict pode revelar erros)
 - **Divergências externas pendentes:** nenhuma
 
 ### 9.5 Pendências Conhecidas
@@ -518,7 +519,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 > Decisões tomadas durante implementações que afetam futuras tasks. Inclua justificativa breve.
 
-- [nenhuma registrada]
+- **mypy ignore_missing_imports=true** (T21): Necessário porque ollama, qdrant-client e outras dependências não possuem type stubs. Evita falsos positivos sem comprometer a verificação do código próprio.
 
 ### 9.7 Padrões Recorrentes Observados
 

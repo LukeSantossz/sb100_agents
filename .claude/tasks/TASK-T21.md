@@ -1,5 +1,5 @@
 ### TASK-T21
-- **Status:** pendente
+- **Status:** concluído
 - **Modo:** desenvolvimento
 - **Complexidade:** minor
 - **Data de criação:** 2026-04-24
@@ -44,13 +44,13 @@ Estabelecer o ferramental de qualidade automatizável do projeto: análise está
 | Data | Sessão | Ação Realizada | Status ao Final |
 |------|--------|----------------|-----------------|
 | 2026-04-24 | — | Task criada como parte do ciclo de qualidade pós-auditoria estrutural (T19) | pendente |
-| 2026-04-24 | 1 | Implementadas configurações: [tool.mypy], [tool.pytest.ini_options], [tool.coverage.*], expandido [tool.ruff.lint], adicionado [project.optional-dependencies] dev. CI atualizado para 7 módulos mypy + coverage artifact. Badge cobertura no README. | em avaliação |
+| 2026-04-24 | 1 | Implementadas configurações: [tool.mypy], [tool.pytest.ini_options], [tool.coverage.*], expandido [tool.ruff.lint], adicionado [project.optional-dependencies] dev. CI atualizado para 7 módulos mypy + coverage artifact. Badge cobertura no README. | concluído |
 
 #### Resultado (preenchido ao concluir)
-- **Data de conclusão:** [YYYY-MM-DD]
+- **Data de conclusão:** 2026-04-24
 - **Branch:** chore/TASK-T21-static-analysis-coverage
-- **Commit(s):** [hash ou mensagem]
-- **Avaliação pós-implementação:** [aprovado / aprovado com ressalvas / reprovado]
-- **Observações:** [notas relevantes]
+- **Commit(s):** c530b42 chore(quality): configure ruff, mypy and pytest-cov with coverage threshold
+- **Avaliação pós-implementação:** aprovado com ressalvas
+- **Observações:** mypy --strict e novas regras Ruff podem revelar erros preexistentes no CI. Validação completa requer push e execução do CI.
 
 ---
