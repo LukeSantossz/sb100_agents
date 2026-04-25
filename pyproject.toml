@@ -27,6 +27,14 @@ dependencies = [
     "pytest>=7.0.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "pytest-cov>=5.0.0",
+    "types-requests>=2.31.0",
+]
+
 [tool.setuptools.packages.find]
 include = ["api*", "core*", "database*", "generation*", "memory*", "profiling*", "retrieval*", "verification*"]
 exclude = ["tests*", "eval*", "scripts*", "semantic_entropy*"]
@@ -36,9 +44,84 @@ target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "W"]
-ignore = ["E501"]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "W",      # pycodestyle warnings
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in default argument (required for FastAPI Depends)
+]
 
 [tool.ruff.lint.per-file-ignores]
 "eval/*.py" = ["E402"]
 "scripts/*.py" = ["E402"]
+
+# ============================================================================
+# MyPy Configuration
+# ============================================================================
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+    "api.*",
+    "core.*",
+    "retrieval.*",
+    "generation.*",
+    "memory.*",
+    "profiling.*",
+    "verification.*",
+]
+strict = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+strict = false
+ignore_errors = true
+
+# ============================================================================
+# Pytest Configuration
+# ============================================================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = [
+    "-v",
+    "--cov=api",
+    "--cov=core",
+    "--cov=retrieval",
+    "--cov=generation",
+    "--cov=memory",
+    "--cov=profiling",
+    "--cov=verification",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=25",  # Initial baseline; increase as test coverage improves
+]
+
+# ============================================================================
+# Coverage Configuration
+# ============================================================================
+[tool.coverage.run]
+branch = true
+source = ["api", "core", "retrieval", "generation", "memory", "profiling", "verification"]
+omit = ["tests/*", "eval/*", "scripts/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
