@@ -1,5 +1,5 @@
 ### TASK-T24-UI
-- **Status:** em andamento
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** major
 - **Data de criação:** 2026-04-24
@@ -25,18 +25,18 @@ Escopo expandido em 2026-04-24: inclui refatoração do docker-compose.yml com p
 - **Impacto em funcionalidades existentes:** docker-compose.yml será reestruturado — serviços `frontend`, `nginx`, `ollama-pull` serão removidos
 
 #### Critérios de Aceite (!obrigatório)
-- [ ] Enviar uma pergunta agrícola com perfil configurado e receber resposta
-- [ ] Visualizar o `hallucination_score` na interface
-- [ ] Resetar sessão e iniciar nova conversa
-- [ ] Interface inicializável com `python ui/chat_ui.py` ou via `docker compose --profile app`
-- [ ] `docker-compose.yml` sem referências a arquivos não versionados
-- [ ] Profile `infra` sobe apenas `qdrant` (:6333) + `ollama` (:11434)
-- [ ] Profile `app` sobe `api` (:8000) + `gradio` (:7860)
-- [ ] `docker compose --profile infra up -d` funciona isoladamente
-- [ ] `docker compose --profile infra --profile app up -d` sobe tudo
-- [ ] Serviços removidos: `frontend` (React), `nginx` (sem config versionada), `ollama-pull` (movido para SETUP.md como passo manual)
-- [ ] `pyproject.toml` e `requirements.txt` com `gradio>=4.0` incluído
-- [ ] Commit: `feat(ui): add Gradio chat interface and refactor docker-compose with profiles`
+- [x] Enviar uma pergunta agrícola com perfil configurado e receber resposta
+- [x] Visualizar o `hallucination_score` na interface
+- [x] Resetar sessão e iniciar nova conversa
+- [x] Interface inicializável com `python ui/chat_ui.py` ou via `docker compose --profile app`
+- [x] `docker-compose.yml` sem referências a arquivos não versionados
+- [x] Profile `infra` sobe apenas `qdrant` (:6333) + `ollama` (:11434)
+- [x] Profile `app` sobe `api` (:8000) + `gradio` (:7860)
+- [x] `docker compose --profile infra up -d` funciona isoladamente
+- [x] `docker compose --profile infra --profile app up -d` sobe tudo
+- [x] Serviços removidos: `frontend` (React), `nginx` (sem config versionada), `ollama-pull` (movido para SETUP.md como passo manual)
+- [x] `pyproject.toml` e `requirements.txt` com `gradio>=4.0` incluído
+- [x] Commit: `feat(ui): add Gradio chat interface and refactor docker-compose with profiles`
 
 #### Restrições
 - Depende de: T18 — README atualizado (contratos do ChatResponse documentados); T16 — teste e2e (API estável)
@@ -52,12 +52,13 @@ Escopo expandido em 2026-04-24: inclui refatoração do docker-compose.yml com p
 |------|--------|----------------|-----------------|
 | 2026-04-24 | — | Task criada. Stack Gradio definida. Escopo expandido com refatoração docker-compose | pendente |
 | 2026-04-25 | 1 | Implementação completa: ui/chat_ui.py criado, docker-compose.yml refatorado com profiles infra/app, pyproject.toml e requirements.txt atualizados com gradio>=4.0. Ruff check OK, 18 testes passando. | em andamento |
+| 2026-04-25 | 2 | Commit realizado. Avaliação pós-implementação executada. Todos os critérios atendidos. | concluída |
 
 #### Resultado (preenchido ao concluir)
-- **Data de conclusão:** [YYYY-MM-DD]
+- **Data de conclusão:** 2026-04-25
 - **Branch:** feat/TASK-T24UI-gradio-interface
-- **Commit(s):** [hash ou mensagem]
-- **Avaliação pós-implementação:** [aprovado / aprovado com ressalvas / reprovado]
-- **Observações:** [notas relevantes]
+- **Commit(s):** d4922f6 — `feat(ui): add Gradio chat interface and refactor docker-compose with profiles`
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** 7 arquivos alterados (ui/__init__.py, ui/chat_ui.py, docker-compose.yml, pyproject.toml, requirements.txt, uv.lock, TASK-T24-UI.md). Interface Gradio funcional com httpx para comunicação com API. Docker Compose simplificado com profiles infra/app.
 
 ---
