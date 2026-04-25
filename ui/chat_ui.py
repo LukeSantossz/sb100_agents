@@ -181,7 +181,6 @@ def create_interface(api_url: str) -> gr.Blocks:
 
     with gr.Blocks(
         title="SmartB100 - Assistente Agrícola",
-        theme=gr.themes.Soft(),
     ) as interface:
         gr.Markdown(
             """
@@ -230,7 +229,6 @@ def create_interface(api_url: str) -> gr.Blocks:
                 chatbot = gr.Chatbot(
                     label="Conversa",
                     height=500,
-                    type="messages",
                 )
                 msg_input = gr.Textbox(
                     label="Sua Pergunta",
