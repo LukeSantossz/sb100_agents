@@ -84,64 +84,11 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-000
-- **Status:** concluída
+### TASK-T18 — Atualização README MVP
+- **Status:** em andamento
 - **Modo:** desenvolvimento
-- **Complexidade:** major
-- **Data de criação:** 2026-04-24
-
-#### Objetivo (!obrigatório)
-Implementar a camada de enforcement automatizado (git hooks) definida na Seção 11 do `instructions.md`.
-
-#### Contexto (!obrigatório)
-As regras do `instructions.md` dependem do agente segui-las voluntariamente. Esta task implementa verificações automáticas via git hooks que validam o cumprimento do fluxo independentemente do agente ou do desenvolvedor: formato de commits, nomenclatura de branches, presença de debug logs, correspondência entre branch e task ativa, e atualização do registro. A implementação é stack-agnóstica (bash + git) e se adapta ao projeto via arquivo de configuração. Ver `instructions.md` Seção 11 para a especificação completa.
-
-#### Escopo Técnico (!obrigatório)
-- **Arquivos/módulos envolvidos:**
-  - `.claude/hooks/commit-msg` — validação de formato de commit
-  - `.claude/hooks/pre-commit` — detecção de debug logs e validação de escopo
-  - `.claude/hooks/pre-push` — validação de branch, task ativa e registro
-  - `.claude/hooks/post-merge` — sinalização de verificação pós-pull
-  - `.claude/enforcement.conf` — configuração de patterns por linguagem
-- **Dependências necessárias:** nenhuma (bash, git, grep, sed — disponíveis em qualquer ambiente Unix)
-- **Impacto em funcionalidades existentes:** nenhum — os hooks operam exclusivamente no fluxo git
-
-#### Critérios de Aceite (!obrigatório)
-- [ ] Hook `commit-msg` rejeita commits fora do formato Conventional Commits
-- [ ] Hook `commit-msg` rejeita commits com body, rodapé ou co-autoria
-- [ ] Hook `pre-commit` detecta e alerta sobre debug logs (console.log, print, debugger) em arquivos staged
-- [ ] Hook `pre-commit` valida que arquivos staged estão listados no Escopo Técnico da task ativa (warning, não bloqueio)
-- [ ] Hook `pre-push` valida formato da branch ativa contra `type/TASK-NNN-descricao-curta`
-- [ ] Hook `pre-push` verifica que existe task com status `em andamento` correspondente ao número da branch
-- [ ] Hook `pre-push` verifica que tasks concluídas nos commits têm entrada no Registro de Projeto (Seção 9.3)
-- [ ] Hook `post-merge` emite mensagem orientando verificação pós-pull na próxima sessão
-- [ ] Arquivo `enforcement.conf` permite configurar patterns de debug log por linguagem
-- [ ] Todos os hooks emitem warning (não bloqueio) quando não conseguem determinar violação com certeza
-- [ ] `git config core.hooksPath .claude/hooks` é executado na instalação
-- [ ] Bypass via `--no-verify` funciona sem efeitos colaterais
-
-#### Restrições
-- Nenhuma dependência de runtime (Node, Python, Ruby). Apenas bash, git, grep, sed, awk.
-- Hooks devem funcionar em Linux, macOS e WSL sem adaptação.
-- Hooks não devem adicionar mais de 2 segundos ao tempo de execução de qualquer operação git.
-- Falsos positivos que bloqueiam o trabalho são inaceitáveis. Na dúvida, warning.
-
-#### Referências
-- `instructions.md` Seção 5.2 (Commits), Seção 5.3 (Branches), Seção 9 (Registro), Seção 11 (Enforcement)
-- Conventional Commits spec: https://www.conventionalcommits.org
-
-#### Log de Andamento (atualizado pelo agente)
-
-| Data | Sessão | Ação Realizada | Status ao Final |
-|------|--------|----------------|-----------------|
-| 2026-04-24 | 1 | Reconhecimento da codebase, criação de branch, implementação completa dos 4 hooks + enforcement.conf, testes, commit | concluída |
-
-#### Resultado (preenchido ao concluir)
-- **Data de conclusão:** 2026-04-24
-- **Branch:** chore/TASK-000-enforcement-hooks
-- **Commit(s):** 266aed0 chore(hooks): add git hooks for workflow enforcement
-- **Avaliação pós-implementação:** aprovado
-- **Observações:** Hooks testados e funcionais. .gitignore ajustado para permitir versionamento de .claude/. O hook pre-commit executou automaticamente no commit.
+- **Complexidade:** minor
+- **Detalhes:** `.claude/tasks/TASK-T18.md`
 
 ---
 

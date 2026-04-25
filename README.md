@@ -130,6 +130,8 @@ sb100_agents/
 ├── retrieval/                      # Vector search & embeddings
 │   ├── embedder.py                 # Ollama embedding (768 dims)
 │   └── vector_store.py             # Qdrant context search (top-k=3)
+├── ui/                             # Alternative chat interface
+│   └── chat_ui.py                  # Gradio chat interface
 ├── verification/                   # Hallucination detection
 │   ├── entropy.py                  # Semantic entropy scoring
 │   └── gate.py                     # Retry logic + fallback
@@ -137,6 +139,7 @@ sb100_agents/
 ├── scripts/
 │   └── ingest.py                   # PDF ingestion wrapper
 ├── ARCHITECTURE.md
+├── SETUP.md                        # Detailed setup guide (local/remote Qdrant)
 ├── docker-compose.yml
 ├── package.json
 ├── pyproject.toml
