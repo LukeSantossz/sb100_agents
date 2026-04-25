@@ -44,6 +44,7 @@ Estabelecer o ferramental de qualidade automatizável do projeto: análise está
 | Data | Sessão | Ação Realizada | Status ao Final |
 |------|--------|----------------|-----------------|
 | 2026-04-24 | — | Task criada como parte do ciclo de qualidade pós-auditoria estrutural (T19) | pendente |
+| 2026-04-24 | 1 | Implementadas configurações: [tool.mypy], [tool.pytest.ini_options], [tool.coverage.*], expandido [tool.ruff.lint], adicionado [project.optional-dependencies] dev. CI atualizado para 7 módulos mypy + coverage artifact. Badge cobertura no README. | em avaliação |
 
 #### Resultado (preenchido ao concluir)
 - **Data de conclusão:** [YYYY-MM-DD]
