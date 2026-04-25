@@ -92,6 +92,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T25 — Guia de Setup com Modos Local e Remoto ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** docs/TASK-T25-setup-guide
+- **Commit:** 261a509 docs: add SETUP.md with local and remote Qdrant modes
+- **Detalhes:** `.claude/tasks/TASK-T25.md`
+- **Nota:** Escopo expandido: suporte QDRANT_API_KEY adicionado ao código
+
 ### TASK-T24 — Auditoria Clean Code, SOLID e Design Patterns ✓
 - **Concluída em:** 2026-04-25
 - **Branch:** refactor/TASK-T24-clean-code-audit

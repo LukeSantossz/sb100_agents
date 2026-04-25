@@ -19,6 +19,7 @@ from tqdm import tqdm
 OLLAMA_MODEL = "nomic-embed-text"  # modelo de embeddings via Ollama
 EMBED_DIM = 768  # dimensão do nomic-embed-text
 QDRANT_URL = "http://localhost:6333"
+QDRANT_API_KEY: str | None = None  # para servidores Qdrant autenticados
 COLLECTION_NAME = "archives_v2"
 
 # Thresholds do chunking semântico
@@ -273,7 +274,7 @@ def process_folder(folder_path: str):
     print(f"🔍 {len(pdf_files)} PDFs encontrados em '{folder_path}'")
 
     # Inicializa Qdrant
-    client = QdrantClient(url=QDRANT_URL)
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     init_qdrant(client, EMBED_DIM)
 
     total_chunks = 0
@@ -294,7 +295,7 @@ def process_folder(folder_path: str):
 
 def search(query: str, top_k: int = 5):
     """Busca semântica na collection."""
-    client = QdrantClient(url=QDRANT_URL)
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     query_embedding = get_embedding(query)
 
     results = client.query_points(
@@ -330,6 +331,7 @@ if __name__ == "__main__":
         help="Threshold de similaridade para novo chunk (padrão: 0.75)",
     )
     index_parser.add_argument("--qdrant-url", default=QDRANT_URL, help="URL do Qdrant")
+    index_parser.add_argument("--api-key", default=QDRANT_API_KEY, help="API key do Qdrant (opcional)")
     index_parser.add_argument("--collection", default=COLLECTION_NAME, help="Nome da collection")
 
     # Comando: buscar
@@ -337,6 +339,7 @@ if __name__ == "__main__":
     search_parser.add_argument("query", help="Texto da busca")
     search_parser.add_argument("--top-k", type=int, default=5, help="Número de resultados")
     search_parser.add_argument("--qdrant-url", default=QDRANT_URL)
+    search_parser.add_argument("--api-key", default=QDRANT_API_KEY, help="API key do Qdrant (opcional)")
     search_parser.add_argument("--collection", default=COLLECTION_NAME)
 
     args = parser.parse_args()
@@ -345,11 +348,13 @@ if __name__ == "__main__":
         OLLAMA_MODEL = args.model
         SIMILARITY_THRESHOLD = args.threshold
         QDRANT_URL = args.qdrant_url
+        QDRANT_API_KEY = args.api_key
         COLLECTION_NAME = args.collection
         process_folder(args.folder)
 
     elif args.command == "search":
         QDRANT_URL = args.qdrant_url
+        QDRANT_API_KEY = args.api_key
         COLLECTION_NAME = args.collection
         search(args.query, top_k=args.top_k)
 
