@@ -7,6 +7,30 @@ on:
     branches: [main]
 
 jobs:
+  validate-requirements:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Validate requirements.txt sync with uv.lock
+        run: |
+          uv export --frozen --no-dev -o requirements.txt
+          if ! git diff --quiet requirements.txt; then
+            echo "ERROR: requirements.txt is out of sync with uv.lock"
+            echo "Run 'uv export --frozen --no-dev -o requirements.txt' and commit the changes"
+            git diff requirements.txt
+            exit 1
+          fi
+          echo "requirements.txt is in sync with uv.lock"
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -63,11 +87,17 @@ jobs:
           pip install -e .
           pip install pytest pytest-cov httpx
 
-      - name: Run unit tests
+      - name: Run unit tests with coverage
         run: |
-          pytest tests/ -v \
-            --ignore=tests/test_integration.py
+          pytest tests/ --ignore=tests/test_integration.py
         env:
           QDRANT_URL: "http://localhost:6333"
           CHAT_MODEL: "llama3.2:3b"
           EMBED_MODEL: "nomic-embed-text"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          if-no-files-found: warn

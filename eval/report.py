@@ -17,14 +17,14 @@ import csv
 import json
 import random
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from statistics import mean, median
 
 
 def load_judged_results(input_path: str) -> dict:
     """Carrega dataset com resultados julgados."""
-    with open(input_path, "r", encoding="utf-8") as f:
+    with open(input_path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -94,7 +94,7 @@ def generate_verdict_stats(judgments: list[dict]) -> dict:
         by_model[model]["total"] += 1
 
     # Calcula percentuais
-    for model, stats in by_model.items():
+    for _model, stats in by_model.items():
         total = stats["total"]
         if total > 0:
             stats["better_pct"] = round(100 * stats["better"] / total, 1)
@@ -115,7 +115,7 @@ def generate_report_markdown(
 
     report = f"""# Relatorio de Avaliacao - SB100
 
-**Gerado em:** {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}
+**Gerado em:** {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")}
 
 ## Resumo
 

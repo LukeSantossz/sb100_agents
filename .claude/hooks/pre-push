@@ -1,0 +1,175 @@
+#!/bin/bash
+# pre-push hook — Validates branch format, task status, and registry
+# Reference: .claude/instructions.md Section 5.3, Section 9, Section 11.1
+
+# Colors for output
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+TASKS_FILE="$REPO_ROOT/.claude/tasks.md"
+INSTRUCTIONS_FILE="$REPO_ROOT/.claude/instructions.md"
+
+HAS_WARNINGS=0
+HAS_ERRORS=0
+
+# Valid branch types (same as commit types)
+VALID_TYPES="feat|fix|docs|style|refactor|perf|test|chore|build|ci|revert"
+
+# Get current branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+# Skip validation for main/master/dev branches
+if [[ "$CURRENT_BRANCH" =~ ^(main|master|dev|develop)$ ]]; then
+    echo -e "${GREEN}Pushing to $CURRENT_BRANCH - skipping task validation.${NC}"
+    exit 0
+fi
+
+# ============================================================
+# PART 1: Branch Format Validation
+# ============================================================
+
+echo "Validating branch format..."
+
+# Expected format: type/TASK-NNN-description
+if ! echo "$CURRENT_BRANCH" | grep -qE "^($VALID_TYPES)/TASK-[0-9]+-[a-z0-9-]+$"; then
+    echo -e "${YELLOW}WARNING: Branch name does not follow convention.${NC}"
+    echo ""
+    echo "Expected format: type/TASK-NNN-short-description"
+    echo "  - type: $VALID_TYPES"
+    echo "  - TASK-NNN: task number from tasks.md"
+    echo "  - short-description: 2-4 words, lowercase, hyphen-separated"
+    echo ""
+    echo "Your branch: $CURRENT_BRANCH"
+    echo ""
+    echo "Examples:"
+    echo "  feat/TASK-001-login-google"
+    echo "  fix/TASK-012-upload-error"
+    echo "  refactor/TASK-023-migrate-hive"
+    echo ""
+    echo "Reference: .claude/instructions.md Section 5.3"
+    HAS_WARNINGS=1
+fi
+
+# ============================================================
+# PART 2: Task Status Validation
+# ============================================================
+
+echo ""
+echo "Validating task status..."
+
+# Extract TASK number from branch
+TASK_NUM=$(echo "$CURRENT_BRANCH" | grep -oE "TASK-[0-9]+" | head -1)
+
+if [ -z "$TASK_NUM" ]; then
+    echo -e "${YELLOW}WARNING: Could not extract task number from branch name.${NC}"
+    HAS_WARNINGS=1
+else
+    if [ ! -f "$TASKS_FILE" ]; then
+        echo -e "${YELLOW}WARNING: tasks.md not found. Cannot validate task status.${NC}"
+        HAS_WARNINGS=1
+    else
+        # Check if task exists and is "em andamento"
+        # Look for the task header and get the next 10 lines
+        TASK_SECTION=$(grep -A10 "^### $TASK_NUM$" "$TASKS_FILE" 2>/dev/null)
+
+        if [ -z "$TASK_SECTION" ]; then
+            echo -e "${YELLOW}WARNING: $TASK_NUM not found in tasks.md.${NC}"
+            HAS_WARNINGS=1
+        else
+            # Extract status: "- **Status:** em andamento" -> "em andamento"
+            TASK_STATUS=$(echo "$TASK_SECTION" | grep "Status:" | head -1 | sed 's/.*Status:\*\*\s*//' | sed 's/^\s*//' | tr -d '*')
+
+            if [[ ! "$TASK_STATUS" =~ "em andamento" ]]; then
+                echo -e "${YELLOW}WARNING: $TASK_NUM is not 'em andamento'.${NC}"
+                echo "Current status: $TASK_STATUS"
+                echo "Update the task status before pushing."
+                HAS_WARNINGS=1
+            else
+                echo -e "${GREEN}$TASK_NUM is active (em andamento).${NC}"
+            fi
+        fi
+    fi
+fi
+
+# ============================================================
+# PART 3: Registry Validation for Completed Tasks
+# ============================================================
+
+echo ""
+echo "Validating registry for completed tasks..."
+
+# Read stdin for commits being pushed (format: local_ref local_sha remote_ref remote_sha)
+while read -r local_ref local_sha remote_ref remote_sha; do
+    # Skip if deleting a ref
+    if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+        continue
+    fi
+
+    # If remote_sha is empty, it's a new branch - check all commits
+    if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+        remote_sha=$(git merge-base main "$local_sha" 2>/dev/null || git merge-base master "$local_sha" 2>/dev/null || echo "")
+        if [ -z "$remote_sha" ]; then
+            echo -e "${YELLOW}WARNING: Could not determine base commit. Skipping registry check.${NC}"
+            HAS_WARNINGS=1
+            continue
+        fi
+    fi
+
+    # Get commit messages for commits being pushed
+    COMMITS=$(git log --oneline "$remote_sha..$local_sha" 2>/dev/null || true)
+
+    if [ -z "$COMMITS" ]; then
+        continue
+    fi
+
+    # Look for task references in commit messages that indicate completion
+    # Commits with "concluída" or referencing completed tasks should have registry entries
+    COMPLETED_TASKS=$(echo "$COMMITS" | grep -oE "TASK-[0-9]+" | sort -u || true)
+
+    if [ -z "$COMPLETED_TASKS" ]; then
+        continue
+    fi
+
+    # Check if instructions.md has a registry section with the task
+    if [ ! -f "$INSTRUCTIONS_FILE" ]; then
+        echo -e "${YELLOW}WARNING: instructions.md not found. Cannot validate registry.${NC}"
+        HAS_WARNINGS=1
+        continue
+    fi
+
+    # For each task mentioned in commits, check if it's marked as completed in tasks.md
+    # If completed, verify it has an entry in the registry
+    for task in $COMPLETED_TASKS; do
+        TASK_SECTION=$(awk "/^### $task$/,/^### TASK-/" "$TASKS_FILE" 2>/dev/null | head -10)
+        TASK_STATUS=$(echo "$TASK_SECTION" | grep -oE "Status:.*" | head -1 | sed 's/.*Status:\s*//' | tr -d '*' || true)
+
+        if [[ "$TASK_STATUS" =~ "concluída" ]]; then
+            # Check if task is in the registry (Section 9.3)
+            if ! grep -q "$task" "$INSTRUCTIONS_FILE" 2>/dev/null; then
+                echo -e "${YELLOW}WARNING: $task is marked as completed but not found in Registry (Section 9.3).${NC}"
+                echo "Update the registry before pushing."
+                HAS_WARNINGS=1
+            fi
+        fi
+    done
+done
+
+# ============================================================
+# SUMMARY
+# ============================================================
+
+echo ""
+if [ $HAS_ERRORS -eq 1 ]; then
+    echo -e "${RED}Pre-push validation failed. Fix errors before pushing.${NC}"
+    exit 1
+elif [ $HAS_WARNINGS -eq 1 ]; then
+    echo -e "${YELLOW}Pre-push completed with warnings.${NC}"
+    echo "Review the warnings above. The push will proceed."
+else
+    echo -e "${GREEN}Pre-push validation passed.${NC}"
+fi
+
+exit 0

@@ -12,7 +12,7 @@ FALLBACK_MESSAGE = "Não sei informar com segurança sobre este tópico."
 def evaluate(
     question: str,
     context: str,
-    history: list[dict],
+    history: list[dict[str, str]],
     profile: UserProfile,
 ) -> ChatResponse:
     """Avalia e regenera resposta se score de entropia exceder threshold.

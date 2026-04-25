@@ -1,10 +1,11 @@
 """Schemas Pydantic do contrato público da API (request/response compartilhados)."""
 
-from enum import Enum
+from enum import StrEnum
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class ExpertiseLevel(str, Enum):
+class ExpertiseLevel(StrEnum):
     """Nível de familiaridade do usuário com o domínio agrícola.
     Valores: ``beginner`` (iniciante), ``intermediate`` (intermediário), ``expert`` (avançado).
     """
