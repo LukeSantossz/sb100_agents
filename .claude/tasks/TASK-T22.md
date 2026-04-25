@@ -1,5 +1,5 @@
 ### TASK-T22
-- **Status:** em andamento
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** major
 - **Data de criação:** 2026-04-24
@@ -24,7 +24,7 @@ Garantir que qualquer desenvolvedor consiga entender o propósito e o comportame
 - [x] Zero docstrings genéricas (ex: "Retorna o valor") — todas devem ter conteúdo informativo
 - [x] Módulos cobertos: `api`, `core`, `retrieval`, `generation`, `memory`, `profiling`, `verification`
 - [x] Nenhuma função pública sem docstring
-- [ ] Commit: `docs(modules): add docstrings and inline comments across all modules`
+- [x] Commit: `docs(modules): add docstrings and inline comments across all modules`
 
 #### Restrições
 - Depende de: T19 — estrutura correta; T21 — mypy configurado (docstrings afetam inferência de tipo)
@@ -46,10 +46,10 @@ Garantir que qualquer desenvolvedor consiga entender o propósito e o comportame
 | 2026-04-24 | 1 | Docstrings Google Style adicionadas em 13 arquivos: core (2), retrieval (3), generation (1), verification (1), api (6). Ruff e testes OK. | em andamento |
 
 #### Resultado (preenchido ao concluir)
-- **Data de conclusão:** [YYYY-MM-DD]
+- **Data de conclusão:** 2026-04-24
 - **Branch:** docs/TASK-T22-docstrings
-- **Commit(s):** [hash ou mensagem]
-- **Avaliação pós-implementação:** [aprovado / aprovado com ressalvas / reprovado]
-- **Observações:** [notas relevantes]
+- **Commit(s):** 1ee802c — `docs(modules): add docstrings and inline comments across all modules`
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** 13 arquivos documentados (core: 2, retrieval: 3, generation: 1, verification: 1, api: 6). Módulos memory e profiling já estavam documentados. Ruff check e testes passando.
 
 ---
