@@ -93,7 +93,8 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 ### TASK-T28 — Sincronização README com estado real da codebase ✓
 - **Concluída em:** 2026-04-25
 - **Branch:** docs/TASK-T28-readme-sync
-- **Commit:** (pendente)
+- **Commit:** 870152e
+- **PR:** [#27](https://github.com/LukeSantossz/sb100_agents/pull/27)
 - **Avaliação:** aprovado
 - **Nota:** Removidas referências ao frontend React inexistente; substituído por Gradio UI; removida seção npm Scripts; ajustados Prerequisites, Installation, Running, Project Structure e Service URLs
 
