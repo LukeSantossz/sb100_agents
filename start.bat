@@ -13,8 +13,8 @@ if not defined OLLAMA_EXE (
     exit /b 1
 )
 
-echo [1/5] Verificando Qdrant...
-docker-compose up -d
+echo [1/4] Verificando Qdrant...
+docker compose --profile infra up -d
 if %ERRORLEVEL% EQU 0 (
     echo Qdrant: OK
 ) else (
@@ -22,41 +22,34 @@ if %ERRORLEVEL% EQU 0 (
 )
 
 echo.
-echo [2/5] Verificando modelos Ollama...
+echo [2/4] Verificando modelos Ollama...
 "%OLLAMA_EXE%" list | findstr "nomic-embed-text" >nul
 if %ERRORLEVEL% NEQ 0 (
     echo Baixando modelo de embeddings...
     "%OLLAMA_EXE%" pull nomic-embed-text
 )
 
-"%OLLAMA_EXE%" list | findstr "llama3.1:8b" >nul
+"%OLLAMA_EXE%" list | findstr "llama3.2:3b" >nul
 if %ERRORLEVEL% NEQ 0 (
     echo Baixando modelo de chat...
-    "%OLLAMA_EXE%" pull llama3.1:8b
+    "%OLLAMA_EXE%" pull llama3.2:3b
 )
 echo Ollama: OK
 
 echo.
-echo [3/5] Verificando dependencias do frontend...
-if not exist "frontend\smartb100\node_modules" (
-    echo Instalando dependencias do frontend...
-    cd frontend\smartb100 && npm install && cd ..\..
-)
-echo Frontend deps: OK
-
-echo.
-echo [4/5] Verificando concurrently...
-if not exist "node_modules" (
-    echo Instalando dependencias raiz...
-    npm install
-)
-echo Concurrently: OK
-
-echo.
-echo [5/5] Iniciando servicos...
+echo [3/4] Iniciando API...
 echo.
 echo API: http://localhost:8000
-echo Frontend: http://localhost:5173
+echo Gradio UI: http://localhost:7860
 echo Qdrant: http://localhost:6333
 echo.
-npm run start
+
+echo [4/4] Iniciando servicos...
+start "SmartB100 API" cmd /k ".venv\Scripts\python.exe -m uvicorn api.main:app --reload"
+timeout /t 3 /nobreak >nul
+start "SmartB100 Gradio" cmd /k ".venv\Scripts\python.exe ui/chat_ui.py"
+
+echo.
+echo Servicos iniciados em janelas separadas.
+echo Pressione qualquer tecla para fechar esta janela...
+pause >nul
