@@ -1,6 +1,6 @@
 # TASK-T33 — Refatorar Caminho do Banco de Dados para Usar Pathlib
 
-- **Status:** pendente
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** minor
 - **Data de criação:** 2026-04-25
@@ -32,10 +32,10 @@ Isso navega 3 níveis acima de `database/db.py` para encontrar a raiz. Se a estr
 
 ## Critérios de Aceite
 
-- [ ] `database/db.py` usa `pathlib.Path` em vez de `os.path`
-- [ ] Caminho calculado como `Path(__file__).resolve().parents[2] / "smartb100_v2.db"`
-- [ ] Testes existentes continuam passando
-- [ ] Banco de dados criado no mesmo local de antes
+- [x] `database/db.py` usa `pathlib.Path` em vez de `os.path`
+- [x] Caminho calculado como `Path(__file__).resolve().parents[2] / "smartb100_v2.db"`
+- [x] Testes existentes continuam passando (18/18)
+- [x] Banco de dados criado no mesmo local de antes
 
 ## Restrições
 
@@ -51,12 +51,12 @@ Isso navega 3 níveis acima de `database/db.py` para encontrar a raiz. Se a estr
 
 | Data | Sessão | Ação Realizada | Status ao Final |
 |------|--------|----------------|-----------------|
-| —    | —      | —              | —               |
+| 2026-04-25 | 1 | Reconhecimento, implementação pathlib, testes 18/18, lint OK | concluída |
 
 ## Resultado
 
-- **Data de conclusão:** —
-- **Branch:** —
-- **Commit(s):** —
-- **Avaliação pós-implementação:** —
-- **Observações:** —
+- **Data de conclusão:** 2026-04-25
+- **Branch:** refactor/TASK-T33-pathlib-db-path
+- **Commit(s):** e839a86
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** Substituição direta os.path -> pathlib.Path. Import `os` removido (era uso único). API pública inalterada.
