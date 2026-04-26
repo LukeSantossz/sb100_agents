@@ -1,6 +1,6 @@
 # TASK-T36 — Remover Módulo Duplicado semantic_entropy
 
-- **Status:** pendente
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** minor
 - **Data de criação:** 2026-04-25
@@ -31,10 +31,10 @@ A presença de código morto causa confusão sobre qual módulo usar e aumenta a
 
 ## Critérios de Aceite
 
-- [ ] Diretório `semantic_entropy/` removido do repositório
-- [ ] Nenhum import quebrado (verificar com `ruff check .`)
-- [ ] Comentário sobre consolidação removido do `.gitignore`
-- [ ] Testes continuam passando
+- [x] Diretório `semantic_entropy/` removido do repositório
+- [x] Nenhum import quebrado (verificar com `ruff check .`)
+- [x] Comentário sobre consolidação removido do `.gitignore`
+- [x] Testes continuam passando
 
 ## Restrições
 
@@ -51,12 +51,12 @@ A presença de código morto causa confusão sobre qual módulo usar e aumenta a
 
 | Data | Sessão | Ação Realizada | Status ao Final |
 |------|--------|----------------|-----------------|
-| —    | —      | —              | —               |
+| 2026-04-25 | 1 | Verificação de imports (0 refs), remoção do diretório, limpeza .gitignore e pyproject.toml | concluída |
 
 ## Resultado
 
-- **Data de conclusão:** —
-- **Branch:** —
-- **Commit(s):** —
-- **Avaliação pós-implementação:** —
-- **Observações:** —
+- **Data de conclusão:** 2026-04-25
+- **Branch:** chore/TASK-T36-remove-semantic-entropy
+- **Commit(s):** fe5270c
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** 5 arquivos removidos. Exclusão de pyproject.toml também limpa. Nenhuma funcionalidade única encontrada no módulo duplicado.
