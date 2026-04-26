@@ -1,6 +1,6 @@
 # TASK-T31 — Corrigir auth.py para Usar settings.jwt_secret_key
 
-- **Status:** pendente
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** minor
 - **Data de criação:** 2026-04-25
@@ -51,12 +51,13 @@ O problema é que `os.environ.get()` só lê variáveis de ambiente do **sistema
 
 | Data | Sessão | Ação Realizada | Status ao Final |
 |------|--------|----------------|-----------------|
-| —    | —      | —              | —               |
+| 2026-04-25 | 1 | Substituído os.environ.get() por settings.jwt_secret_key com validação | concluída |
 
 ## Resultado
 
-- **Data de conclusão:** —
-- **Branch:** —
-- **Commit(s):** —
-- **Avaliação pós-implementação:** —
-- **Observações:** —
+- **Data de conclusão:** 2026-04-25
+- **Branch:** fix/TASK-T31-jwt-secret-settings
+- **Commit(s):** 2e1aafa
+- **PR:** [#31](https://github.com/LukeSantossz/sb100_agents/pull/31)
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** Substituído os.environ.get() por settings.jwt_secret_key com validação de erro claro

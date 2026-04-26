@@ -1,6 +1,6 @@
 # TASK-T29 — Alinhar CHAT_MODEL em Todos os Arquivos
 
-- **Status:** pendente
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** patch
 - **Data de criação:** 2026-04-25
@@ -57,7 +57,8 @@ Se o usuário copiar `.env.example` → `.env`, o sistema esperará `llama3.1:8b
 ## Resultado
 
 - **Data de conclusão:** 2026-04-25
-- **Branch:** main (pendente de commit)
-- **Commit(s):** pendente
+- **Branch:** fix/TASK-T29-align-chat-model
+- **Commit(s):** bef939a
+- **PR:** [#29](https://github.com/LukeSantossz/sb100_agents/pull/29)
 - **Avaliação pós-implementação:** aprovado
 - **Observações:** Alinhamento para llama3.2:3b como default em todos os arquivos
