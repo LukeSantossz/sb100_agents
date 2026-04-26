@@ -110,6 +110,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T33 — Refatorar Caminho do Banco de Dados para Usar Pathlib ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** refactor/TASK-T33-pathlib-db-path
+- **Commit:** e839a86
+- **Avaliação:** aprovado
+- **Nota:** os.path substituído por pathlib.Path em database/db.py. API pública inalterada.
+
 ### TASK-T32 — Remover Ollama do Docker e Documentar Uso Local Exclusivo ✓
 - **Concluída em:** 2026-04-25
 - **Branch:** chore/TASK-T32-remove-ollama-docker
