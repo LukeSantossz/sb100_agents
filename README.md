@@ -3,7 +3,7 @@
 ![Gradio](https://img.shields.io/badge/Gradio-5%2B-orange?logo=gradio&logoColor=white)
 ![Status](https://img.shields.io/badge/status-MVP%20complete-brightgreen)
 ![CI](https://github.com/LukeSantossz/sb100_agents/actions/workflows/ci.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-25%25-yellow)
 
 # SmartB100 — Agriculture RAG Agent
 
@@ -272,3 +272,4 @@ curl "http://localhost:8000/health"
 - **Evaluation dataset**: Requires PDF documents in `./archives/` to generate the 300-question dataset
 - **Ollama dependency**: LLM and embedding models must be pulled before first run
 - **Windows paths**: Some scripts assume Windows path separators; cross-platform support is manual
+- **Test coverage**: Current baseline is 25%; target is to increase incrementally with each new feature
