@@ -84,11 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T32 — Remover Ollama do Docker e Documentar Uso Local Exclusivo
-- **Status:** pendente
-- **Complexidade:** minor
-- **Detalhes:** `.claude/tasks/TASK-T32.md`
-
 ### TASK-T33 — Refatorar Caminho do Banco de Dados para Usar Pathlib
 - **Status:** pendente
 - **Complexidade:** minor
@@ -115,6 +110,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T32 — Remover Ollama do Docker e Documentar Uso Local Exclusivo ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** chore/TASK-T32-remove-ollama-docker
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** Servico Ollama removido do docker-compose. OLLAMA_HOST usa host.docker.internal. SETUP.md alinhado com T29/T30.
+
 ### TASK-T31 — Corrigir auth.py para Usar settings.jwt_secret_key ✓
 - **Concluída em:** 2026-04-25
 - **Branch:** fix/TASK-T31-jwt-secret-settings
@@ -125,7 +127,8 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 ### TASK-T30 — Alinhar COLLECTION_NAME entre config.py e .env.example ✓
 - **Concluída em:** 2026-04-25
 - **Branch:** fix/TASK-T30-align-collection-name
-- **Commit:** pendente
+- **Commit:** d303653
+- **PR:** [#30](https://github.com/LukeSantossz/sb100_agents/pull/30)
 - **Avaliação:** aprovado
 - **Nota:** .env.example alinhado para archives_v2
 

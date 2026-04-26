@@ -1,6 +1,6 @@
 # TASK-T32 — Remover Ollama do Docker e Documentar Uso Local Exclusivo
 
-- **Status:** pendente
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** minor
 - **Data de criação:** 2026-04-25
@@ -54,12 +54,12 @@ A presença do Ollama no docker-compose causa confusão e potencial conflito de 
 
 | Data | Sessão | Ação Realizada | Status ao Final |
 |------|--------|----------------|-----------------|
-| —    | —      | —              | —               |
+| 2026-04-25 | 1 | Removido servico Ollama do docker-compose, atualizado README e SETUP | concluída |
 
 ## Resultado
 
-- **Data de conclusão:** —
-- **Branch:** —
-- **Commit(s):** —
-- **Avaliação pós-implementação:** —
-- **Observações:** —
+- **Data de conclusão:** 2026-04-25
+- **Branch:** chore/TASK-T32-remove-ollama-docker
+- **Commit(s):** pendente (aguardando commit)
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** OLLAMA_HOST atualizado para host.docker.internal. SETUP.md corrigido para alinhar com T29/T30.
