@@ -113,7 +113,7 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 ### TASK-T32 — Remover Ollama do Docker e Documentar Uso Local Exclusivo ✓
 - **Concluída em:** 2026-04-25
 - **Branch:** chore/TASK-T32-remove-ollama-docker
-- **Commit:** pendente
+- **Commit:** bfb476d
 - **Avaliação:** aprovado
 - **Nota:** Servico Ollama removido do docker-compose. OLLAMA_HOST usa host.docker.internal. SETUP.md alinhado com T29/T30.
 

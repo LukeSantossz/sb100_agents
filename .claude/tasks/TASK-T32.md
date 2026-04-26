@@ -60,6 +60,6 @@ A presença do Ollama no docker-compose causa confusão e potencial conflito de 
 
 - **Data de conclusão:** 2026-04-25
 - **Branch:** chore/TASK-T32-remove-ollama-docker
-- **Commit(s):** pendente (aguardando commit)
+- **Commit(s):** bfb476d
 - **Avaliação pós-implementação:** aprovado
 - **Observações:** OLLAMA_HOST atualizado para host.docker.internal. SETUP.md corrigido para alinhar com T29/T30.
