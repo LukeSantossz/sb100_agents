@@ -513,6 +513,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 16 | 2026-04-25 | TASK-T33 | minor | 1 arquivo — database/db.py | aprovado | os.path substituído por pathlib.Path |
 | 17 | 2026-04-25 | TASK-T32 | minor | 3 arquivos — docker-compose.yml, README.md, SETUP.md | aprovado | Ollama removido do Docker, uso local exclusivo documentado |
 | 18 | 2026-04-25 | TASK-T34 | patch | 1 arquivo — api/routes/auth.py | aprovado | datetime.utcnow() substituído por datetime.now(UTC) |
+| 19 | 2026-04-25 | TASK-T35 | patch | 1 arquivo — README.md | aprovado | Badge coverage corrigido de 80% para 25% |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -522,11 +523,11 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 - **Última atualização:** 2026-04-25
 - **Último responsável:** Claude Code (Opus 4)
-- **Branch ativa:** main (TASK-T34 aguardando branch fix/TASK-T34-datetime-utcnow)
+- **Branch ativa:** main
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18/18 testes unitários)
 - **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T34 — datetime.utcnow() substituído por datetime.now(UTC) em auth.py
+- **Última task concluída:** TASK-T35 — Badge de coverage corrigido para 25%
 
 ### 9.5 Pendências Conhecidas
 
