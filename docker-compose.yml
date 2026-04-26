@@ -1,7 +1,8 @@
 services:
   # ============================================================================
-  # Profile: infra - Serviços de infraestrutura (Qdrant + Ollama)
+  # Profile: infra - Serviços de infraestrutura (Qdrant)
   # Uso: docker compose --profile infra up -d
+  # Nota: Ollama roda localmente (não via Docker). Veja README.md / SETUP.md.
   # ============================================================================
 
   qdrant:
@@ -13,18 +14,6 @@ services:
       - "6334:6334"
     volumes:
       - ./qdrant_storage:/qdrant/storage
-    restart: unless-stopped
-    networks:
-      - smartb100_net
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: smartb100_ollama
-    profiles: ["infra"]
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
     restart: unless-stopped
     networks:
       - smartb100_net
@@ -46,13 +35,12 @@ services:
       - QDRANT_URL=http://qdrant:6333
       - CHAT_MODEL=llama3.2:3b
       - EMBED_MODEL=nomic-embed-text
-      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=http://host.docker.internal:11434
     volumes:
       - ./smartb100_v2.db:/app/smartb100_v2.db
     restart: unless-stopped
     depends_on:
       - qdrant
-      - ollama
     networks:
       - smartb100_net
 
@@ -76,6 +64,3 @@ services:
 networks:
   smartb100_net:
     driver: bridge
-
-volumes:
-  ollama_data:

@@ -1,6 +1,6 @@
 # TASK-T30 — Alinhar COLLECTION_NAME entre config.py e .env.example
 
-- **Status:** pendente
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** patch
 - **Data de criação:** 2026-04-25
@@ -51,6 +51,7 @@ Se o usuário indexar PDFs sem `.env`, a coleção será `archives_v2`. Se depoi
 
 - **Data de conclusão:** 2026-04-25
 - **Branch:** fix/TASK-T30-align-collection-name
-- **Commit(s):** pendente
+- **Commit(s):** d303653
+- **PR:** [#30](https://github.com/LukeSantossz/sb100_agents/pull/30)
 - **Avaliação pós-implementação:** aprovado
 - **Observações:** Alinhamento com default de core/config.py

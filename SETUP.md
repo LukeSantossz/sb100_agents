@@ -33,19 +33,19 @@ O sistema suporta dois modos de operação do Qdrant:
 
 ---
 
-## 2. Modelos Ollama
+## 2. Modelos Ollama (local)
 
-Execute os comandos abaixo para baixar os modelos necessários:
+Ollama deve ser instalado e executado **localmente** (não via Docker). Execute os comandos abaixo para baixar os modelos necessários:
 
 ```bash
 # Modelo de chat (geração de respostas)
-ollama pull llama3.1:8b
+ollama pull llama3.2:3b
 
 # Modelo de embeddings (vetorização)
 ollama pull nomic-embed-text
 ```
 
-> **Nota**: O modelo `llama3.1:8b` requer ~5GB de VRAM. Para máquinas com menos recursos, use `llama3.2:3b` (ajuste no `.env`).
+> **Nota**: O modelo default é `llama3.2:3b` (mais leve). Para máquinas com mais recursos, use `llama3.1:8b` (ajuste `CHAT_MODEL` no `.env`).
 
 ---
 
@@ -79,10 +79,10 @@ Edite o `.env` com as seguintes variáveis:
 ```env
 # === Modo Local (Qdrant via Docker) ===
 QDRANT_URL=http://localhost:6333
-COLLECTION_NAME=sb100_knowledge
+COLLECTION_NAME=archives_v2
 
-# Modelos Ollama
-CHAT_MODEL=llama3.1:8b
+# Modelos Ollama (roda localmente, não via Docker)
+CHAT_MODEL=llama3.2:3b
 EMBED_MODEL=nomic-embed-text
 
 # Configurações de busca
@@ -106,10 +106,10 @@ Para usar o servidor Qdrant remoto compartilhado:
 # === Modo Remoto (Qdrant via ZeroTier) ===
 QDRANT_URL=http://<REMOTE_HOST_ZEROTIER>:6333
 QDRANT_API_KEY=<SOLICITAR_AO_TECH_LEAD>
-COLLECTION_NAME=sb100_knowledge
+COLLECTION_NAME=archives_v2
 
-# Modelos Ollama (local)
-CHAT_MODEL=llama3.1:8b
+# Modelos Ollama (roda localmente, não via Docker)
+CHAT_MODEL=llama3.2:3b
 EMBED_MODEL=nomic-embed-text
 
 # Configurações de busca
@@ -130,12 +130,15 @@ JWT_SECRET_KEY=super-secret-key-replace-in-production
 ### 5.1 Modo Local
 
 ```bash
-# Iniciar Qdrant via Docker Compose
+# Iniciar Qdrant via Docker Compose (apenas Qdrant — Ollama roda localmente)
 docker compose --profile infra up -d
 
 # Verificar se Qdrant está rodando
 curl http://localhost:6333/health
 # Resposta esperada: {"title":"qdrant - vector search engine","version":"..."}
+
+# Verificar se Ollama está rodando localmente
+ollama list
 ```
 
 ### 5.2 Modo Remoto
@@ -304,12 +307,12 @@ docker compose --profile infra up -d
 ### Modelo não encontrado
 
 ```
-ollama._exceptions.ResponseError: model 'llama3.1:8b' not found
+ollama._exceptions.ResponseError: model 'llama3.2:3b' not found
 ```
 
 **Solução**: Baixe o modelo:
 ```bash
-ollama pull llama3.1:8b
+ollama pull llama3.2:3b
 ```
 
 ### ZeroTier não conecta
@@ -338,7 +341,7 @@ zerotier-cli join <NETWORK_ID>
 
 ```bash
 # 1. Modelos
-ollama pull llama3.1:8b && ollama pull nomic-embed-text
+ollama pull llama3.2:3b && ollama pull nomic-embed-text
 
 # 2. Dependências
 uv sync
@@ -360,7 +363,7 @@ uvicorn api.main:app --reload
 
 ```bash
 # 1. Modelos
-ollama pull llama3.1:8b && ollama pull nomic-embed-text
+ollama pull llama3.2:3b && ollama pull nomic-embed-text
 
 # 2. Dependências
 uv sync
