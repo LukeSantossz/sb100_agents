@@ -84,11 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T33 — Refatorar Caminho do Banco de Dados para Usar Pathlib
-- **Status:** pendente
-- **Complexidade:** minor
-- **Detalhes:** `.claude/tasks/TASK-T33.md`
-
 ### TASK-T35 — Corrigir Badge de Coverage no README
 - **Status:** pendente
 - **Complexidade:** patch
@@ -108,7 +103,7 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 ### TASK-T34 — Substituir datetime.utcnow() por datetime.now(UTC) ✓
 - **Concluída em:** 2026-04-25
 - **Branch:** fix/TASK-T34-datetime-utcnow
-- **Commit:** 082d5f4
+- **Commit:** c3313d9
 - **Avaliação:** aprovado
 - **Nota:** 2 ocorrências em auth.py substituídas. Import UTC adicionado. PyJWT compatível.
 
