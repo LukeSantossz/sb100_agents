@@ -89,11 +89,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 - **Complexidade:** minor
 - **Detalhes:** `.claude/tasks/TASK-T33.md`
 
-### TASK-T34 — Substituir datetime.utcnow() por datetime.now(UTC)
-- **Status:** pendente
-- **Complexidade:** patch
-- **Detalhes:** `.claude/tasks/TASK-T34.md`
-
 ### TASK-T35 — Corrigir Badge de Coverage no README
 - **Status:** pendente
 - **Complexidade:** patch
@@ -109,6 +104,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T34 — Substituir datetime.utcnow() por datetime.now(UTC) ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** fix/TASK-T34-datetime-utcnow
+- **Commit:** 082d5f4
+- **Avaliação:** aprovado
+- **Nota:** 2 ocorrências em auth.py substituídas. Import UTC adicionado. PyJWT compatível.
 
 ### TASK-T33 — Refatorar Caminho do Banco de Dados para Usar Pathlib ✓
 - **Concluída em:** 2026-04-25

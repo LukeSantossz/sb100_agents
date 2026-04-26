@@ -1,6 +1,6 @@
 # TASK-T34 — Substituir datetime.utcnow() por datetime.now(UTC)
 
-- **Status:** pendente
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** patch
 - **Data de criação:** 2026-04-25
@@ -29,10 +29,10 @@ expire = datetime.utcnow() + expires_delta
 
 ## Critérios de Aceite
 
-- [ ] `auth.py` usa `datetime.now(datetime.UTC)` em vez de `datetime.utcnow()`
-- [ ] Import de `datetime.UTC` (ou `from datetime import UTC`)
-- [ ] Nenhum DeprecationWarning ao rodar com Python 3.12+
-- [ ] Testes de autenticação continuam passando
+- [x] `auth.py` usa `datetime.now(datetime.UTC)` em vez de `datetime.utcnow()`
+- [x] Import de `datetime.UTC` (ou `from datetime import UTC`)
+- [x] Nenhum DeprecationWarning ao rodar com Python 3.12+
+- [x] Testes de autenticação continuam passando
 
 ## Restrições
 
@@ -53,8 +53,8 @@ expire = datetime.utcnow() + expires_delta
 
 ## Resultado
 
-- **Data de conclusão:** —
-- **Branch:** —
-- **Commit(s):** —
-- **Avaliação pós-implementação:** —
-- **Observações:** —
+- **Data de conclusão:** 2026-04-25
+- **Branch:** fix/TASK-T34-datetime-utcnow
+- **Commit(s):** 082d5f4
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** 2 ocorrências substituídas. Import `UTC` adicionado. PyJWT compatível com timezone-aware datetime.
