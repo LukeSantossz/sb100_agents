@@ -84,16 +84,20 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T36 — Remover Módulo Duplicado semantic_entropy
-- **Status:** pendente
-- **Complexidade:** minor
-- **Detalhes:** `.claude/tasks/TASK-T36.md`
+[nenhuma task ativa]
 
 ---
 
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T36 — Remover Módulo Duplicado semantic_entropy ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** chore/TASK-T36-remove-semantic-entropy
+- **Commit:** 5404b22
+- **Avaliação:** aprovado
+- **Nota:** 5 arquivos removidos. .gitignore e pyproject.toml limpos.
 
 ### TASK-T35 — Corrigir Badge de Coverage no README ✓
 - **Concluída em:** 2026-04-25

@@ -62,6 +62,3 @@ smart_boletim.pdf
 # Out of scope for MVP
 /auth/
 /nginx/
-
-# Duplicate verification module (to be consolidated)
-/semantic_entropy/
