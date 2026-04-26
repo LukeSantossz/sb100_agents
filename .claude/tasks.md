@@ -84,21 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T33 — Refatorar Caminho do Banco de Dados para Usar Pathlib
-- **Status:** pendente
-- **Complexidade:** minor
-- **Detalhes:** `.claude/tasks/TASK-T33.md`
-
-### TASK-T34 — Substituir datetime.utcnow() por datetime.now(UTC)
-- **Status:** pendente
-- **Complexidade:** patch
-- **Detalhes:** `.claude/tasks/TASK-T34.md`
-
-### TASK-T35 — Corrigir Badge de Coverage no README
-- **Status:** pendente
-- **Complexidade:** patch
-- **Detalhes:** `.claude/tasks/TASK-T35.md`
-
 ### TASK-T36 — Remover Módulo Duplicado semantic_entropy
 - **Status:** pendente
 - **Complexidade:** minor
@@ -109,6 +94,20 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T35 — Corrigir Badge de Coverage no README ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** fix/TASK-T35-coverage-badge
+- **Commit:** 8b44df7
+- **Avaliação:** aprovado
+- **Nota:** Badge atualizado de 80% para 25% (amarelo). Nota sobre meta de coverage em Known Issues.
+
+### TASK-T34 — Substituir datetime.utcnow() por datetime.now(UTC) ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** fix/TASK-T34-datetime-utcnow
+- **Commit:** c3313d9
+- **Avaliação:** aprovado
+- **Nota:** 2 ocorrências em auth.py substituídas. Import UTC adicionado. PyJWT compatível.
 
 ### TASK-T33 — Refatorar Caminho do Banco de Dados para Usar Pathlib ✓
 - **Concluída em:** 2026-04-25

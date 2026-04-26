@@ -1,6 +1,6 @@
 # TASK-T35 — Corrigir Badge de Coverage no README
 
-- **Status:** pendente
+- **Status:** concluída
 - **Modo:** desenvolvimento
 - **Complexidade:** patch
 - **Data de criação:** 2026-04-25
@@ -28,9 +28,9 @@ Isso é documentação enganosa que pode criar expectativas incorretas sobre a q
 
 ## Critérios de Aceite
 
-- [ ] Badge atualizado para `coverage-25%25-yellow` (amarelo para indicar baseline)
-- [ ] Ou remover badge estático e usar badge dinâmico do CI (preferível)
-- [ ] Comentário no README sobre meta de aumentar coverage
+- [x] Badge atualizado para `coverage-25%25-yellow` (amarelo para indicar baseline)
+- [ ] ~~Ou remover badge estático e usar badge dinâmico do CI (preferível)~~ — mantido estático por simplicidade
+- [x] Comentário no README sobre meta de aumentar coverage
 
 ## Restrições
 
@@ -51,8 +51,8 @@ Isso é documentação enganosa que pode criar expectativas incorretas sobre a q
 
 ## Resultado
 
-- **Data de conclusão:** —
-- **Branch:** —
-- **Commit(s):** —
-- **Avaliação pós-implementação:** —
-- **Observações:** —
+- **Data de conclusão:** 2026-04-25
+- **Branch:** fix/TASK-T35-coverage-badge
+- **Commit(s):** 8b44df7
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** Badge estático mantido (badge dinâmico seria escopo separado). Nota de cobertura adicionada em Known Issues.
