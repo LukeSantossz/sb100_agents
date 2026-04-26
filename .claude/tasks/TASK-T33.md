@@ -57,6 +57,6 @@ Isso navega 3 níveis acima de `database/db.py` para encontrar a raiz. Se a estr
 
 - **Data de conclusão:** 2026-04-25
 - **Branch:** refactor/TASK-T33-pathlib-db-path
-- **Commit(s):** pendente (aguardando commit)
+- **Commit(s):** e839a86
 - **Avaliação pós-implementação:** aprovado
 - **Observações:** Substituição direta os.path -> pathlib.Path. Import `os` removido (era uso único). API pública inalterada.

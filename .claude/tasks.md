@@ -89,11 +89,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 - **Complexidade:** minor
 - **Detalhes:** `.claude/tasks/TASK-T32.md`
 
-### TASK-T33 — Refatorar Caminho do Banco de Dados para Usar Pathlib
-- **Status:** concluída
-- **Complexidade:** minor
-- **Detalhes:** `.claude/tasks/TASK-T33.md`
-
 ### TASK-T34 — Substituir datetime.utcnow() por datetime.now(UTC)
 - **Status:** pendente
 - **Complexidade:** patch
@@ -114,6 +109,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T33 — Refatorar Caminho do Banco de Dados para Usar Pathlib ✓
+- **Concluída em:** 2026-04-25
+- **Branch:** refactor/TASK-T33-pathlib-db-path
+- **Commit:** e839a86
+- **Avaliação:** aprovado
+- **Nota:** os.path substituído por pathlib.Path em database/db.py. API pública inalterada.
 
 ### TASK-T31 — Corrigir auth.py para Usar settings.jwt_secret_key ✓
 - **Concluída em:** 2026-04-25
