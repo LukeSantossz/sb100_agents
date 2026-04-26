@@ -36,8 +36,8 @@ For architecture details and design decisions, see [`ARCHITECTURE.md`](./ARCHITE
 
 ### Prerequisites
 
-- **Docker Desktop** (for Qdrant)
-- **Ollama** (for local LLM inference)
+- **Docker Desktop** (for Qdrant vector database only)
+- **Ollama** installed locally (for LLM inference and embeddings — not via Docker)
 - **Python 3.12+**
 
 ### Installation
@@ -64,7 +64,7 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 
 **Manual (step by step):**
 ```bash
-# 1. Start infrastructure (Qdrant + Ollama via Docker)
+# 1. Start infrastructure (Qdrant via Docker — Ollama runs locally)
 docker compose --profile infra up -d
 
 # 2. Index PDF documents (first run only)
@@ -152,7 +152,7 @@ sb100_agents/
 ├── .github/workflows/ci.yml        # GitHub Actions CI pipeline
 ├── ARCHITECTURE.md
 ├── SETUP.md                        # Detailed setup guide (local/remote Qdrant)
-├── docker-compose.yml              # Docker services with profiles (infra/app)
+├── docker-compose.yml              # Docker services (infra: Qdrant / app: API+Gradio)
 ├── pyproject.toml
 ├── start.bat                       # Windows startup script
 └── start.ps1                       # PowerShell startup script
