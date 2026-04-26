@@ -90,7 +90,7 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 - **Detalhes:** `.claude/tasks/TASK-T32.md`
 
 ### TASK-T33 — Refatorar Caminho do Banco de Dados para Usar Pathlib
-- **Status:** pendente
+- **Status:** concluída
 - **Complexidade:** minor
 - **Detalhes:** `.claude/tasks/TASK-T33.md`
 
