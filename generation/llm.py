@@ -69,6 +69,10 @@ def generate(
     )
     messages.append({"role": "user", "content": user_content})
 
-    response = ollama.chat(model=settings.chat_model, messages=messages)
+    response = ollama.chat(
+        model=settings.chat_model,
+        messages=messages,
+        options={"num_predict": settings.llm_max_tokens},
+    )
 
     return str(response["message"]["content"])
