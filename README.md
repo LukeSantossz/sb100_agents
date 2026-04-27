@@ -71,7 +71,7 @@ uv sync
 
 # Option B: pip
 python -m venv .venv
-.venv\Scripts\pip install -e .     # Windows
+.venv\Scripts\pip install -e .     # Windows (Dont forget the dot at the end!)
 .venv/bin/pip install -e .         # Linux/Mac
 ```
 
@@ -79,7 +79,7 @@ python -m venv .venv
 ```bash
 # Copy the example file (required — the API will not start without it)
 cp .env.example .env               # Linux/Mac
-copy .env.example .env             # Windows
+copy .env.example .env             # Windows 
 ```
 The default values in `.env.example` work for local development. Edit `.env` only if you need to change model names, Qdrant URL, or add API keys for the evaluation pipeline. See `SETUP.md` for remote Qdrant configuration.
 

@@ -24,7 +24,7 @@ import httpx
 
 DEFAULT_API_URL = "http://localhost:8000"
 DEFAULT_PORT = 7860
-REQUEST_TIMEOUT = 300.0
+REQUEST_TIMEOUT = 600.0  # CPU-only Ollama: ~160-200s per response; GPU: ~10-30s
 
 
 class ChatSession:
@@ -151,13 +151,24 @@ def create_interface(api_url: str) -> gr.Blocks:
             ]
             yield history, error_msg
 
+        except httpx.TimeoutException:
+            error_msg = "Timeout: a API demorou demais para responder. O LLM local pode estar lento (CPU-only leva ~3-5 min por resposta)."
+            history = history + [
+                {"role": "user", "content": message},
+                {
+                    "role": "assistant",
+                    "content": "Erro: Timeout ao aguardar resposta da API. Se o Ollama esta rodando em CPU, a geracao pode levar varios minutos. Tente novamente ou considere usar um modelo menor.",
+                },
+            ]
+            yield history, error_msg
+
         except httpx.RequestError as e:
             error_msg = f"Erro de conexão: {e}"
             history = history + [
                 {"role": "user", "content": message},
                 {
                     "role": "assistant",
-                    "content": f"Erro: Não foi possível conectar à API em {api_url}",
+                    "content": f"Erro: Não foi possível conectar à API em {api_url}. Verifique se o servidor está rodando.",
                 },
             ]
             yield history, error_msg
