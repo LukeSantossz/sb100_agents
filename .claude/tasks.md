@@ -90,7 +90,14 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 ## Tasks Concluídas
 
-> Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico �� cumulativo.
+> Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T43 — Aumentar REQUEST_TIMEOUT do Gradio ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** fix/TASK-T43-gradio-timeout
+- **Commit:** d975911
+- **Avaliação:** aprovado
+- **Nota:** Timeout aumentado de 120s para 300s. Ollama llama3.2:3b leva ~120s com contexto RAG, causando timeout intermitente.
 
 ### TASK-T42 — Corrigir redirecionamento >nul no start.bat ✓
 - **Concluída em:** 2026-04-27
