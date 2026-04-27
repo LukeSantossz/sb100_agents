@@ -84,7 +84,27 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-[nenhuma task ativa]
+### TASK-T43
+- **Status:** em andamento
+- **Modo:** desenvolvimento
+- **Complexidade:** patch
+- **Data de criação:** 2026-04-27
+
+#### Objetivo (!obrigatório)
+Aumentar REQUEST_TIMEOUT do Gradio para acomodar tempo de geração do LLM local.
+
+#### Contexto (!obrigatório)
+O Ollama com llama3.2:3b leva ~120s para gerar respostas com contexto RAG. O timeout do httpx no Gradio é exatamente 120s, causando falha intermitente por timeout. O erro exibido é "Não foi possível conectar à API" mas a causa real é timeout de leitura.
+
+#### Escopo Técnico (!obrigatório)
+- **Arquivos/módulos envolvidos:** `ui/chat_ui.py`
+- **Dependências necessárias:** nenhuma
+- **Impacto em funcionalidades existentes:** nenhum — apenas aumenta tolerância de espera
+
+#### Critérios de Aceite (!obrigatório)
+- [ ] REQUEST_TIMEOUT suficiente para geração local com llama3.2:3b (~120s)
+- [ ] Ruff lint passa sem erros
+- [ ] Testes existentes continuam passando
 
 ---
 

@@ -24,7 +24,7 @@ import httpx
 
 DEFAULT_API_URL = "http://localhost:8000"
 DEFAULT_PORT = 7860
-REQUEST_TIMEOUT = 120.0
+REQUEST_TIMEOUT = 300.0
 
 
 class ChatSession:
