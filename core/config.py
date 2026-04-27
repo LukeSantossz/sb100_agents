@@ -25,6 +25,7 @@ class Settings(BaseSettings):
         collection_name: Nome da coleção no Qdrant.
         top_k: Número de chunks retornados na busca por similaridade.
         buffer_maxlen: Tamanho máximo do buffer de conversação.
+        llm_max_tokens: Limite de tokens por resposta do LLM.
         hallucination_threshold: Limiar de entropia para detecção de alucinação.
         verification_enabled: Habilita verificação de alucinações via entropia.
         openai_api_key: Chave da API OpenAI (para verificação de alucinações).
@@ -35,6 +36,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
+    # GPU: ~10-30s | CPU-only: ~160-200s (llama3.2:3b) per response
     chat_model: str = "llama3.2:3b"
     embed_model: str = "nomic-embed-text"
     qdrant_url: str = "http://localhost:6333"
@@ -42,8 +44,12 @@ class Settings(BaseSettings):
     collection_name: str = "archives_v2"
     top_k: int = 3
     buffer_maxlen: int = 10
+    llm_max_tokens: int = 256
     hallucination_threshold: float = 0.5
     verification_enabled: bool = True
+    verification_provider: str = "groq"  # groq | ollama | openrouter
+    verification_chat_model: str = ""  # Empty = use provider default
+    entropy_num_samples: int = 2
     openai_api_key: str = ""
     groq_api_key: str = ""
     openrouter_api_key: str = ""

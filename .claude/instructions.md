@@ -522,6 +522,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 25 | 2026-04-27 | TASK-T41 | patch | 1 arquivo — database/db.py | aprovado | parents[2] ��� parents[1]; DB na raiz do projeto |
 | 26 | 2026-04-27 | TASK-T42 | patch | 1 arquivo — start.bat | aprovado | >nul → >NUL; evita criação de arquivo literal |
 | 27 | 2026-04-27 | TASK-T43 | patch | 1 arquivo — ui/chat_ui.py | aprovado | REQUEST_TIMEOUT 120s → 300s; LLM local demora ~120s |
+| 28 | 2026-04-27 | TASK-T45 | minor | 2 arquivos — verification/entropy.py, core/config.py | aprovado | Verificação migrada de OpenAI para multi-provedor (Groq/Ollama/OpenRouter); embeddings via Ollama local |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -531,11 +532,11 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 - **Última atualização:** 2026-04-27
 - **Último responsável:** Claude Code (Opus 4)
-- **Branch ativa:** fix/TASK-T40-async-blocking-eventloop
+- **Branch ativa:** fix/TASK-T44-timeout-error-messages
 - **Dependências alteradas recentemente:** nenhuma
-- **Testes passando:** sim (18/18 testes unitários)
-- **Divergências externas pendentes:** mudanças pré-existentes em README.md (não commitadas, fora de escopo)
-- **Última task concluída:** TASK-T43 — REQUEST_TIMEOUT 120s → 300s no Gradio
+- **Testes passando:** sim (18/18 unitários + 7/7 integração)
+- **Divergências externas pendentes:** mudanças pré-existentes em README.md, core/config.py, generation/llm.py, ui/chat_ui.py (TASK-T44 em andamento)
+- **Última task concluída:** TASK-T45 — Verificação de alucinação migrada para provedores opensource
 
 ### 9.5 Pendências Conhecidas
 
@@ -546,6 +547,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 > Decisões tomadas durante implementações que afetam futuras tasks. Inclua justificativa breve.
 
 - **mypy ignore_missing_imports=true** (T21): Necessário porque ollama, qdrant-client e outras dependências não possuem type stubs. Evita falsos positivos sem comprometer a verificação do código próprio.
+- **Embeddings de verificação sempre via Ollama local** (T45): Mesmo quando o provider de geração é Groq ou OpenRouter, os embeddings para clustering de entropia usam Ollama (nomic-embed-text) local. Rápido, gratuito, sem dependência de API externa para embeddings.
 
 ### 9.7 Padrões Recorrentes Observados
 
