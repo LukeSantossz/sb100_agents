@@ -515,6 +515,9 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 18 | 2026-04-25 | TASK-T34 | patch | 1 arquivo — api/routes/auth.py | aprovado | datetime.utcnow() substituído por datetime.now(UTC) |
 | 19 | 2026-04-25 | TASK-T35 | patch | 1 arquivo — README.md | aprovado | Badge coverage corrigido de 80% para 25% |
 | 20 | 2026-04-25 | TASK-T36 | minor | 7 arquivos — semantic_entropy/ removido, .gitignore, pyproject.toml | aprovado | Módulo duplicado removido |
+| 21 | 2026-04-26 | TASK-T37 | patch | 1 arquivo — database/semantic_chunker.py | aprovado | Emojis Unicode removidos dos prints; prefixos ASCII ([OK], [INFO]) |
+| 22 | 2026-04-26 | TASK-T38 | patch | 2 arquivos — archives/smart_boletim.pdf, .gitignore | aprovado | PDF versionado em archives/; entradas removidas do .gitignore |
+| 23 | 2026-04-26 | TASK-T39 | minor | 1 arquivo — README.md | aprovado | Getting Started com 7 passos, .env explícito, verificação por etapa |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -522,13 +525,13 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-04-25
+- **Última atualização:** 2026-04-26
 - **Último responsável:** Claude Code (Opus 4)
 - **Branch ativa:** main
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18/18 testes unitários)
 - **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T36 — Módulo duplicado semantic_entropy removido
+- **Última task concluída:** TASK-T39 — README reescrito com setup passo a passo
 
 ### 9.5 Pendências Conhecidas
 
