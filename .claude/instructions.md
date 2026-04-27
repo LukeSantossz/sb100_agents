@@ -523,6 +523,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 26 | 2026-04-27 | TASK-T42 | patch | 1 arquivo — start.bat | aprovado | >nul → >NUL; evita criação de arquivo literal |
 | 27 | 2026-04-27 | TASK-T43 | patch | 1 arquivo — ui/chat_ui.py | aprovado | REQUEST_TIMEOUT 120s → 300s; LLM local demora ~120s |
 | 28 | 2026-04-27 | TASK-T45 | minor | 2 arquivos — verification/entropy.py, core/config.py | aprovado | Verificação migrada de OpenAI para multi-provedor (Groq/Ollama/OpenRouter); embeddings via Ollama local |
+| 29 | 2026-04-27 | TASK-T44 | minor | 3 arquivos — ui/chat_ui.py, generation/llm.py, README.md | aprovado | Timeout 600s, TimeoutException separada, num_predict no Ollama |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -535,8 +536,8 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 - **Branch ativa:** fix/TASK-T44-timeout-error-messages
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18/18 unitários + 7/7 integração)
-- **Divergências externas pendentes:** mudanças pré-existentes em README.md, core/config.py, generation/llm.py, ui/chat_ui.py (TASK-T44 em andamento)
-- **Última task concluída:** TASK-T45 — Verificação de alucinação migrada para provedores opensource
+- **Divergências externas pendentes:** nenhuma
+- **Última task concluída:** TASK-T44 — Timeout, mensagens de erro e performance CPU
 
 ### 9.5 Pendências Conhecidas
 
