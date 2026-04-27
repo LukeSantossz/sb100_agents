@@ -7,10 +7,11 @@ from typing import Any
 
 import fitz  # PyMuPDF
 import numpy as np
-import ollama
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 from tqdm import tqdm
+
+from retrieval.ollama_embeddings import embed_text
 
 # ─────────────────────────────────────────────
 # Configurações globais
@@ -87,8 +88,8 @@ def split_into_sentences(text: str) -> list[str]:
 
 def get_embedding(text: str) -> np.ndarray:
     """Gera embedding de um texto usando o modelo Llama via Ollama."""
-    response = ollama.embeddings(model=OLLAMA_MODEL, prompt=text)
-    return np.array(response["embedding"], dtype=np.float32)
+    vec = embed_text(OLLAMA_MODEL, text)
+    return np.array(vec, dtype=np.float32)
 
 
 def get_embeddings_batch(texts: list[str], batch_size: int = 16) -> list[np.ndarray]:

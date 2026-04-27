@@ -9,6 +9,7 @@ import math
 import ollama
 
 from core.config import settings
+from retrieval.ollama_embeddings import embed_text
 
 TEMPERATURE = 0.7
 
@@ -89,8 +90,8 @@ _sample_fns = {
 
 def _compute_similarity(text1: str, text2: str) -> float:
     """Calcula similaridade de cosseno entre dois textos via embeddings Ollama."""
-    vec1 = ollama.embeddings(model=settings.embed_model, prompt=text1)["embedding"]
-    vec2 = ollama.embeddings(model=settings.embed_model, prompt=text2)["embedding"]
+    vec1 = embed_text(settings.embed_model, text1)
+    vec2 = embed_text(settings.embed_model, text2)
 
     dot_product = sum(a * b for a, b in zip(vec1, vec2, strict=True))
     norm1 = math.sqrt(sum(a * a for a in vec1))
