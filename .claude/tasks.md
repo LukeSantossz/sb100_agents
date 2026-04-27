@@ -84,7 +84,94 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-[nenhuma task ativa]
+### TASK-T37
+- **Status:** pendente
+- **Modo:** desenvolvimento
+- **Complexidade:** patch
+- **Data de criação:** 2026-04-26
+
+#### Objetivo
+Remover emojis Unicode do semantic_chunker.py que causam UnicodeEncodeError no Windows (CP1252).
+
+#### Contexto
+Durante auditoria de execução, o comando `python database/semantic_chunker.py index ./archives/` falha no Windows com `UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f50d'`. Prints usam emojis que não são suportados pelo codepage padrão do Windows.
+
+#### Escopo Técnico
+- **Arquivos/módulos envolvidos:** database/semantic_chunker.py
+- **Dependências necessárias:** nenhuma
+- **Impacto em funcionalidades existentes:** nenhum — apenas output visual no terminal
+
+#### Critérios de Aceite
+- [ ] Todos os emojis removidos dos print() no semantic_chunker.py
+- [ ] Mensagens mantêm clareza sem emojis (usar prefixos textuais como [OK], [INFO], etc.)
+- [ ] Script executa sem erro no Windows com codepage CP1252
+
+#### Log de Andamento (atualizado pelo agente)
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| —    | —      | —              | —               |
+
+---
+
+### TASK-T38
+- **Status:** pendente
+- **Modo:** desenvolvimento
+- **Complexidade:** patch
+- **Data de criação:** 2026-04-26
+
+#### Objetivo
+Versionar pasta archives/ com PDF de teste para que o pipeline RAG funcione out-of-the-box.
+
+#### Contexto
+O diretório archives/ não existe no repositório. Sem PDFs, o endpoint /chat retorna erro 503 (collection não existe). O README instrui indexação mas não fornece material para indexar.
+
+#### Escopo Técnico
+- **Arquivos/módulos envolvidos:** archives/test_soja.pdf (novo), .gitignore (verificar)
+- **Dependências necessárias:** nenhuma
+- **Impacto em funcionalidades existentes:** nenhum
+
+#### Critérios de Aceite
+- [ ] Diretório archives/ existe e contém pelo menos 1 PDF com conteúdo agrícola
+- [ ] PDF é versionado no git (não ignorado pelo .gitignore)
+- [ ] PDF possui texto extraível (não é imagem)
+
+#### Log de Andamento (atualizado pelo agente)
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| —    | —      | —              | —               |
+
+---
+
+### TASK-T39
+- **Status:** pendente
+- **Modo:** desenvolvimento
+- **Complexidade:** minor
+- **Data de criação:** 2026-04-26
+
+#### Objetivo
+Atualizar README.md com fluxo passo a passo completo incluindo criação do .env e pré-requisitos explícitos.
+
+#### Contexto
+Durante auditoria de execução, a API falha ao iniciar com `ValueError: JWT_SECRET_KEY must be configured` porque o README não instrui a criação do arquivo .env a partir do .env.example. Os passos do Getting Started assumem configuração que não está documentada.
+
+#### Escopo Técnico
+- **Arquivos/módulos envolvidos:** README.md
+- **Dependências necessárias:** nenhuma
+- **Impacto em funcionalidades existentes:** nenhum — apenas documentação
+
+#### Critérios de Aceite
+- [ ] README inclui passo explícito para copiar .env.example para .env
+- [ ] Seção Getting Started é executável de ponta a ponta sem intervenção não documentada
+- [ ] Passos manuais numerados com ordem clara e verificação de cada etapa
+- [ ] Menção ao archives/ e PDF de exemplo disponível no repositório
+
+#### Log de Andamento (atualizado pelo agente)
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| —    | —      | —              | —               |
 
 ---
 
