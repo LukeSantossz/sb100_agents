@@ -131,6 +131,20 @@ O LLM local (llama3.2:3b no Ollama) leva ~163s por resposta em CPU. O timeout do
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T47 — Resiliência embeddings Ollama + URL SQLite POSIX ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** (local; commit pendente)
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** `retrieval/ollama_embeddings.embed_text`: truncagem 8192 chars, 6 tentativas, backoff até 60s; usado em embedder, semantic_chunker, entropy. `database/db.py`: URL `sqlite:///` com `Path.as_posix()`. 25 testes com `pytest -o addopts=`.
+
+### TASK-T46 — Corrigir SQLite (diretório `smartb100_v2.db` vs arquivo) ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** (local; commit pendente pelo usuário)
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** Removida pasta `smartb100_v2.db` (bind mount Docker/Windows cria diretório se o path não existir). Criado arquivo vazio; `create_all` e `/health` ok. `database/db.py` agora levanta `RuntimeError` claro se o path for diretório. Embedding Ollama nomic-embed-text validado (768 dim). `.gitignore` passa a ignorar `smartb100_v2.db`.
+
 ### TASK-T44 — Timeout, mensagens de erro e performance CPU ✓
 - **Concluída em:** 2026-04-27
 - **Branch:** fix/TASK-T44-timeout-error-messages
