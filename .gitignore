@@ -29,6 +29,9 @@ build/
 .env
 .env.local
 
+# SQLite (local dev; never commit DB contents)
+smartb100_v2.db
+
 # Qdrant storage (optional - uncomment if you want to track)
 /qdrant_storage
 
