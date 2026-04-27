@@ -75,7 +75,7 @@ def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
 
 
 @router.post("", response_model=ChatResponse)
-async def chat(req: ChatRequest) -> ChatResponse:
+def chat(req: ChatRequest) -> ChatResponse:
     """Processa pergunta do usuário e retorna resposta do assistente.
 
     Pipeline RAG completo:
