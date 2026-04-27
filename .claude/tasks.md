@@ -84,13 +84,104 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-[nenhuma task ativa]
+### TASK-T45
+- **Status:** concluída
+- **Modo:** desenvolvimento
+- **Complexidade:** minor
+- **Data de criação:** 2026-04-27
+
+#### Objetivo (!obrigatório)
+Migrar verificação de alucinação de OpenAI para provedores opensource (Groq, Ollama, OpenRouter) com padrão de dispatch multi-provedor.
+
+#### Contexto (!obrigatório)
+Verificação inoperante: `OPENAI_API_KEY` vazia faz `hallucination_score` retornar sempre `0.0`. Groq e OpenRouter já estão configurados no `.env`. O padrão de dispatch por provider já é usado em `eval/judge.py`, `eval/collect_references.py` e `eval/generate_questions.py`.
+
+#### Escopo Técnico (!obrigatório)
+- **Arquivos/módulos envolvidos:** verification/entropy.py, core/config.py
+- **Dependências necessárias:** nenhuma (groq, openai, ollama já são dependências do projeto)
+- **Impacto em funcionalidades existentes:** verification/gate.py usa compute_entropy_score como caixa preta — interface mantida
+
+#### Critérios de Aceite (!obrigatório)
+- [ ] OpenAI removida como dependência de verification/entropy.py
+- [ ] Suporte a 3 providers: groq, ollama, openrouter (dispatch dict)
+- [ ] Embeddings via Ollama local (nomic-embed-text) em vez de OpenAI
+- [ ] NUM_SAMPLES configurável via settings (default 2)
+- [ ] Settings adicionados: verification_provider, verification_chat_model, entropy_num_samples
+- [ ] ruff check e ruff format passam sem erros
+- [ ] pytest tests/ passa sem regressões
+
+#### Restrições (opcional)
+- Não alterar verification/gate.py, api/routes/chat.py, generation/llm.py
+- Manter assinatura de compute_entropy_score(question, context) -> float
+- Seguir padrão de dispatch existente em eval/
+
+#### Log de Andamento (atualizado pelo agente)
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-04-27 | 1 | Implementação completa: config.py + entropy.py reescritos, lint + tests OK | concluída |
+
+#### Resultado (preenchido ao concluir)
+- **Data de conclusão:** 2026-04-27
+- **Branch:** fix/TASK-T44-timeout-error-messages (compartilhada com T44)
+- **Commit(s):** pendente de commit pelo desenvolvedor
+- **Avaliação pós-implementação:** aprovado
+- **Observações:** OpenAI removida de entropy.py. 3 providers (Groq/Ollama/OpenRouter) com dispatch dict. Embeddings via Ollama local. NUM_SAMPLES reduzido de 5 para 2 (configurável). 25/25 testes passando.
+
+---
+
+### TASK-T44
+- **Status:** em andamento
+- **Modo:** desenvolvimento
+- **Complexidade:** minor
+- **Data de criação:** 2026-04-27
+
+#### Objetivo (!obrigatório)
+Melhorar timeout, mensagens de erro e performance do pipeline RAG para viabilizar uso prático da interface Gradio com LLM local em CPU.
+
+#### Contexto (!obrigatório)
+O LLM local (llama3.2:3b no Ollama) leva ~163s por resposta em CPU. O timeout do httpx no Gradio é 300s, que pode estourar em perguntas complexas. A mensagem de erro captura `httpx.RequestError` (inclui timeout) mas exibe texto genérico de "conexão", confundindo o usuário. Necessário: (1) aumentar timeout para cenário CPU, (2) melhorar mensagem de erro diferenciando timeout de falha de conexão, (3) documentar tempos esperados em CPU vs GPU.
+
+#### Escopo Técnico (!obrigatório)
+- **Arquivos/módulos envolvidos:** ui/chat_ui.py, core/config.py, generation/llm.py, .env
+- **Dependências necessárias:** nenhuma
+- **Impacto em funcionalidades existentes:** LLM passa a ter limite de tokens por resposta (256 default), respostas ficam mais curtas porém com tempo viável
+
+#### Critérios de Aceite (!obrigatório)
+- [ ] Timeout do httpx aumentado para 600s (cenário CPU sem GPU)
+- [ ] Mensagem de erro diferencia timeout de falha de conexão
+- [ ] Comentários em core/config.py e/ou .env documentam tempos esperados CPU vs GPU
+- [ ] Interface Gradio retorna resposta com sucesso em teste manual
+
+#### Restrições (opcional)
+- Não alterar lógica do pipeline RAG (chat.py, generation/, verification/)
+- Não adicionar dependências novas
+
+#### Log de Andamento (atualizado pelo agente)
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-04-27 | 1 | Diagnóstico: LLM ~163s em CPU, timeout 300s insuficiente, mensagem de erro genérica | em andamento |
+
+#### Resultado (preenchido ao concluir)
+- **Data de conclusão:** —
+- **Branch:** —
+- **Commit(s):** —
+- **Avaliação pós-implementação:** —
+- **Observações:** —
 
 ---
 
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T45 — Migrar verificação de alucinação para provedores opensource ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** fix/TASK-T44-timeout-error-messages
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** OpenAI substituída por Groq/Ollama/OpenRouter com dispatch dict. Embeddings via Ollama local. NUM_SAMPLES 5 → 2 (configurável). 25/25 testes passando.
 
 ### TASK-T43 — Aumentar REQUEST_TIMEOUT do Gradio ✓
 - **Concluída em:** 2026-04-27
