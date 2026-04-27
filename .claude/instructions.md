@@ -521,6 +521,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 24 | 2026-04-27 | TASK-T40 | minor | 1 arquivo — api/routes/chat.py | aprovado | async def → def; event loop desbloqueado |
 | 25 | 2026-04-27 | TASK-T41 | patch | 1 arquivo — database/db.py | aprovado | parents[2] ��� parents[1]; DB na raiz do projeto |
 | 26 | 2026-04-27 | TASK-T42 | patch | 1 arquivo — start.bat | aprovado | >nul → >NUL; evita criação de arquivo literal |
+| 27 | 2026-04-27 | TASK-T43 | patch | 1 arquivo — ui/chat_ui.py | aprovado | REQUEST_TIMEOUT 120s → 300s; LLM local demora ~120s |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -534,7 +535,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18/18 testes unitários)
 - **Divergências externas pendentes:** mudanças pré-existentes em README.md (não commitadas, fora de escopo)
-- **Última task concluída:** TASK-T42 — >nul → >NUL no start.bat
+- **Última task concluída:** TASK-T43 — REQUEST_TIMEOUT 120s → 300s no Gradio
 
 ### 9.5 Pendências Conhecidas
 
