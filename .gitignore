@@ -53,11 +53,9 @@ Thumbs.db
 /tutor.md
 /review.md
 task.md
-smart_boletim.pdf
 
 # Runtime data - do not version
 /qdrant_storage/
-/archives/
 
 # Out of scope for MVP
 /auth/

@@ -36,50 +36,107 @@ For architecture details and design decisions, see [`ARCHITECTURE.md`](./ARCHITE
 
 ### Prerequisites
 
-- **Docker Desktop** (for Qdrant vector database only)
-- **Ollama** installed locally (for LLM inference and embeddings — not via Docker)
-- **Python 3.12+**
+Before starting, ensure you have installed:
 
-### Installation
+- **Docker Desktop** — for the Qdrant vector database ([download](https://www.docker.com/products/docker-desktop/))
+- **Ollama** — for local LLM inference and embeddings ([download](https://ollama.ai/download))
+- **Python 3.12+** — runtime ([download](https://www.python.org/downloads/))
+
+Verify each prerequisite:
 ```bash
-# Install Ollama models
-ollama pull llama3.2:3b
-ollama pull nomic-embed-text
-
-# Create Python virtual environment (choose one)
-uv sync                # if using uv (recommended)
-# or
-python -m venv .venv && .venv\Scripts\pip install -e .  # Windows
-python -m venv .venv && .venv/bin/pip install -e .      # Linux/Mac
+docker --version       # Docker version 2x+
+ollama --version       # ollama version 0.x+
+python --version       # Python 3.12+
 ```
 
-### Running
+### Step-by-step setup
 
-**Windows (one-shot script):**
+Follow each step in order. Every step includes a verification command.
+
+**Step 1 — Install Ollama models**
+```bash
+ollama pull llama3.2:3b
+ollama pull nomic-embed-text
+```
+Verify:
+```bash
+ollama list
+# Should show llama3.2:3b and nomic-embed-text
+```
+
+**Step 2 — Install Python dependencies**
+```bash
+# Option A: uv (recommended)
+uv sync
+
+# Option B: pip
+python -m venv .venv
+.venv\Scripts\pip install -e .     # Windows
+.venv/bin/pip install -e .         # Linux/Mac
+```
+
+**Step 3 — Configure environment variables**
+```bash
+# Copy the example file (required — the API will not start without it)
+cp .env.example .env               # Linux/Mac
+copy .env.example .env             # Windows
+```
+The default values in `.env.example` work for local development. Edit `.env` only if you need to change model names, Qdrant URL, or add API keys for the evaluation pipeline. See `SETUP.md` for remote Qdrant configuration.
+
+**Step 4 — Start Qdrant (vector database)**
+```bash
+docker compose --profile infra up -d
+```
+Verify:
+```bash
+curl http://localhost:6333/healthz
+# Should return: healthz check passed
+```
+
+**Step 5 — Index PDF documents (first run only)**
+
+The repository includes a sample PDF in `archives/`. Index it into Qdrant:
+```bash
+.venv\Scripts\python.exe database\semantic_chunker.py index ./archives/   # Windows
+.venv/bin/python database/semantic_chunker.py index ./archives/           # Linux/Mac
+```
+Verify:
+```bash
+curl http://localhost:6333/collections/archives_v2
+# Should return JSON with "status":"ok" and points_count > 0
+```
+To add your own documents, place PDF files in the `archives/` directory and re-run the index command.
+
+**Step 6 — Start the API**
+```bash
+.venv\Scripts\python.exe -m uvicorn api.main:app --reload   # Windows
+.venv/bin/python -m uvicorn api.main:app --reload           # Linux/Mac
+```
+Verify:
+```bash
+curl http://localhost:8000/health
+# Should return: {"status":"ok"}
+```
+
+**Step 7 (optional) — Start Gradio chat interface**
+```bash
+.venv\Scripts\python.exe ui/chat_ui.py    # Windows
+.venv/bin/python ui/chat_ui.py            # Linux/Mac
+```
+Open http://localhost:7860 in your browser.
+
+### Quick start (Windows only)
+
+If you have already completed steps 1-3 above, use the one-shot scripts:
 ```bash
 .\start.bat
 # or
 powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
+These scripts start Qdrant, check Ollama models, and launch the API + Gradio.
 
-**Manual (step by step):**
+### Full Docker deployment
 ```bash
-# 1. Start infrastructure (Qdrant via Docker — Ollama runs locally)
-docker compose --profile infra up -d
-
-# 2. Index PDF documents (first run only)
-.venv\Scripts\python.exe database\semantic_chunker.py index ./archives/
-
-# 3. Start the API
-.venv\Scripts\python.exe -m uvicorn api.main:app --reload
-
-# 4. (Optional) Start Gradio chat interface
-.venv\Scripts\python.exe ui/chat_ui.py
-```
-
-**Full Docker deployment:**
-```bash
-# Start everything (infra + app)
 docker compose --profile infra --profile app up -d
 ```
 
@@ -269,7 +326,6 @@ curl "http://localhost:8000/health"
 
 ## Known Issues
 
-- **Evaluation dataset**: Requires PDF documents in `./archives/` to generate the 300-question dataset
-- **Ollama dependency**: LLM and embedding models must be pulled before first run
-- **Windows paths**: Some scripts assume Windows path separators; cross-platform support is manual
+- **Evaluation dataset**: The 300-question eval pipeline requires additional PDFs beyond the sample included in `archives/`
+- **Ollama dependency**: LLM and embedding models must be pulled before first run (see Step 1)
 - **Test coverage**: Current baseline is 25%; target is to increase incrementally with each new feature
