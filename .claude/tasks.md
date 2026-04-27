@@ -84,7 +84,86 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-[nenhuma task ativa]
+### TASK-T40
+- **Status:** em andamento
+- **Modo:** desenvolvimento
+- **Complexidade:** minor
+- **Data de criação:** 2026-04-27
+
+#### Objetivo (!obrigatório)
+Corrigir endpoint `/chat` que bloqueia o event loop do FastAPI por usar chamadas síncronas dentro de `async def`.
+
+#### Contexto (!obrigatório)
+O endpoint `chat` em `api/routes/chat.py` é declarado como `async def` mas chama funções síncronas bloqueantes (Ollama, Qdrant). Isso congela o event loop do uvicorn, impedindo que qualquer outra requisição seja processada enquanto o LLM gera a resposta. O Gradio reporta "Não foi possível conectar à API" porque o timeout é atingido.
+
+#### Escopo Técnico (!obrigatório)
+- **Arquivos/módulos envolvidos:** `api/routes/chat.py`
+- **Dependências necessárias:** nenhuma
+- **Impacto em funcionalidades existentes:** melhora disponibilidade; comportamento funcional inalterado
+
+#### Critérios de Aceite (!obrigatório)
+- [ ] Endpoint `chat` não bloqueia o event loop do FastAPI
+- [ ] `/health` responde enquanto `/chat` está processando
+- [ ] Testes existentes continuam passando
+- [ ] Ruff lint passa sem erros
+
+#### Restrições
+- Mudança mínima: alterar `async def` para `def` (FastAPI roda em thread pool automaticamente)
+- Não alterar lógica de negócio do pipeline RAG
+
+#### Log de Andamento (atualizado pelo agente)
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-04-27 | 1 | Diagnóstico: async def com chamadas síncronas bloqueia event loop | em andamento |
+
+---
+
+### TASK-T41
+- **Status:** pendente
+- **Modo:** desenvolvimento
+- **Complexidade:** patch
+- **Data de criação:** 2026-04-27
+
+#### Objetivo (!obrigatório)
+Corrigir `DB_PATH` em `database/db.py` que cria `smartb100_v2.db` no Desktop em vez da raiz do projeto.
+
+#### Contexto (!obrigatório)
+`Path(__file__).resolve().parents[2]` sobe dois níveis a partir de `database/db.py`, resultando no diretório pai do projeto (Desktop). O correto é `.parents[1]` para chegar à raiz do projeto.
+
+#### Escopo Técnico (!obrigatório)
+- **Arquivos/módulos envolvidos:** `database/db.py`
+- **Dependências necessárias:** nenhuma
+- **Impacto em funcionalidades existentes:** altera local do banco SQLite; dados existentes no Desktop não serão migrados automaticamente
+
+#### Critérios de Aceite (!obrigatório)
+- [ ] `smartb100_v2.db` é criado na raiz do projeto (`sb100_agents/`)
+- [ ] Testes existentes continuam passando
+- [ ] Ruff lint passa sem erros
+
+---
+
+### TASK-T42
+- **Status:** pendente
+- **Modo:** desenvolvimento
+- **Complexidade:** patch
+- **Data de criação:** 2026-04-27
+
+#### Objetivo (!obrigatório)
+Corrigir `start.bat` que cria arquivo `nul` na raiz do projeto em vez de redirecionar para o dispositivo nulo do Windows.
+
+#### Contexto (!obrigatório)
+Redirecionamentos `>nul` no `start.bat` são interpretados como nome de arquivo literal em certos contextos do Windows (OneDrive, PowerShell, encoding). Deve-se usar `> NUL` para garantir interpretação correta.
+
+#### Escopo Técnico (!obrigatório)
+- **Arquivos/módulos envolvidos:** `start.bat`
+- **Dependências necessárias:** nenhuma
+- **Impacto em funcionalidades existentes:** nenhum
+
+#### Critérios de Aceite (!obrigatório)
+- [ ] Arquivo `nul` não é criado ao executar `start.bat`
+- [ ] Redirecionamentos usam formato robusto para Windows
+- [ ] Script continua funcional
 
 ---
 
