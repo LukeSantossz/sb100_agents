@@ -84,57 +84,27 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T41
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** patch
-- **Data de criação:** 2026-04-27
-
-#### Objetivo (!obrigatório)
-Corrigir `DB_PATH` em `database/db.py` que cria `smartb100_v2.db` no Desktop em vez da raiz do projeto.
-
-#### Contexto (!obrigatório)
-`Path(__file__).resolve().parents[2]` sobe dois níveis a partir de `database/db.py`, resultando no diretório pai do projeto (Desktop). O correto é `.parents[1]` para chegar à raiz do projeto.
-
-#### Escopo Técnico (!obrigatório)
-- **Arquivos/módulos envolvidos:** `database/db.py`
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** altera local do banco SQLite; dados existentes no Desktop não serão migrados automaticamente
-
-#### Critérios de Aceite (!obrigatório)
-- [ ] `smartb100_v2.db` é criado na raiz do projeto (`sb100_agents/`)
-- [ ] Testes existentes continuam passando
-- [ ] Ruff lint passa sem erros
-
----
-
-### TASK-T42
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** patch
-- **Data de criação:** 2026-04-27
-
-#### Objetivo (!obrigatório)
-Corrigir `start.bat` que cria arquivo `nul` na raiz do projeto em vez de redirecionar para o dispositivo nulo do Windows.
-
-#### Contexto (!obrigatório)
-Redirecionamentos `>nul` no `start.bat` são interpretados como nome de arquivo literal em certos contextos do Windows (OneDrive, PowerShell, encoding). Deve-se usar `> NUL` para garantir interpretação correta.
-
-#### Escopo Técnico (!obrigatório)
-- **Arquivos/módulos envolvidos:** `start.bat`
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** nenhum
-
-#### Critérios de Aceite (!obrigatório)
-- [ ] Arquivo `nul` não é criado ao executar `start.bat`
-- [ ] Redirecionamentos usam formato robusto para Windows
-- [ ] Script continua funcional
+[nenhuma task ativa]
 
 ---
 
 ## Tasks Concluídas
 
-> Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+> Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico �� cumulativo.
+
+### TASK-T42 — Corrigir redirecionamento >nul no start.bat ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** fix/TASK-T40-async-blocking-eventloop
+- **Commit:** 522b6d4
+- **Avaliação:** aprovado
+- **Nota:** 5 ocorrências de `>nul` substituídas por `>NUL` (uppercase) para evitar criação de arquivo literal.
+
+### TASK-T41 — Corrigir DB_PATH em database/db.py ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** fix/TASK-T40-async-blocking-eventloop
+- **Commit:** e50f78f
+- **Avaliação:** aprovado
+- **Nota:** `.parents[2]` corrigido para `.parents[1]`. Banco agora é criado na raiz do projeto.
 
 ### TASK-T40 — Corrigir async def bloqueante no endpoint /chat ✓
 - **Concluída em:** 2026-04-27

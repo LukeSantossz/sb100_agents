@@ -519,6 +519,8 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 22 | 2026-04-26 | TASK-T38 | patch | 2 arquivos — archives/smart_boletim.pdf, .gitignore | aprovado | PDF versionado em archives/; entradas removidas do .gitignore |
 | 23 | 2026-04-26 | TASK-T39 | minor | 1 arquivo — README.md | aprovado | Getting Started com 7 passos, .env explícito, verificação por etapa |
 | 24 | 2026-04-27 | TASK-T40 | minor | 1 arquivo — api/routes/chat.py | aprovado | async def → def; event loop desbloqueado |
+| 25 | 2026-04-27 | TASK-T41 | patch | 1 arquivo — database/db.py | aprovado | parents[2] ��� parents[1]; DB na raiz do projeto |
+| 26 | 2026-04-27 | TASK-T42 | patch | 1 arquivo — start.bat | aprovado | >nul → >NUL; evita criação de arquivo literal |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -532,7 +534,7 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18/18 testes unitários)
 - **Divergências externas pendentes:** mudanças pré-existentes em README.md (não commitadas, fora de escopo)
-- **Última task concluída:** TASK-T40 — async def → def no endpoint /chat
+- **Última task concluída:** TASK-T42 — >nul → >NUL no start.bat
 
 ### 9.5 Pendências Conhecidas
 
