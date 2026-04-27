@@ -524,6 +524,8 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 | 27 | 2026-04-27 | TASK-T43 | patch | 1 arquivo — ui/chat_ui.py | aprovado | REQUEST_TIMEOUT 120s → 300s; LLM local demora ~120s |
 | 28 | 2026-04-27 | TASK-T45 | minor | 2 arquivos — verification/entropy.py, core/config.py | aprovado | Verificação migrada de OpenAI para multi-provedor (Groq/Ollama/OpenRouter); embeddings via Ollama local |
 | 29 | 2026-04-27 | TASK-T44 | minor | 3 arquivos — ui/chat_ui.py, generation/llm.py, README.md | aprovado | Timeout 600s, TimeoutException separada, num_predict no Ollama |
+| 30 | 2026-04-27 | TASK-T46 | patch | 2 arquivos — database/db.py, .gitignore; filesystem `smartb100_v2.db` | aprovado | Diretório espúrio removido; guard se path for pasta; DB local ignorado no git; bind mount documentado |
+| 31 | 2026-04-27 | TASK-T47 | minor | 6 arquivos — retrieval/ollama_embeddings.py (novo), embedder, semantic_chunker, entropy, db.py, tests | aprovado | Retries/backoff + truncagem embeddings; URL SQLite as_posix; reduz 500/tcp reset Ollama no Windows |
 
 > **Escopo Alterado:** Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
 
@@ -532,16 +534,16 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
 - **Última atualização:** 2026-04-27
-- **Último responsável:** Claude Code (Opus 4)
-- **Branch ativa:** fix/TASK-T44-timeout-error-messages
+- **Último responsável:** Assistente (sessão local)
+- **Branch ativa:** (não atribuída nesta sessão)
 - **Dependências alteradas recentemente:** nenhuma
-- **Testes passando:** sim (18/18 unitários + 7/7 integração)
+- **Testes passando:** sim (18 unitários, `pytest -o addopts=`)
 - **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T44 — Timeout, mensagens de erro e performance CPU
+- **Última task concluída:** TASK-T47 — Resiliência embeddings Ollama + URL SQLite POSIX
 
 ### 9.5 Pendências Conhecidas
 
-- [nenhuma registrada]
+- **Docker `api` (profile `app`):** antes de `docker compose --profile app up`, garantir que `./smartb100_v2.db` seja **arquivo** (pode ser vazio), não um diretório; caso contrário o bind mount no Windows costuma criar uma pasta com esse nome e o SQLite falha.
 
 ### 9.6 Decisões Técnicas Relevantes
 
@@ -549,6 +551,8 @@ Decisão: [seguro para prosseguir / requer atenção do usuário]
 
 - **mypy ignore_missing_imports=true** (T21): Necessário porque ollama, qdrant-client e outras dependências não possuem type stubs. Evita falsos positivos sem comprometer a verificação do código próprio.
 - **Embeddings de verificação sempre via Ollama local** (T45): Mesmo quando o provider de geração é Groq ou OpenRouter, os embeddings para clustering de entropia usam Ollama (nomic-embed-text) local. Rápido, gratuito, sem dependência de API externa para embeddings.
+- **SQLite e bind mount em Windows** (T46): O volume `.\smartb100_v2.db` no `docker-compose` cria o path no host. Se faltar, o Docker Desktop pode materializar `smartb100_v2.db` como **diretório**; a API trata isso com `RuntimeError` explícita após a correção em `database/db.py`. Mitigação: criar o arquivo (vazio) antes de subir o `api` ou apagar a pasta e recriar o ficheiro.
+- **Embeddings Ollama com retries** (T47): `retrieval/ollama_embeddings.embed_text` concentra truncagem (8192 chars) e backoff exponencial para `ResponseError`, `ConnectionError`, erros `httpx` e `OSError`, usado pelo chunker, `generate_embedding` e verificação por entropia.
 
 ### 9.7 Padrões Recorrentes Observados
 
