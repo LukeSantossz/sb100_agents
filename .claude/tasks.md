@@ -84,41 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T40
-- **Status:** em andamento
-- **Modo:** desenvolvimento
-- **Complexidade:** minor
-- **Data de criação:** 2026-04-27
-
-#### Objetivo (!obrigatório)
-Corrigir endpoint `/chat` que bloqueia o event loop do FastAPI por usar chamadas síncronas dentro de `async def`.
-
-#### Contexto (!obrigatório)
-O endpoint `chat` em `api/routes/chat.py` é declarado como `async def` mas chama funções síncronas bloqueantes (Ollama, Qdrant). Isso congela o event loop do uvicorn, impedindo que qualquer outra requisição seja processada enquanto o LLM gera a resposta. O Gradio reporta "Não foi possível conectar à API" porque o timeout é atingido.
-
-#### Escopo Técnico (!obrigatório)
-- **Arquivos/módulos envolvidos:** `api/routes/chat.py`
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** melhora disponibilidade; comportamento funcional inalterado
-
-#### Critérios de Aceite (!obrigatório)
-- [ ] Endpoint `chat` não bloqueia o event loop do FastAPI
-- [ ] `/health` responde enquanto `/chat` está processando
-- [ ] Testes existentes continuam passando
-- [ ] Ruff lint passa sem erros
-
-#### Restrições
-- Mudança mínima: alterar `async def` para `def` (FastAPI roda em thread pool automaticamente)
-- Não alterar lógica de negócio do pipeline RAG
-
-#### Log de Andamento (atualizado pelo agente)
-
-| Data | Sessão | Ação Realizada | Status ao Final |
-|------|--------|----------------|-----------------|
-| 2026-04-27 | 1 | Diagnóstico: async def com chamadas síncronas bloqueia event loop | em andamento |
-
----
-
 ### TASK-T41
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -170,6 +135,13 @@ Redirecionamentos `>nul` no `start.bat` são interpretados como nome de arquivo 
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T40 — Corrigir async def bloqueante no endpoint /chat ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** fix/TASK-T40-async-blocking-eventloop
+- **Commit:** 0b299c7
+- **Avaliação:** aprovado
+- **Nota:** `async def chat()` alterado para `def chat()`. FastAPI executa handlers síncronos em thread pool, liberando o event loop para /health e outras requisições.
 
 ### TASK-T39 — Atualizar README com Setup Passo a Passo ✓
 - **Concluída em:** 2026-04-26
