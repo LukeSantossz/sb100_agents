@@ -190,9 +190,9 @@ def init_qdrant(client: QdrantClient, embed_dim: int):
             collection_name=COLLECTION_NAME,
             vectors_config=VectorParams(size=embed_dim, distance=Distance.COSINE),
         )
-        print(f"  ✓ Collection '{COLLECTION_NAME}' criada (dim={embed_dim})")
+        print(f"  [OK] Collection '{COLLECTION_NAME}' criada (dim={embed_dim})")
     else:
-        print(f"  ✓ Collection '{COLLECTION_NAME}' já existe, reutilizando.")
+        print(f"  [OK] Collection '{COLLECTION_NAME}' ja existe, reutilizando.")
 
 
 def upsert_chunks(client: QdrantClient, chunks: list[Chunk]):
@@ -223,23 +223,23 @@ def upsert_chunks(client: QdrantClient, chunks: list[Chunk]):
 def process_pdf(pdf_path: str, client: QdrantClient) -> int:
     """Processa um único PDF e indexa no Qdrant. Retorna número de chunks."""
     filename = Path(pdf_path).name
-    print(f"\n📄 Processando: {filename}")
+    print(f"\n[PDF] Processando: {filename}")
 
     # 1. Extração de texto
     raw_text = extract_text_from_pdf(pdf_path)
     if not raw_text.strip():
-        print("  ⚠️  Nenhum texto extraído (PDF pode ser imagem). Pulando.")
+        print("  [WARN] Nenhum texto extraido (PDF pode ser imagem). Pulando.")
         return 0
 
     # 2. Divisão em frases
     raw_sentences = split_into_sentences(raw_text)
-    print(f"  → {len(raw_sentences)} frases extraídas")
+    print(f"  -> {len(raw_sentences)} frases extraidas")
 
     if len(raw_sentences) == 0:
         return 0
 
     # 3. Embeddings das frases
-    print(f"  → Gerando embeddings via {OLLAMA_MODEL}...")
+    print(f"  -> Gerando embeddings via {OLLAMA_MODEL}...")
     texts = list(raw_sentences)
     embeddings = get_embeddings_batch(texts)
 
@@ -249,7 +249,7 @@ def process_pdf(pdf_path: str, client: QdrantClient) -> int:
 
     # 4. Chunking semântico
     sentence_groups = semantic_chunking(sentences)
-    print(f"  → {len(sentence_groups)} chunks semânticos gerados")
+    print(f"  -> {len(sentence_groups)} chunks semanticos gerados")
 
     # 5. Construção dos chunks com metadados
     metadata = {
@@ -260,7 +260,7 @@ def process_pdf(pdf_path: str, client: QdrantClient) -> int:
 
     # 6. Indexação no Qdrant
     count = upsert_chunks(client, chunks)
-    print(f"  ✓ {count} chunks indexados no Qdrant")
+    print(f"  [OK] {count} chunks indexados no Qdrant")
     return count
 
 
@@ -271,7 +271,7 @@ def process_folder(folder_path: str):
         print(f"Nenhum PDF encontrado em: {folder_path}")
         return
 
-    print(f"🔍 {len(pdf_files)} PDFs encontrados em '{folder_path}'")
+    print(f"[INFO] {len(pdf_files)} PDFs encontrados em '{folder_path}'")
 
     # Inicializa Qdrant
     client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
@@ -281,7 +281,7 @@ def process_folder(folder_path: str):
     for pdf_path in tqdm(pdf_files, desc="Processando PDFs"):
         total_chunks += process_pdf(str(pdf_path), client)
 
-    print("\n✅ Pipeline concluído!")
+    print("\n[OK] Pipeline concluido!")
     print(f"   PDFs processados : {len(pdf_files)}")
     print(f"   Chunks indexados : {total_chunks}")
     print(f"   Collection       : {COLLECTION_NAME}")
@@ -305,7 +305,7 @@ def search(query: str, top_k: int = 5):
         with_payload=True,
     ).points
 
-    print(f'\n🔎 Query: "{query}"\n')
+    print(f'\n[SEARCH] Query: "{query}"\n')
     for i, r in enumerate(results, 1):
         print(f"[{i}] Score: {r.score:.4f} | Arquivo: {r.payload.get('source_file')}")
         print(f"    {r.payload['text'][:300]}...")
