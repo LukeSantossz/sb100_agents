@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 # SQLite database file relative to the project root
-DB_PATH = str(Path(__file__).resolve().parents[2] / "smartb100_v2.db")
+DB_PATH = str(Path(__file__).resolve().parents[1] / "smartb100_v2.db")
 
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
 

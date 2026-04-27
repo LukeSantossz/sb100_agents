@@ -90,7 +90,28 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 ## Tasks Concluídas
 
-> Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+> Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico �� cumulativo.
+
+### TASK-T42 — Corrigir redirecionamento >nul no start.bat ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** fix/TASK-T40-async-blocking-eventloop
+- **Commit:** 522b6d4
+- **Avaliação:** aprovado
+- **Nota:** 5 ocorrências de `>nul` substituídas por `>NUL` (uppercase) para evitar criação de arquivo literal.
+
+### TASK-T41 — Corrigir DB_PATH em database/db.py ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** fix/TASK-T40-async-blocking-eventloop
+- **Commit:** e50f78f
+- **Avaliação:** aprovado
+- **Nota:** `.parents[2]` corrigido para `.parents[1]`. Banco agora é criado na raiz do projeto.
+
+### TASK-T40 — Corrigir async def bloqueante no endpoint /chat ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** fix/TASK-T40-async-blocking-eventloop
+- **Commit:** 0b299c7
+- **Avaliação:** aprovado
+- **Nota:** `async def chat()` alterado para `def chat()`. FastAPI executa handlers síncronos em thread pool, liberando o event loop para /health e outras requisições.
 
 ### TASK-T39 — Atualizar README com Setup Passo a Passo ✓
 - **Concluída em:** 2026-04-26
