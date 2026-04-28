@@ -1,0 +1,112 @@
+name: Claude Auto-Implement
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  implement:
+    if: |
+      github.event.label.name == 'claude-auto' &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.sender.association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Validate issue content
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          if [ -z "$ISSUE_TITLE" ]; then
+            echo "::error::Issue title is empty"
+            exit 1
+          fi
+          if [ ${#ISSUE_BODY} -lt 20 ]; then
+            echo "::error::Issue body too short (min 20 chars)"
+            exit 1
+          fi
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          label_trigger: "claude-auto"
+          base_branch: "main"
+          branch_prefix: "claude/"
+          prompt: |
+            You are implementing a solution for GitHub issue #${{ github.event.issue.number }}.
+
+            ISSUE TITLE: ${{ github.event.issue.title }}
+            ISSUE BODY:
+            ${{ github.event.issue.body }}
+
+            INSTRUCTIONS:
+            1. Read CLAUDE.md at the repository root for project conventions.
+            2. Implement the solution following existing patterns and architecture.
+            3. Use Conventional Commits: type(scope): subject (single line, no body, no co-authored-by).
+            4. Run tests: pytest tests/ -v --ignore=tests/test_integration.py
+            5. Run lint: ruff check . && ruff format --check .
+            6. Fix any failures before finishing.
+            7. Keep changes minimal — only modify what is necessary.
+            8. Do not add unnecessary dependencies.
+            9. If the issue is unclear, comment explaining what is ambiguous instead of guessing.
+            10. PR description must include: summary of changes, "Closes #${{ github.event.issue.number }}", how to test.
+          claude_args: >-
+            --max-turns ${{ vars.CLAUDE_MAX_TURNS || '25' }}
+            --model ${{ vars.CLAUDE_MODEL || 'claude-sonnet-4-6' }}
+
+      - name: Comment result on issue
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = '${{ steps.claude.outputs.branch_name }}';
+            const success = '${{ steps.claude.outcome }}' === 'success';
+            if (success && branchName) {
+              const { data: prs } = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                head: `${context.repo.owner}:${branchName}`,
+                state: 'open'
+              });
+              if (prs.length > 0) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: `Claude Code created PR #${prs[0].number} to address this issue.\n\n**Branch:** \`${branchName}\`\n\nPlease review before merging.`
+                });
+              }
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `Claude Code was unable to implement this issue automatically.\n\n[Workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})\n\nThis issue may require manual implementation.`
+              });
+            }
+
+      - name: Remove label
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'claude-auto'
+              });
+            } catch (e) { /* label may already be removed */ }
