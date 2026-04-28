@@ -90,6 +90,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T50 — CONTRIBUTING.md, seção README e LICENSE MIT ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** refactor/TASK-T49-modular-claude-rules
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** CONTRIBUTING.md com fluxo open-source, LICENSE MIT, seção Contribuindo no README, Project Structure atualizado (rules/ + registry.md)
+
 ### TASK-T48 — Fix mypy no-any-return em ollama_embeddings.py ✓
 - **Concluída em:** 2026-04-27
 - **Branch:** fix/TASK-T48-mypy-no-any-return
