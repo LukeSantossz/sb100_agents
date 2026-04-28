@@ -84,11 +84,16 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
----
-
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T51 — GitHub Action + Claude Code para Auto-Implementação de Issues ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** ci/TASK-T51-claude-auto-action
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** Dois workflows: `claude-auto.yml` (label trigger, branch+PR automáticos via anthropics/claude-code-action@v1) e `claude-respond.yml` (@claude em comentários). README atualizado com seção de automação e setup. CI existente inalterado. Sem auto-merge — PR sempre requer review humano.
 
 ### TASK-T50 — CONTRIBUTING.md, seção README e LICENSE MIT ✓
 - **Concluída em:** 2026-04-27
