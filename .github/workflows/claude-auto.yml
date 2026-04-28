@@ -8,7 +8,7 @@ jobs:
   implement:
     if: |
       github.event.label.name == 'claude-auto' &&
-      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.sender.association)
+      github.event.sender.login == 'LukeSantossz'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
