@@ -52,6 +52,7 @@
 | 32 | 2026-04-27 | TASK-T48 | patch | 1 arquivo — retrieval/ollama_embeddings.py | aprovado | Variável tipada resolve mypy no-any-return; CI typecheck desbloqueado |
 | 33 | 2026-04-27 | TASK-T49 | major | 22 arquivos — .claude/ reestruturado | aprovado | Migração instructions.md monolítico para rules/ modular + registry.md separado |
 | 34 | 2026-04-27 | TASK-T50 | minor | 3 arquivos — CONTRIBUTING.md, LICENSE, README.md | aprovado | Guia contribuição open-source + MIT License + seção Contribuindo no README |
+| 35 | 2026-04-27 | TASK-T51 | major | 3 arquivos — .github/workflows/claude-auto.yml, claude-respond.yml, README.md | aprovado | GitHub Actions: auto-implementação de issues (claude-auto label) + resposta interativa (@claude) via anthropics/claude-code-action@v1 |
 
 ## Estado da Codebase
 
@@ -59,11 +60,11 @@
 
 - **Última atualização:** 2026-04-27
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** refactor/TASK-T49-modular-claude-rules
+- **Branch ativa:** ci/TASK-T51-claude-auto-action
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18 unitários, `pytest -o addopts=`)
 - **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T50 — CONTRIBUTING.md, seção README e LICENSE MIT
+- **Última task concluída:** TASK-T51 — GitHub Action + Claude Code para Auto-Implementação de Issues
 
 ## Pendências Conhecidas
 
