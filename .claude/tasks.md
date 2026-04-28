@@ -2,7 +2,7 @@
 
 > **Este arquivo é o ponto de entrada obrigatório para qualquer implementação.**
 > Nenhum agente de IA pode modificar a codebase sem uma task formalmente registrada aqui.
-> Consulte `instructions.md` Seção 0 (Trava de Segurança) para as regras completas.
+> Consulte `.claude/rules/00-trava-seguranca.md` para as regras completas.
 
 ---
 
@@ -69,7 +69,7 @@ Ex: "Não alterar o módulo X", "Manter compatibilidade com a versão Y", "Não 
 
 ### Classificação de Complexidade
 
-A complexidade determina o nível de cerimônia na avaliação pós-implementação (ver `instructions.md` Seção 4.0):
+A complexidade determina o nível de cerimônia na avaliação pós-implementação (ver `.claude/rules/04-avaliacao-pos.md`):
 
 | Nível | Quando usar | Exemplos |
 |-------|-------------|----------|
@@ -88,7 +88,7 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 ## Tasks Concluídas
 
-> Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+> Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
 ### TASK-T48 — Fix mypy no-any-return em ollama_embeddings.py ✓
 - **Concluída em:** 2026-04-27
@@ -335,5 +335,5 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 7. **O resultado é preenchido pelo agente** ao final da implementação, junto com a atualização do Registro de Projeto.
 8. **Complexidade é obrigatória.** Toda task deve ser classificada como `patch`, `minor` ou `major`. Na dúvida, classifique para cima (minor em vez de patch, major em vez de minor). A classificação determina o nível de cerimônia da avaliação pós-implementação.
 9. **A ordem na seção Tasks Ativas define prioridade.** A primeira task é a ativa. O agente não pula para a segunda sem que a primeira esteja concluída, descartada ou explicitamente pausada pelo usuário.
-10. **O Log de Andamento é obrigatório para tasks `minor` e `major`.** O agente registra uma entrada a cada sessão em que trabalhar na task, incluindo interrupções e travamentos. Tasks `patch` podem omitir o log. O log captura o progresso intermediário; a conclusão final é registrada no Resultado da task e no Histórico de Implementações do `instructions.md` (Seção 9.3).
+10. **O Log de Andamento é obrigatório para tasks `minor` e `major`.** O agente registra uma entrada a cada sessão em que trabalhar na task, incluindo interrupções e travamentos. Tasks `patch` podem omitir o log. O log captura o progresso intermediário; a conclusão final é registrada no Resultado da task e no Histórico de Implementações do `registry.md`.
 11. **Tasks revertidas não são deletadas.** Ao reverter uma implementação, a task original recebe status `revertida` com nota explicativa, e uma nova task `fix` ou `revert` é criada referenciando a original.
