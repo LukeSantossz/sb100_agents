@@ -1,182 +1,74 @@
-#!/bin/bash
-# pre-commit hook — Detects debug logs and validates scope
-# Reference: .claude/instructions.md Section 11.1
+#!/usr/bin/env bash
+# pre-commit hook — Detecta logs de debug em arquivos staged
+# Referência: .claude/rules/09-enforcement.md
+# Configuração: .claude/enforcement.conf
+# Instalado pela TASK-000. Bypass: git commit --no-verify
 
-# Colors for output
-RED='\033[0;31m'
-YELLOW='\033[0;33m'
-GREEN='\033[0;32m'
-NC='\033[0m' # No Color
+CONF_FILE="$(git rev-parse --show-toplevel)/.claude/enforcement.conf"
+FOUND=0
 
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-CONF_FILE="$REPO_ROOT/.claude/enforcement.conf"
-TASKS_FILE="$REPO_ROOT/.claude/tasks.md"
+# Se o arquivo de configuração não existir, usa padrões default
+if [ ! -f "$CONF_FILE" ]; then
+  echo "AVISO: .claude/enforcement.conf não encontrado. Usando padrões default."
+  # Padrões default mínimos
+  DEFAULT_PATTERNS="js|console\.log\(
+py|print\(
+ts|console\.log\(
+dart|print\("
+  CONF_CONTENT="$DEFAULT_PATTERNS"
+else
+  CONF_CONTENT=$(cat "$CONF_FILE")
+fi
 
-HAS_WARNINGS=0
-HAS_ERRORS=0
-
-# Get list of staged files (excluding deleted files)
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=d 2>/dev/null)
+# Obtém arquivos staged (apenas adições e modificações)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
 
 if [ -z "$STAGED_FILES" ]; then
-    exit 0
+  exit 0
 fi
 
-# ============================================================
-# PART 1: Debug Log Detection
-# ============================================================
+# Para cada arquivo staged, verifica padrões correspondentes à extensão
+while IFS= read -r FILE; do
+  [ -z "$FILE" ] && continue
+  [ ! -f "$FILE" ] && continue
 
-check_debug_logs() {
-    local file="$1"
-    local ext="${file##*.}"
-    local patterns=""
+  # Extrai extensão
+  EXT="${FILE##*.}"
 
-    # Read patterns from config file if it exists
-    if [ -f "$CONF_FILE" ]; then
-        patterns=$(grep -E "^${ext}:" "$CONF_FILE" 2>/dev/null | cut -d: -f2-)
-    fi
+  # Busca padrões para esta extensão no conf
+  while IFS='|' read -r CONF_EXT PATTERN; do
+    # Ignora comentários e linhas vazias
+    [[ "$CONF_EXT" =~ ^#.*$ ]] && continue
+    [ -z "$CONF_EXT" ] && continue
+    [ -z "$PATTERN" ] && continue
 
-    # If no config, use defaults for common languages
-    if [ -z "$patterns" ]; then
-        case "$ext" in
-            js|jsx|ts|tsx)
-                patterns="console\.(log|debug|info|warn|error)\s*\(
-debugger"
-                ;;
-            py)
-                patterns="print\s*\(
-breakpoint\s*\(
-pdb\.set_trace"
-                ;;
-            *)
-                return 0
-                ;;
-        esac
-    fi
+    # Remove espaços
+    CONF_EXT=$(echo "$CONF_EXT" | tr -d '[:space:]')
+    PATTERN=$(echo "$PATTERN" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
-    # Check staged content for debug patterns
-    local staged_content
-    staged_content=$(git show ":$file" 2>/dev/null) || return 0
-
-    local found_issues=""
-    while IFS= read -r pattern; do
-        [ -z "$pattern" ] && continue
-        local matches
-        matches=$(echo "$staged_content" | grep -nE "$pattern" 2>/dev/null || true)
-        if [ -n "$matches" ]; then
-            found_issues="${found_issues}${matches}\n"
+    if [ "$EXT" = "$CONF_EXT" ]; then
+      # Verifica apenas linhas adicionadas (não removidas)
+      MATCHES=$(git diff --cached -U0 "$FILE" | grep "^+" | grep -v "^+++" | grep -nE "$PATTERN" || true)
+      if [ -n "$MATCHES" ]; then
+        if [ "$FOUND" -eq 0 ]; then
+          echo ""
+          echo "AVISO: Possíveis logs de debug detectados em arquivos staged:"
+          echo ""
         fi
-    done <<< "$patterns"
-
-    if [ -n "$found_issues" ]; then
-        echo -e "${YELLOW}WARNING: Possible debug log in $file:${NC}"
-        echo -e "$found_issues" | head -5
-        if [ $(echo -e "$found_issues" | wc -l) -gt 5 ]; then
-            echo "  ... and more"
-        fi
-        return 1
+        echo "  $FILE:"
+        echo "$MATCHES" | sed 's/^/    /'
+        echo ""
+        FOUND=1
+      fi
     fi
+  done <<< "$CONF_CONTENT"
+done <<< "$STAGED_FILES"
 
-    return 0
-}
-
-echo "Checking for debug logs in staged files..."
-for file in $STAGED_FILES; do
-    if ! check_debug_logs "$file"; then
-        HAS_WARNINGS=1
-    fi
-done
-
-# ============================================================
-# PART 2: Scope Validation (Warning Only)
-# ============================================================
-
-validate_scope() {
-    # Skip if tasks.md doesn't exist
-    if [ ! -f "$TASKS_FILE" ]; then
-        echo -e "${YELLOW}WARNING: tasks.md not found. Cannot validate scope.${NC}"
-        return 0
-    fi
-
-    # Find the active task (status: em andamento)
-    local active_task
-    active_task=$(grep -B5 "Status:.*em andamento" "$TASKS_FILE" 2>/dev/null | grep -E "^### TASK-[0-9]+" | head -1 | sed 's/### //')
-
-    if [ -z "$active_task" ]; then
-        echo -e "${YELLOW}WARNING: No active task found (status: em andamento). Cannot validate scope.${NC}"
-        return 0
-    fi
-
-    # Extract scope section (files listed after "Arquivos/módulos envolvidos:")
-    # This is a simplified extraction - looks for lines starting with "  - " after the scope header
-    local in_scope_section=0
-    local scope_files=""
-
-    while IFS= read -r line; do
-        if echo "$line" | grep -q "Arquivos/módulos envolvidos:"; then
-            in_scope_section=1
-            continue
-        fi
-        if [ $in_scope_section -eq 1 ]; then
-            if echo "$line" | grep -qE "^  - \`"; then
-                # Extract file path from markdown backticks
-                scope_files="$scope_files $(echo "$line" | sed -E 's/.*`([^`]+)`.*/\1/')"
-            elif echo "$line" | grep -qE "^- \*\*"; then
-                # Reached next field, stop
-                break
-            fi
-        fi
-    done < "$TASKS_FILE"
-
-    # If no scope files found, skip validation
-    if [ -z "$scope_files" ]; then
-        return 0
-    fi
-
-    # Check each staged file against scope
-    local out_of_scope=""
-    for file in $STAGED_FILES; do
-        local in_scope=0
-        for scope_path in $scope_files; do
-            # Check if file matches scope path (exact match or starts with directory)
-            if [ "$file" = "$scope_path" ] || [[ "$file" == "$scope_path"* ]]; then
-                in_scope=1
-                break
-            fi
-        done
-        if [ $in_scope -eq 0 ]; then
-            out_of_scope="$out_of_scope$file\n"
-        fi
-    done
-
-    if [ -n "$out_of_scope" ]; then
-        echo -e "${YELLOW}WARNING: Files outside task scope ($active_task):${NC}"
-        echo -e "$out_of_scope"
-        echo "Declared scope: $scope_files"
-        echo "This is a warning only. Proceeding with commit."
-        return 1
-    fi
-
-    return 0
-}
-
-echo ""
-echo "Validating files against task scope..."
-if ! validate_scope; then
-    HAS_WARNINGS=1
+if [ "$FOUND" -eq 1 ]; then
+  echo "  Remova os logs de debug antes de commitar."
+  echo "  Use --no-verify para pular (documente o motivo na próxima sessão)."
+  echo ""
+  exit 1
 fi
 
-# ============================================================
-# SUMMARY
-# ============================================================
-
-echo ""
-if [ $HAS_WARNINGS -eq 1 ]; then
-    echo -e "${YELLOW}Pre-commit completed with warnings.${NC}"
-    echo "Review the warnings above. The commit will proceed."
-else
-    echo -e "${GREEN}Pre-commit checks passed.${NC}"
-fi
-
-# Always exit 0 - warnings don't block commits
 exit 0

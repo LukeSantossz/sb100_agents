@@ -1,7 +1,7 @@
 # Template de Issue
 
 > Copie o conteúdo abaixo ao criar uma issue. Preencha todos os campos aplicáveis.
-> Referência: `instructions.md` Seção 5.2 (Conventional Commits para o título).
+> Referência: `rules/05-convencoes.md` (Conventional Commits para o título).
 
 ---
 
