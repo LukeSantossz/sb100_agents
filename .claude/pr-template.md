@@ -1,7 +1,7 @@
 # Template de Pull Request
 
 > Copie o conteúdo abaixo ao criar uma PR. Preencha todos os campos aplicáveis.
-> Referência: `instructions.md` Seção 5.2 (Commits), Seção 6 (CRURA), Seção 6.1 (Checklist).
+> Referência: `rules/05-convencoes.md` (Commits), `rules/06-crura.md` (CRURA + Checklist).
 
 ---
 

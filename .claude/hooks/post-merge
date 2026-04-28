@@ -1,27 +1,17 @@
-#!/bin/bash
-# post-merge hook — Signals post-pull verification reminder
-# Reference: .claude/instructions.md Section 9.1, Section 11.1
-
-# Colors for output
-CYAN='\033[0;36m'
-YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+#!/usr/bin/env bash
+# post-merge hook — Lembrete de verificação pós-pull
+# Referência: .claude/rules/08-registro-projeto.md (Seção 8.3)
+# Instalado pela TASK-000.
 
 echo ""
-echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}POST-MERGE REMINDER${NC}"
-echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-echo ""
-echo "External changes have been merged into your branch."
-echo ""
-echo "In your next session with the AI agent, request:"
-echo "  - Post-pull verification (Section 9.1 of instructions.md)"
-echo "  - Codebase state comparison with last registered state"
-echo "  - Impact assessment on current/pending tasks"
-echo ""
-echo "This ensures the agent is aware of changes made outside its sessions."
-echo ""
-echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║  LEMBRETE: Codebase alterada por pull/merge.               ║"
+echo "║                                                            ║"
+echo "║  Na próxima sessão com o agente, execute a verificação     ║"
+echo "║  pós-pull antes de prosseguir com qualquer implementação.  ║"
+echo "║                                                            ║"
+echo "║  Ref: .claude/rules/08-registro-projeto.md (Seção 8.3)    ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 
 exit 0
