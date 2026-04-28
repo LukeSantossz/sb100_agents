@@ -161,7 +161,8 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for detailed diagrams and design deci
 ```
 sb100_agents/
 ├── .claude/                        # Agent workflow enforcement
-│   ├── instructions.md             # Mandatory workflow rules
+│   ├── rules/                      # Modular directive files (00-09)
+│   ├── registry.md                 # Project state & implementation history
 │   ├── tasks.md                    # Task registry
 │   ├── pr-template.md              # Pull request template
 │   ├── issue-template.md           # Issue template
@@ -323,6 +324,16 @@ curl -X POST "http://localhost:8000/chat" \
 # Health check
 curl "http://localhost:8000/health"
 ```
+
+## Contribuindo
+
+Contribuicoes sao bem-vindas! Consulte o guia completo em [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+
+Resumo rapido: fork -> branch (`type/TASK-NNN-descricao`) -> testes -> commit (Conventional Commits) -> PR.
+
+## Licenca
+
+Este projeto esta licenciado sob a [MIT License](./LICENSE).
 
 ## Known Issues
 

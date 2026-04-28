@@ -50,6 +50,8 @@
 | 30 | 2026-04-27 | TASK-T46 | patch | 2 arquivos — database/db.py, .gitignore; filesystem smartb100_v2.db | aprovado | Diretório espúrio removido; guard se path for pasta; DB local ignorado no git; bind mount documentado |
 | 31 | 2026-04-27 | TASK-T47 | minor | 6 arquivos — retrieval/ollama_embeddings.py (novo), embedder, semantic_chunker, entropy, db.py, tests | aprovado | Retries/backoff + truncagem embeddings; URL SQLite as_posix; reduz 500/tcp reset Ollama no Windows |
 | 32 | 2026-04-27 | TASK-T48 | patch | 1 arquivo — retrieval/ollama_embeddings.py | aprovado | Variável tipada resolve mypy no-any-return; CI typecheck desbloqueado |
+| 33 | 2026-04-27 | TASK-T49 | major | 22 arquivos — .claude/ reestruturado | aprovado | Migração instructions.md monolítico para rules/ modular + registry.md separado |
+| 34 | 2026-04-27 | TASK-T50 | minor | 3 arquivos — CONTRIBUTING.md, LICENSE, README.md | aprovado | Guia contribuição open-source + MIT License + seção Contribuindo no README |
 
 ## Estado da Codebase
 
@@ -57,11 +59,11 @@
 
 - **Última atualização:** 2026-04-27
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** main
+- **Branch ativa:** refactor/TASK-T49-modular-claude-rules
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18 unitários, `pytest -o addopts=`)
 - **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T48 — Fix mypy no-any-return em ollama_embeddings.py
+- **Última task concluída:** TASK-T50 — CONTRIBUTING.md, seção README e LICENSE MIT
 
 ## Pendências Conhecidas
 
