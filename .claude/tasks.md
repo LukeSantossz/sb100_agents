@@ -84,52 +84,18 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T44
-- **Status:** concluída
-- **Modo:** desenvolvimento
-- **Complexidade:** minor
-- **Data de criação:** 2026-04-27
-
-#### Objetivo (!obrigatório)
-Melhorar timeout, mensagens de erro e performance do pipeline RAG para viabilizar uso prático da interface Gradio com LLM local em CPU.
-
-#### Contexto (!obrigatório)
-O LLM local (llama3.2:3b no Ollama) leva ~163s por resposta em CPU. O timeout do httpx no Gradio é 300s, que pode estourar em perguntas complexas. A mensagem de erro captura `httpx.RequestError` (inclui timeout) mas exibe texto genérico de "conexão", confundindo o usuário. Necessário: (1) aumentar timeout para cenário CPU, (2) melhorar mensagem de erro diferenciando timeout de falha de conexão, (3) documentar tempos esperados em CPU vs GPU.
-
-#### Escopo Técnico (!obrigatório)
-- **Arquivos/módulos envolvidos:** ui/chat_ui.py, core/config.py, generation/llm.py, .env
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** LLM passa a ter limite de tokens por resposta (256 default), respostas ficam mais curtas porém com tempo viável
-
-#### Critérios de Aceite (!obrigatório)
-- [ ] Timeout do httpx aumentado para 600s (cenário CPU sem GPU)
-- [ ] Mensagem de erro diferencia timeout de falha de conexão
-- [ ] Comentários em core/config.py e/ou .env documentam tempos esperados CPU vs GPU
-- [ ] Interface Gradio retorna resposta com sucesso em teste manual
-
-#### Restrições (opcional)
-- Não alterar lógica do pipeline RAG (chat.py, generation/, verification/)
-- Não adicionar dependências novas
-
-#### Log de Andamento (atualizado pelo agente)
-
-| Data | Sessão | Ação Realizada | Status ao Final |
-|------|--------|----------------|-----------------|
-| 2026-04-27 | 1 | Diagnóstico: LLM ~163s em CPU, timeout 300s insuficiente, mensagem de erro genérica | em andamento |
-| 2026-04-27 | 2 | Implementação: timeout 600s, TimeoutException separada, num_predict em llm.py, lint fix f-string | concluída |
-
-#### Resultado (preenchido ao concluir)
-- **Data de conclusão:** 2026-04-27
-- **Branch:** fix/TASK-T44-timeout-error-messages
-- **Commit(s):** pendente
-- **Avaliação pós-implementação:** aprovado
-- **Observações:** Timeout 300→600s. TimeoutException com mensagem CPU-friendly. num_predict limita tokens no Ollama. README com ajustes cosméticos de setup.
-
 ---
 
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (instructions.md Seção 9). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T48 — Fix mypy no-any-return em ollama_embeddings.py ✓
+- **Concluída em:** 2026-04-27
+- **Branch:** fix/TASK-T48-mypy-no-any-return
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** Variável intermediária `result: list[float]` em `ollama_embeddings.py:40` resolve `no-any-return`. Zero impacto em runtime. mypy, 18 testes e ruff passando.
 
 ### TASK-T47 — Resiliência embeddings Ollama + URL SQLite POSIX ✓
 - **Concluída em:** 2026-04-27

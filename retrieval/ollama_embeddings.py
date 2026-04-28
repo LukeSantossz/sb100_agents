@@ -37,7 +37,8 @@ def embed_text(model: str, prompt: str) -> list[float]:
     for attempt in range(_MAX_RETRIES):
         try:
             response = ollama.embeddings(model=model, prompt=text)
-            return response["embedding"]
+            result: list[float] = response["embedding"]
+            return result
         except (
             ResponseError,
             RequestError,
