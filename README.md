@@ -325,15 +325,15 @@ curl -X POST "http://localhost:8000/chat" \
 curl "http://localhost:8000/health"
 ```
 
-## Contribuindo
+## Contributing
 
-Contribuicoes sao bem-vindas! Consulte o guia completo em [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+Contributions are welcome! See the full guide at [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
-Resumo rapido: fork -> branch (`type/TASK-NNN-descricao`) -> testes -> commit (Conventional Commits) -> PR.
+Quick summary: fork -> branch (`type/TASK-NNN-description`) -> tests -> commit (Conventional Commits) -> PR.
 
-## Licenca
+## License
 
-Este projeto esta licenciado sob a [MIT License](./LICENSE).
+This project is licensed under the [MIT License](./LICENSE).
 
 ## Known Issues
 

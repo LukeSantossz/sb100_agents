@@ -1,18 +1,18 @@
-# Contribuindo com o SmartB100
+# Contributing to SmartB100
 
-Obrigado pelo interesse em contribuir! Este guia explica como participar do desenvolvimento do projeto.
+Thank you for your interest in contributing! This guide explains how to get involved.
 
-## Como contribuir
+## How to contribute
 
-### 1. Fork e clone
+### 1. Fork and clone
 
 ```bash
-# Fork pelo GitHub, depois:
-git clone https://github.com/<seu-usuario>/sb100_agents.git
+# Fork via GitHub, then:
+git clone https://github.com/<your-username>/sb100_agents.git
 cd sb100_agents
 ```
 
-### 2. Configure o ambiente
+### 2. Set up the environment
 
 ```bash
 uv sync
@@ -20,26 +20,26 @@ cp .env.example .env
 docker compose --profile infra up -d
 ```
 
-### 3. Crie uma branch
+### 3. Create a branch
 
-O projeto segue a convenção `type/TASK-NNN-descricao-curta`:
+This project follows the `type/TASK-NNN-short-description` convention:
 
 ```bash
-git checkout -b feat/TASK-NNN-minha-feature
+git checkout -b feat/TASK-NNN-my-feature
 ```
 
-Tipos: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `build`, `ci`, `revert`
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `build`, `ci`, `revert`
 
-### 4. Faça suas alterações
+### 4. Make your changes
 
-- Siga as convenções de código do projeto (ver `.claude/rules/05-convencoes.md`)
-- Nomenclatura segue o VAR Method (sufixos: Data, Info, Manager, Handler, Service, Repository...)
-- Mantenha mudanças cirurgicas — toque apenas no necessario
+- Follow the project code conventions (see `.claude/rules/05-convencoes.md`)
+- Naming follows the VAR Method (suffixes: Data, Info, Manager, Handler, Service, Repository...)
+- Keep changes surgical — touch only what is necessary
 
-### 5. Rode os testes
+### 5. Run tests
 
 ```bash
-# Testes unitarios
+# Unit tests
 pytest tests/ -v --ignore=tests/test_integration.py
 
 # Lint
@@ -52,45 +52,45 @@ mypy retrieval/ generation/ memory/ --strict
 
 ### 6. Commit
 
-O projeto usa **Conventional Commits** — linha unica, sem body, sem co-authored-by:
+This project uses **Conventional Commits** — single line, no body, no co-authored-by:
 
 ```bash
 git commit -m "feat(auth): add password reset endpoint"
 ```
 
-### 7. Abra uma Pull Request
+### 7. Open a Pull Request
 
-- Preencha o template de PR (`.claude/pr-template.md`)
-- Descreva o que foi feito e como testar
-- Certifique-se de que o CI passa
+- Fill in the PR template (`.claude/pr-template.md`)
+- Describe what was done and how to test
+- Make sure CI passes
 
-## Convenções do projeto
+## Project conventions
 
-| Item | Regra |
-|------|-------|
-| Commits | `type(scope): subject` — sem body, sem co-authored-by |
-| Branches | `type/TASK-NNN-descricao-curta` |
-| Nomenclatura | VAR Method |
-| Testes | Obrigatorios para novas features e bug fixes |
-| Lint | `ruff check .` deve passar sem erros |
+| Item | Rule |
+|------|------|
+| Commits | `type(scope): subject` — no body, no co-authored-by |
+| Branches | `type/TASK-NNN-short-description` |
+| Naming | VAR Method |
+| Tests | Required for new features and bug fixes |
+| Lint | `ruff check .` must pass with no errors |
 
-Para detalhes completos, consulte os arquivos em `.claude/rules/`.
+For full details, see the files in `.claude/rules/`.
 
-## Reportando bugs
+## Reporting bugs
 
-Abra uma [issue](https://github.com/LukeSantossz/sb100_agents/issues) seguindo o template em `.claude/issue-template.md`.
+Open an [issue](https://github.com/LukeSantossz/sb100_agents/issues) following the template in `.claude/issue-template.md`.
 
 ## Code of Conduct
 
-Ao contribuir, espera-se que voce:
+When contributing, you are expected to:
 
-- Trate todos os participantes com respeito
-- Aceite critica construtiva
-- Foque no que e melhor para o projeto
-- Demonstre empatia com outros contribuidores
+- Treat all participants with respect
+- Accept constructive criticism
+- Focus on what is best for the project
+- Show empathy towards other contributors
 
-Comportamento inaceitavel inclui: assedio, linguagem ofensiva, ataques pessoais e publicacao de informacoes privadas sem consentimento.
+Unacceptable behavior includes: harassment, offensive language, personal attacks, and publishing private information without consent.
 
-## Licenca
+## License
 
-Ao contribuir, voce concorda que suas contribuicoes serao licenciadas sob a mesma licenca do projeto (MIT).
+By contributing, you agree that your contributions will be licensed under the same license as the project (MIT).
