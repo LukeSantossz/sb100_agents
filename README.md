@@ -207,7 +207,10 @@ sb100_agents/
 ├── tests/                          # Unit + integration tests
 ├── scripts/
 │   └── ingest.py                   # PDF ingestion wrapper
-├── .github/workflows/ci.yml        # GitHub Actions CI pipeline
+├── .github/workflows/
+│   ├── ci.yml                      # GitHub Actions CI pipeline
+│   ├── claude-auto.yml             # Auto-implement issues (claude-auto label)
+│   └── claude-respond.yml          # Interactive @claude in comments
 ├── ARCHITECTURE.md
 ├── SETUP.md                        # Detailed setup guide (local/remote Qdrant)
 ├── docker-compose.yml              # Docker services (infra: Qdrant / app: API+Gradio)
@@ -324,6 +327,26 @@ curl -X POST "http://localhost:8000/chat" \
 # Health check
 curl "http://localhost:8000/health"
 ```
+
+## Automated Issue Implementation
+
+Issues can be automatically implemented by Claude Code via GitHub Actions.
+
+### How it works
+1. Create an issue with clear requirements and acceptance criteria
+2. Apply the `claude-auto` label
+3. Claude Code reads the issue, creates a branch, implements the solution, and opens a PR
+4. Review the PR and merge if satisfactory
+
+### Interactive mode
+Mention `@claude` in any issue or PR comment to get Claude's assistance.
+
+### Setup (repository admin)
+1. Add `ANTHROPIC_API_KEY` secret in Settings > Secrets > Actions
+2. Create `claude-auto` label in Issues > Labels
+3. (Optional) Configure variables in Settings > Variables > Actions:
+   - `CLAUDE_MAX_TURNS` (default: 25)
+   - `CLAUDE_MODEL` (default: claude-sonnet-4-6)
 
 ## Contributing
 
