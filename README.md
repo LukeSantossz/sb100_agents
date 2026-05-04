@@ -161,7 +161,12 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for detailed diagrams and design deci
 ```
 sb100_agents/
 ├── .claude/                        # Agent workflow enforcement
-│   ├── rules/                      # Modular directive files (00-09)
+│   ├── rules/                      # Modular directive files (00-12)
+│   │   ├── 00-09                   # Core rules (security, principles, conventions, CRURA...)
+│   │   ├── 10-engenharia-agentica  # Agentic Engineering methodology (Karpathy)
+│   │   ├── 11-integracao-codex     # Claude Code + Codex dual orchestration
+│   │   └── 12-portfolio-publico    # GitHub as professional portfolio
+│   ├── guia-configuracao-codex.md  # Codex plugin setup guide
 │   ├── registry.md                 # Project state & implementation history
 │   ├── tasks.md                    # Task registry
 │   ├── pr-template.md              # Pull request template
