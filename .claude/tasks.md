@@ -88,12 +88,12 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
-### TASK-T53 — Atualizar README.md com novas regras 10-12 ✓
+### TASK-T53 — Reestruturar README.md conforme regra 12.2 ✓
 - **Concluída em:** 2026-05-04
 - **Branch:** docs/TASK-T52-T53-sync-rules-readme
 - **Commit:** pendente
 - **Avaliação:** aprovado
-- **Nota:** Project Structure atualizada: rules/ (00-12), guia-configuracao-codex.md listado, descricao das novas regras adicionada.
+- **Nota:** README reestruturado seguindo regra 12.2: contexto de negocio, diagrama Mermaid embutido (arquitetura + pipeline RAG), decisoes de engenharia (reflexo do registry.md), setup conciso. ARCHITECTURE.md removido — conteudo absorvido no README. Project Structure atualizada com rules/ (00-12).
 
 ### TASK-T52 — Sincronizar .claude/ com .claude_config/ ✓
 - **Concluída em:** 2026-05-04

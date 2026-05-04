@@ -7,244 +7,213 @@
 
 # SmartB100 — Agriculture RAG Agent
 
-> RAG-powered chat system for agricultural technical support, with agent-oriented architecture via LangGraph and hallucination verification through semantic entropy.
+> RAG-powered chat system for agricultural technical support, with hallucination verification through semantic entropy.
 
-## Overview
+## Why This Exists
 
-SmartB100 is a Retrieval-Augmented Generation (RAG) system specialized in agronomy. It answers technical agricultural questions by retrieving relevant context from indexed PDF documents and generating responses via a local LLM. It exposes a FastAPI backend and a Gradio chat interface, with Docker for the vector database.
+Agricultural extension workers and agronomists need quick, reliable answers to technical questions about crop management, soil treatment, pest control, and planting schedules. Traditional search through dense PDF manuals is slow and error-prone.
 
-The evolving architecture targets migration to a ReAct graph with LangGraph, hybrid search (dense + sparse vectors with RRF fusion), and a dual-pipeline hallucination verifier — semantic entropy and atomic claim verification.
-
-For architecture details and design decisions, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| API | FastAPI + Uvicorn |
-| LLM inference | Ollama (`llama3.2:3b`) |
-| Embeddings | Ollama (`nomic-embed-text`, 768 dims) |
-| Vector database | Qdrant (Docker) |
-| Document ingestion | PyMuPDF + semantic chunker |
-| Chat UI | Gradio |
-| Agent orchestration | LangGraph (migration in progress) |
-| Conversation memory | FIFO rolling window buffer |
-| Hallucination verification | Semantic Entropy + Claim Verification (in development) |
-| Eval providers | Groq, OpenRouter (Gemma 4) |
-
-## Getting Started
-
-### Prerequisites
-
-Before starting, ensure you have installed:
-
-- **Docker Desktop** — for the Qdrant vector database ([download](https://www.docker.com/products/docker-desktop/))
-- **Ollama** — for local LLM inference and embeddings ([download](https://ollama.ai/download))
-- **Python 3.12+** — runtime ([download](https://www.python.org/downloads/))
-
-Verify each prerequisite:
-```bash
-docker --version       # Docker version 2x+
-ollama --version       # ollama version 0.x+
-python --version       # Python 3.12+
-```
-
-### Step-by-step setup
-
-Follow each step in order. Every step includes a verification command.
-
-**Step 1 — Install Ollama models**
-```bash
-ollama pull llama3.2:3b
-ollama pull nomic-embed-text
-```
-Verify:
-```bash
-ollama list
-# Should show llama3.2:3b and nomic-embed-text
-```
-
-**Step 2 — Install Python dependencies**
-```bash
-# Option A: uv (recommended)
-uv sync
-
-# Option B: pip
-python -m venv .venv
-.venv\Scripts\pip install -e .     # Windows (Dont forget the dot at the end!)
-.venv/bin/pip install -e .         # Linux/Mac
-```
-
-**Step 3 — Configure environment variables**
-```bash
-# Copy the example file (required — the API will not start without it)
-cp .env.example .env               # Linux/Mac
-copy .env.example .env             # Windows 
-```
-The default values in `.env.example` work for local development. Edit `.env` only if you need to change model names, Qdrant URL, or add API keys for the evaluation pipeline. See `SETUP.md` for remote Qdrant configuration.
-
-**Step 4 — Start Qdrant (vector database)**
-```bash
-docker compose --profile infra up -d
-```
-Verify:
-```bash
-curl http://localhost:6333/healthz
-# Should return: healthz check passed
-```
-
-**Step 5 — Index PDF documents (first run only)**
-
-The repository includes a sample PDF in `archives/`. Index it into Qdrant:
-```bash
-.venv\Scripts\python.exe database\semantic_chunker.py index ./archives/   # Windows
-.venv/bin/python database/semantic_chunker.py index ./archives/           # Linux/Mac
-```
-Verify:
-```bash
-curl http://localhost:6333/collections/archives_v2
-# Should return JSON with "status":"ok" and points_count > 0
-```
-To add your own documents, place PDF files in the `archives/` directory and re-run the index command.
-
-**Step 6 — Start the API**
-```bash
-.venv\Scripts\python.exe -m uvicorn api.main:app --reload   # Windows
-.venv/bin/python -m uvicorn api.main:app --reload           # Linux/Mac
-```
-Verify:
-```bash
-curl http://localhost:8000/health
-# Should return: {"status":"ok"}
-```
-
-**Step 7 (optional) — Start Gradio chat interface**
-```bash
-.venv\Scripts\python.exe ui/chat_ui.py    # Windows
-.venv/bin/python ui/chat_ui.py            # Linux/Mac
-```
-Open http://localhost:7860 in your browser.
-
-### Quick start (Windows only)
-
-If you have already completed steps 1-3 above, use the one-shot scripts:
-```bash
-.\start.bat
-# or
-powershell -ExecutionPolicy Bypass -File .\start.ps1
-```
-These scripts start Qdrant, check Ollama models, and launch the API + Gradio.
-
-### Full Docker deployment
-```bash
-docker compose --profile infra --profile app up -d
-```
+SmartB100 indexes agricultural PDF documents into a vector database and uses a local LLM to generate answers grounded in the indexed content. The system adapts response complexity to the user's expertise level (beginner, intermediate, expert) and flags potentially hallucinated answers using semantic entropy scoring, so users know when to double-check the information.
 
 ## Architecture
 
-SmartB100 follows a modular 8-layer architecture:
+```mermaid
+flowchart TD
+    subgraph CLIENT["Client"]
+        GRADIO["Gradio UI\n:7860"]
+        CURL["curl / HTTP"]
+    end
 
-| Layer | Purpose |
-|-------|---------|
-| `api/` | FastAPI endpoints (chat, auth, health) |
-| `core/` | Pydantic schemas (`ChatRequest`, `ChatResponse`, `ExpertiseLevel`) |
-| `retrieval/` | Embeddings (Ollama `nomic-embed-text`) + Qdrant vector search |
-| `generation/` | LLM response generation with profile-aware system prompts |
-| `memory/` | `ConversationBuffer` — FIFO rolling window (maxlen=10) |
-| `profiling/` | User expertise adaptation (beginner / intermediate / expert) |
-| `verification/` | Hallucination detection via semantic entropy |
-| `database/` | SQLite (users, conversations) + Qdrant (vectors) + PDF ingestion |
+    subgraph API["API Layer"]
+        ENDPOINT["POST /chat"]
+        AUTH["POST /auth/*"]
+        HEALTH["GET /health"]
+    end
 
-See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for detailed diagrams and design decisions.
+    subgraph PIPELINE["RAG Pipeline"]
+        EMBED["Embedder\nOllama nomic-embed-text\n768 dims"]
+        SEARCH["Vector Search\nCosine Similarity"]
+        MEMORY["ConversationBuffer\nFIFO deque (maxlen=10)"]
+        PROFILE["Profiling\nbeginner | intermediate | expert"]
+        LLM["LLM Generator\nOllama llama3.2:3b"]
+    end
+
+    subgraph VERIFY["Verification"]
+        ENTROPY["Semantic Entropy\nMulti-provider (Groq/Ollama/OpenRouter)"]
+        GATE["Verification Gate\nRetry + Fallback"]
+    end
+
+    subgraph DATA["Data Layer"]
+        QDRANT[("Qdrant\n:6333\narchives_v2")]
+        SQLITE[("SQLite\nusers / conversations")]
+    end
+
+    GRADIO -->|HTTP JSON| ENDPOINT
+    CURL -->|HTTP JSON| ENDPOINT
+
+    ENDPOINT --> EMBED
+    EMBED --> SEARCH
+    SEARCH --> QDRANT
+
+    ENDPOINT --> MEMORY
+    MEMORY -.->|history| LLM
+    SEARCH -->|context| PROFILE
+    PROFILE --> LLM
+
+    LLM --> GATE
+    GATE -->|verification_enabled| ENTROPY
+    ENTROPY -->|score| GATE
+    GATE -->|retry if high entropy| LLM
+
+    GATE --> RESPONSE["ChatResponse\n{answer, hallucination_score}"]
+
+    AUTH --> SQLITE
+```
+
+**RAG Pipeline Flow:**
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant A as API /chat
+    participant E as Embedder
+    participant Q as Qdrant
+    participant G as LLM Generator
+    participant V as Verification Gate
+
+    C->>A: POST /chat {session_id, question, profile}
+    A->>E: generate_embedding(question)
+    E-->>A: vector[768]
+    A->>Q: search_context(vector, top_k=3)
+    Q-->>A: chunks[]
+    A->>G: generate(question, context, history, profile)
+    G-->>A: answer
+    alt verification_enabled
+        A->>V: evaluate(question, context, answer)
+        V-->>A: {answer, hallucination_score}
+    end
+    A-->>C: ChatResponse {answer, hallucination_score}
+```
+
+## Engineering Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Ollama for all embeddings** | Even when generation uses Groq or OpenRouter, embeddings for entropy clustering use Ollama (`nomic-embed-text`) locally. Free, fast, no external API dependency for embeddings. |
+| **Semantic entropy over binary classifiers** | Generates N candidate responses, clusters by semantic similarity, computes Shannon entropy. Higher entropy = less agreement between candidates = higher hallucination risk. Produces a continuous score (0.0-1.0) instead of a binary flag. |
+| **Multi-provider verification** | Replaced OpenAI-only verification with Groq/Ollama/OpenRouter dispatch. Removes hard dependency on paid API for hallucination checks. |
+| **Ollama embeddings with retries + backoff** | Centralized in `retrieval/ollama_embeddings.py`: truncation at 8192 chars, 6 attempts, exponential backoff up to 60s. Handles `ResponseError`, `ConnectionError`, `httpx` errors, and `OSError`. Used by chunker, embedder, and entropy verification. |
+| **SQLite with pathlib + POSIX URLs** | `database/db.py` uses `Path.as_posix()` for SQLite connection strings. On Windows with Docker bind mounts, the host may create `smartb100_v2.db` as a directory instead of a file; the API raises `RuntimeError` with a clear message if this happens. |
+| **Sync endpoint for /chat** | `def chat()` instead of `async def chat()`. FastAPI runs sync handlers in a thread pool, which frees the event loop for `/health` and other concurrent requests while the LLM blocks. |
+| **mypy `ignore_missing_imports=true`** | Ollama, qdrant-client, and other dependencies lack type stubs. Avoids false positives without compromising type checking on project code. |
+| **Profile-aware system prompts** | Three expertise levels (`beginner`, `intermediate`, `expert`) select different system prompts. Same RAG context, different response complexity. No separate models or fine-tuning needed. |
+
+## How to Run
+
+### Prerequisites
+
+- **Docker Desktop** ([download](https://www.docker.com/products/docker-desktop/))
+- **Ollama** ([download](https://ollama.ai/download))
+- **Python 3.12+** ([download](https://www.python.org/downloads/))
+
+### Setup
+
+```bash
+# 1. Pull models
+ollama pull llama3.2:3b && ollama pull nomic-embed-text
+
+# 2. Install dependencies
+uv sync                            # or: python -m venv .venv && .venv/bin/pip install -e .
+
+# 3. Configure environment
+cp .env.example .env               # defaults work for local dev
+
+# 4. Start Qdrant
+docker compose --profile infra up -d
+
+# 5. Index documents (first run only)
+.venv/bin/python database/semantic_chunker.py index ./archives/
+
+# 6. Start API
+.venv/bin/python -m uvicorn api.main:app --reload
+
+# 7. (Optional) Start Gradio UI
+.venv/bin/python ui/chat_ui.py
+```
+
+Windows users: replace `.venv/bin/python` with `.venv\Scripts\python.exe`, or use `.\start.bat` / `.\start.ps1` after steps 1-3.
+
+Full Docker deployment: `docker compose --profile infra --profile app up -d`
+
+See [`SETUP.md`](./SETUP.md) for remote Qdrant configuration.
+
+### Verify
+
+```bash
+curl http://localhost:6333/healthz           # Qdrant: "healthz check passed"
+curl http://localhost:8000/health            # API: {"status":"ok"}
+```
+
+## API Reference
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /chat` | RAG query; returns answer with hallucination score |
+| `POST /auth/register` | Creates new user |
+| `POST /auth/token` | OAuth2 login; returns JWT |
+| `GET /health` | API health status |
+
+**POST /chat:**
+
+```bash
+curl -X POST "http://localhost:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "demo-session",
+    "question": "Qual a epoca ideal de plantio da soja?",
+    "profile": {"name": "User", "expertise": "beginner"}
+  }'
+# {"answer": "...", "hallucination_score": 0.18}
+```
+
+| Request Field | Type | Description |
+|---------------|------|-------------|
+| `session_id` | string | UUID for conversation continuity |
+| `question` | string | User query |
+| `profile.expertise` | enum | `beginner` \| `intermediate` \| `expert` |
+
+| Response Field | Type | Description |
+|----------------|------|-------------|
+| `answer` | string | Generated response adapted to expertise level |
+| `hallucination_score` | float | 0.0 (grounded) to 1.0 (likely hallucinated) |
 
 ## Project Structure
+
 ```
 sb100_agents/
-├── .claude/                        # Agent workflow enforcement
-│   ├── rules/                      # Modular directive files (00-12)
-│   │   ├── 00-09                   # Core rules (security, principles, conventions, CRURA...)
-│   │   ├── 10-engenharia-agentica  # Agentic Engineering methodology (Karpathy)
-│   │   ├── 11-integracao-codex     # Claude Code + Codex dual orchestration
-│   │   └── 12-portfolio-publico    # GitHub as professional portfolio
-│   ├── guia-configuracao-codex.md  # Codex plugin setup guide
-│   ├── registry.md                 # Project state & implementation history
-│   ├── tasks.md                    # Task registry
-│   ├── pr-template.md              # Pull request template
-│   ├── issue-template.md           # Issue template
-│   └── hooks/                      # Git hooks (commit-msg, pre-commit, etc.)
 ├── api/                            # FastAPI backend
 │   ├── main.py                     # App entry (CORS + routers + lifespan)
-│   └── routes/
-│       ├── auth.py                 # POST /auth/register, /auth/token
-│       ├── chat.py                 # POST /chat (RAG pipeline)
-│       └── health.py               # GET /health
+│   └── routes/                     # chat.py, auth.py, health.py
 ├── core/                           # Pydantic schemas & configuration
-│   ├── config.py                   # Settings (env vars)
-│   └── schemas.py                  # ChatRequest, ChatResponse, UserProfile
-├── database/                       # SQLite + PDF ingestion
-│   ├── db.py                       # SQLAlchemy engine + session
-│   ├── models.py                   # User, Conversation, Message ORM
-│   └── semantic_chunker.py         # PDF indexing + semantic chunking
-├── eval/                           # 5-step evaluation pipeline
-│   ├── dataset/                    # Generated questions and references
-│   ├── results/                    # Evaluation outputs
-│   ├── generate_questions.py       # PDF → questions
-│   ├── collect_references.py       # Reference answers (OpenRouter/Groq)
-│   ├── run_evaluation.py           # Executor against /chat endpoint
-│   ├── judge.py                    # LLM-as-judge scoring
-│   ├── report.py                   # Summary + human samples
-│   └── README.md                   # Pipeline documentation
+├── retrieval/                      # Embeddings + Qdrant vector search
 ├── generation/                     # LLM response generation
-│   └── llm.py                      # Multi-turn with profile-aware prompts
-├── memory/                         # Conversation context management
-│   └── conversation.py             # ConversationBuffer (FIFO, maxlen=10)
+├── memory/                         # Conversation buffer (FIFO)
 ├── profiling/                      # User expertise adaptation
-│   ├── intent_filter.py            # Agricultural domain classification
-│   └── profile.py                  # Expertise-based response tuning
-├── retrieval/                      # Vector search & embeddings
-│   ├── embedder.py                 # Ollama embedding (768 dims)
-│   └── vector_store.py             # Qdrant context search (top-k=3)
-├── ui/                             # Chat interface
-│   └── chat_ui.py                  # Gradio chat interface
-├── verification/                   # Hallucination detection
-│   ├── entropy.py                  # Semantic entropy scoring
-│   └── gate.py                     # Retry logic + fallback
+├── verification/                   # Semantic entropy + verification gate
+├── database/                       # SQLite + PDF semantic chunking
+├── eval/                           # 5-step evaluation pipeline
+├── ui/                             # Gradio chat interface
 ├── tests/                          # Unit + integration tests
-├── scripts/
-│   └── ingest.py                   # PDF ingestion wrapper
-├── .github/workflows/
-│   ├── ci.yml                      # GitHub Actions CI pipeline
-│   ├── claude-auto.yml             # Auto-implement issues (claude-auto label)
-│   └── claude-respond.yml          # Interactive @claude in comments
-├── ARCHITECTURE.md
-├── SETUP.md                        # Detailed setup guide (local/remote Qdrant)
-├── docker-compose.yml              # Docker services (infra: Qdrant / app: API+Gradio)
-├── pyproject.toml
-├── start.bat                       # Windows startup script
-└── start.ps1                       # PowerShell startup script
+├── .claude/                        # Agent workflow enforcement
+│   ├── rules/                      # Directive files (00-12)
+│   ├── guia-configuracao-codex.md  # Codex plugin setup guide
+│   ├── registry.md                 # Project state & history
+│   ├── tasks.md                    # Task registry
+│   └── hooks/                      # Git hooks (commit-msg, pre-commit, etc.)
+├── .github/workflows/              # CI + Claude Code automation
+├── docker-compose.yml              # Qdrant (infra) + API+Gradio (app)
+└── pyproject.toml
 ```
-
-## Current Status
-
-**MVP Complete** — Core RAG pipeline functional with hallucination verification
-
-| Feature | Status |
-|---------|--------|
-| RAG pipeline (retrieval + generation) | Done |
-| FastAPI backend (`POST /chat`, `GET /health`) | Done |
-| JWT authentication (`POST /auth/register`, `/auth/token`) | Done |
-| SQLite persistence (users, conversations, messages) | Done |
-| Semantic chunker with cosine-similarity grouping | Done |
-| Gradio chat interface | Done |
-| `ARCHITECTURE.md` with Mermaid diagrams | Done |
-| Evaluation pipeline (`eval/` — 5 steps) | Done |
-| Multi-turn conversation memory (FIFO buffer) | Done |
-| Profile-aware LLM generation (beginner/intermediate/expert) | Done |
-| Session-based conversation isolation | Done |
-| Semantic Entropy Pipeline (hallucination verifier) | Done |
-| `hallucination_score` in API response | Done |
-| Integration tests (end-to-end validation) | Done |
-| GitHub Actions CI (lint, type check, tests) | Done |
 
 ## Roadmap
 
@@ -253,118 +222,18 @@ sb100_agents/
 | Hybrid search | Dense + sparse vectors with RRF fusion |
 | LangGraph migration | ReAct agent with agricultural intent filter |
 | Claim Verification | Atomic decomposition + RAG-based fact checking |
-| Evaluation dataset | 300 questions from indexed PDFs |
-
-## Service URLs
-
-| Service | URL |
-|---------|-----|
-| API | http://localhost:8000 |
-| Gradio UI | http://localhost:7860 |
-| Qdrant Dashboard | http://localhost:6333/dashboard |
-
-## API Reference
-
-### Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `POST /auth/register` | Creates new user; returns `{"message", "username"}` |
-| `POST /auth/token` | OAuth2 login; returns `{"access_token", "token_type"}` |
-| `POST /chat` | RAG query; returns answer with hallucination score |
-| `GET /health` | Returns API health status |
-
-### POST /chat — RAG Pipeline
-
-**Request (`ChatRequest`):**
-```json
-{
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "question": "Qual é a época ideal de plantio da soja na região Centro-Oeste?",
-  "profile": {
-    "name": "Hilário Silva",
-    "expertise": "intermediate"
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `session_id` | string | UUID for conversation continuity |
-| `question` | string | User query |
-| `profile.name` | string | User display name |
-| `profile.expertise` | enum | `beginner` \| `intermediate` \| `expert` |
-
-**Response (`ChatResponse`):**
-```json
-{
-  "answer": "Com base na documentação indexada, a janela de plantio recomendada para soja na região Centro-Oeste é entre outubro e dezembro...",
-  "hallucination_score": 0.18
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `answer` | string | Generated response adapted to user expertise |
-| `hallucination_score` | float | Risk score 0.0–1.0 (lower = more grounded) |
-
-### curl Examples
-
-```bash
-# Register new user
-curl -X POST "http://localhost:8000/auth/register" \
-  -H "Content-Type: application/json" \
-  -d '{"username":"user1","password":"secret123"}'
-
-# Login (get JWT token)
-curl -X POST "http://localhost:8000/auth/token" \
-  -d "username=user1&password=secret123"
-
-# Chat with complete ChatRequest
-curl -X POST "http://localhost:8000/chat" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "session_id": "demo-session",
-    "question": "Qual é a época ideal de plantio da soja?",
-    "profile": {"name": "User", "expertise": "beginner"}
-  }'
-
-# Health check
-curl "http://localhost:8000/health"
-```
+| Streaming | SSE for incremental responses |
 
 ## Automated Issue Implementation
 
-Issues can be automatically implemented by Claude Code via GitHub Actions.
+Issues labeled `claude-auto` are automatically implemented by Claude Code via GitHub Actions. Mention `@claude` in any issue or PR comment for interactive assistance.
 
-### How it works
-1. Create an issue with clear requirements and acceptance criteria
-2. Apply the `claude-auto` label
-3. Claude Code reads the issue, creates a branch, implements the solution, and opens a PR
-4. Review the PR and merge if satisfactory
-
-### Interactive mode
-Mention `@claude` in any issue or PR comment to get Claude's assistance.
-
-### Setup (repository admin)
-1. Add `ANTHROPIC_API_KEY` secret in Settings > Secrets > Actions
-2. Create `claude-auto` label in Issues > Labels
-3. (Optional) Configure variables in Settings > Variables > Actions:
-   - `CLAUDE_MAX_TURNS` (default: 25)
-   - `CLAUDE_MODEL` (default: claude-sonnet-4-6)
+Setup: add `ANTHROPIC_API_KEY` secret and create the `claude-auto` label.
 
 ## Contributing
 
-Contributions are welcome! See the full guide at [`CONTRIBUTING.md`](./CONTRIBUTING.md).
-
-Quick summary: fork -> branch (`type/TASK-NNN-description`) -> tests -> commit (Conventional Commits) -> PR.
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md). Quick summary: fork, branch (`type/TASK-NNN-description`), tests, Conventional Commits, PR.
 
 ## License
 
-This project is licensed under the [MIT License](./LICENSE).
-
-## Known Issues
-
-- **Evaluation dataset**: The 300-question eval pipeline requires additional PDFs beyond the sample included in `archives/`
-- **Ollama dependency**: LLM and embedding models must be pulled before first run (see Step 1)
-- **Test coverage**: Current baseline is 25%; target is to increase incrementally with each new feature
+[MIT License](./LICENSE)

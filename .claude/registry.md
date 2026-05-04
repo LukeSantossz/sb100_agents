@@ -54,7 +54,7 @@
 | 34 | 2026-04-27 | TASK-T50 | minor | 3 arquivos — CONTRIBUTING.md, LICENSE, README.md | aprovado | Guia contribuição open-source + MIT License + seção Contribuindo no README |
 | 35 | 2026-04-27 | TASK-T51 | major | 3 arquivos — .github/workflows/claude-auto.yml, claude-respond.yml, README.md | aprovado | GitHub Actions: auto-implementação de issues (claude-auto label) + resposta interativa (@claude) via anthropics/claude-code-action@v1 |
 | 36 | 2026-05-04 | TASK-T52 | patch | 5 arquivos — .claude/rules/ (3 novos) + guia-configuracao-codex.md (novo) + 05-convencoes.md (editado) | aprovado | Sincronização .claude/ com .claude_config/: regras 10-12, guia Codex, parágrafo portfolio em 05. Checklist agêntico: N/A |
-| 37 | 2026-05-04 | TASK-T53 | minor | 1 arquivo — README.md | aprovado | Project Structure atualizada para rules/ (00-12), guia Codex listado. Checklist agêntico: N/A |
+| 37 | 2026-05-04 | TASK-T53 | minor | 2 arquivos — README.md (reescrito), ARCHITECTURE.md (removido) | aprovado | README conforme regra 12.2: contexto de negocio, Mermaid embutido, decisoes de engenharia, setup conciso. ARCHITECTURE.md absorvido. Checklist agentico: N/A |
 
 ## Estado da Codebase
 
