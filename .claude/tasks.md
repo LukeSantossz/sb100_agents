@@ -88,6 +88,20 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T53 — Reestruturar README.md conforme regra 12.2 ✓
+- **Concluída em:** 2026-05-04
+- **Branch:** docs/TASK-T52-T53-sync-rules-readme
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** README reestruturado seguindo regra 12.2: contexto de negocio, diagrama Mermaid embutido (arquitetura + pipeline RAG), decisoes de engenharia (reflexo do registry.md), setup conciso. ARCHITECTURE.md removido — conteudo absorvido no README. Project Structure atualizada com rules/ (00-12).
+
+### TASK-T52 — Sincronizar .claude/ com .claude_config/ ✓
+- **Concluída em:** 2026-05-04
+- **Branch:** main (edição direta — arquivos de configuração do agente)
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** 5 arquivos sincronizados: regras 10 (engenharia agêntica), 11 (integração Codex), 12 (portfólio público), guia-configuracao-codex.md, e parágrafo sobre dimensão pública em 05-convencoes.md. registry.md e tasks.md preservados com dados vivos.
+
 ### TASK-T51 — GitHub Action + Claude Code para Auto-Implementação de Issues ✓
 - **Concluída em:** 2026-04-27
 - **Branch:** ci/TASK-T51-claude-auto-action
