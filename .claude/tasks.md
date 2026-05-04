@@ -84,9 +84,44 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
+### TASK-T53
+- **Status:** em andamento
+- **Modo:** desenvolvimento
+- **Complexidade:** minor
+- **Data de criação:** 2026-05-04
+
+#### Objetivo
+Atualizar README.md para refletir as novas regras 10-12 na estrutura do projeto e nas orientacoes de contribuicao.
+
+#### Contexto
+As regras 10 (engenharia agentica), 11 (integracao Codex), 12 (portfolio publico) e o guia de configuracao Codex foram adicionados em TASK-T52. O README precisa refletir a estrutura atualizada de `.claude/rules/` (agora 00-12 em vez de 00-09) e o novo arquivo `guia-configuracao-codex.md`.
+
+#### Escopo Técnico
+- **Arquivos/módulos envolvidos:** `README.md`
+- **Dependências necessárias:** nenhuma
+- **Impacto em funcionalidades existentes:** nenhum — documentacao apenas
+
+#### Critérios de Aceite
+- [ ] Project Structure atualizada para mostrar rules/ (00-12) em vez de (00-09)
+- [ ] guia-configuracao-codex.md listado na estrutura de .claude/
+- [ ] Sem alteracao em secoes nao relacionadas
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-04 | 1 | Implementacao do README e commits. | em andamento |
+
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T52 — Sincronizar .claude/ com .claude_config/ ✓
+- **Concluída em:** 2026-05-04
+- **Branch:** main (edição direta — arquivos de configuração do agente)
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** 5 arquivos sincronizados: regras 10 (engenharia agêntica), 11 (integração Codex), 12 (portfólio público), guia-configuracao-codex.md, e parágrafo sobre dimensão pública em 05-convencoes.md. registry.md e tasks.md preservados com dados vivos.
 
 ### TASK-T51 — GitHub Action + Claude Code para Auto-Implementação de Issues ✓
 - **Concluída em:** 2026-04-27

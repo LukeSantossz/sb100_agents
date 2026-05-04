@@ -56,6 +56,8 @@ Exemplos: `feat(auth): adiciona integração com Google`, `fix(api): trata erro 
 - **Sem Co-authored-by:** Nunca inclua trailers de co-autoria (`Co-authored-by`, `Signed-off-by`, etc.). O responsável pelo commit é quem o executa. Código gerado por IA não tem autoria a ser creditada.
 - **Formato final do comando:** `git commit -m "type(scope): subject"` — nada além disso.
 
+**Dimensão pública do histórico:** Em repositórios públicos, o histórico de commits é leitura externa — vide regra 12 (Portfólio Público). Mensagens fora do padrão Conventional Commits comunicam amadorismo no portfólio independentemente da qualidade do código.
+
 ## 5.3 Branches — Nomenclatura
 
 Toda branch de trabalho segue o formato: `type/TASK-NNN-descricao-curta`
