@@ -44,11 +44,6 @@ Thumbs.db
 *.temp
 *.log
 
-# API
-.venv/
-.env
-.env.local
-
 # AI - track .claude/ workflow files, ignore local settings
 .claude/settings.local.json
 

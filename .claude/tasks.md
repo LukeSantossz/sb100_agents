@@ -84,9 +84,18 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
+[nenhuma task ativa]
+
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T54 — Hardening preventivo de secrets (issue #48) ✓
+- **Concluída em:** 2026-05-04
+- **Branch:** dev
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** `.env` nunca esteve no histórico git (investigação confirmou). Hardening preventivo: duplicatas removidas do .gitignore, guard no pre-commit hook bloqueia `.env` staged, seção "Handling secrets" adicionada ao CONTRIBUTING.md. Issue #48 fechada com comentário explicativo.
 
 ### TASK-T53 — Reestruturar README.md conforme regra 12.2 ✓
 - **Concluída em:** 2026-05-04
