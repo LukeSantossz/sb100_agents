@@ -20,6 +20,13 @@ cp .env.example .env
 docker compose --profile infra up -d
 ```
 
+### Handling secrets
+
+- **Never commit `.env`**, `.env.local`, or any file containing real API keys or credentials. These files are in `.gitignore` and a pre-commit hook blocks `.env` from being staged.
+- Copy `.env.example` to `.env` and fill in your own keys. The example file contains only safe placeholders.
+- If you accidentally expose a secret in a commit, **revoke the affected keys immediately** in their respective service dashboards (Groq, OpenRouter, etc.) and notify the maintainers.
+- For CI/CD pipelines, use [GitHub Secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions) — never hardcode credentials in workflow files.
+
 ### 3. Create a branch
 
 This project follows the `type/TASK-NNN-short-description` convention:

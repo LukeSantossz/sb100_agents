@@ -84,9 +84,32 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
+[nenhuma task ativa]
+
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T54 — Hardening preventivo de secrets (issue #48) ✓
+- **Concluída em:** 2026-05-04
+- **Branch:** dev
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** `.env` nunca esteve no histórico git (investigação confirmou). Hardening preventivo: duplicatas removidas do .gitignore, guard no pre-commit hook bloqueia `.env` staged, seção "Handling secrets" adicionada ao CONTRIBUTING.md. Issue #48 fechada com comentário explicativo.
+
+### TASK-T53 — Reestruturar README.md conforme regra 12.2 ✓
+- **Concluída em:** 2026-05-04
+- **Branch:** docs/TASK-T52-T53-sync-rules-readme
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** README reestruturado seguindo regra 12.2: contexto de negocio, diagrama Mermaid embutido (arquitetura + pipeline RAG), decisoes de engenharia (reflexo do registry.md), setup conciso. ARCHITECTURE.md removido — conteudo absorvido no README. Project Structure atualizada com rules/ (00-12).
+
+### TASK-T52 — Sincronizar .claude/ com .claude_config/ ✓
+- **Concluída em:** 2026-05-04
+- **Branch:** main (edição direta — arquivos de configuração do agente)
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** 5 arquivos sincronizados: regras 10 (engenharia agêntica), 11 (integração Codex), 12 (portfólio público), guia-configuracao-codex.md, e parágrafo sobre dimensão pública em 05-convencoes.md. registry.md e tasks.md preservados com dados vivos.
 
 ### TASK-T51 — GitHub Action + Claude Code para Auto-Implementação de Issues ✓
 - **Concluída em:** 2026-04-27
