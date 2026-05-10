@@ -4,6 +4,16 @@
 # Configuração: .claude/enforcement.conf
 # Instalado pela TASK-000. Bypass: git commit --no-verify
 
+# ── Guard: block .env from being committed ──
+if git diff --cached --name-only | grep -q '/\.env$\|^\.env$'; then
+  echo ""
+  echo "BLOQUEADO: .env contem secrets e nao deve ser commitado."
+  echo "  Use .env.example como template e mantenha .env apenas local."
+  echo "  Desfaca com: git reset HEAD .env"
+  echo ""
+  exit 1
+fi
+
 CONF_FILE="$(git rev-parse --show-toplevel)/.claude/enforcement.conf"
 FOUND=0
 
