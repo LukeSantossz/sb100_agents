@@ -7,22 +7,39 @@ Todo código produzido segue obrigatoriamente este fluxo antes de ser submetido:
 | **C** | Change | Codifique a feature, ajuste ou refatoração com atenção e intenção. | Agente (Modo Dev) ou Desenvolvedor (Modo Tutor) |
 | **R** | Review | Revise os arquivos alterados localmente. Faça commits atômicos para mudanças relacionadas. | Agente executa a avaliação pós-implementação e reporta. Desenvolvedor valida. |
 | **U** | Upload | Execute `git push`. Use mensagens de commit seguindo Conventional Commits. | Desenvolvedor. O agente sugere a mensagem de commit e o nome da branch, mas o push é do desenvolvedor. |
-| **R** | Review Again | Crie a Pull Request, vá na aba Files Changed e revise tudo novamente antes de pedir revisão. Corrija detalhes esquecidos: logs, nomes ruins, código comentado. | Desenvolvedor. O agente pode auxiliar preenchendo o template de PR (`pr-template.md`). |
+| **R** | Review Again | Crie a Pull Request, vá na aba Files Changed e revise tudo novamente antes de pedir revisão. Corrija detalhes esquecidos: logs, nomes ruins, código comentado. | Desenvolvedor. O agente pode auxiliar preenchendo o template de PR (`.claude/templates/pr-template.md`). |
 | **A** | Auto-Revisão | Execute o checklist de auto-revisão (6.1) antes de solicitar review externo. | Desenvolvedor, com suporte do agente para verificação automatizada. |
 
 **Ponto de transferência:** O agente conclui sua responsabilidade ao final da etapa R (Review), após entregar a avaliação pós-implementação e atualizar o Registro de Projeto. A partir da etapa U (Upload), a responsabilidade é do desenvolvedor. O agente permanece disponível para suporte, mas não executa ações de git sem instrução explícita.
 
-## 6.1 Checklist de Auto-Revisão (RA)
+## 6.1 Checklist Unificado de Auto-Revisão
 
 Antes de solicitar revisão, confirme:
+
+**Base (toda task):**
 
 - [ ] Realizei a auto-revisão na aba "Files Changed".
 - [ ] Removi códigos comentados e console.logs desnecessários.
 - [ ] O código segue o guia de estilo e convenções do projeto.
 - [ ] As novas dependências funcionam sem quebrar o build atual.
 - [ ] Nomes de variáveis e funções seguem o VAR Method.
-- [ ] Commits seguem Conventional Commits.
-- [ ] Avaliação pós-implementação foi executada e passou.
+- [ ] Commits seguem Conventional Commits (sem body, sem co-auth).
+- [ ] Avaliação pós-implementação (regra 04) foi executada e passou.
+
+**Para código gerado por agente (adicionar aos itens acima):**
+
+- [ ] Todo diff foi revisado — nenhum output foi aceito cegamente.
+- [ ] O desenvolvedor (ou agente em auto-revisão) consegue explicar o que cada módulo alterado faz.
+- [ ] Sem coerência superficial: o código funciona em cenários não triviais, não apenas no caso feliz.
+- [ ] Sem abstração excessiva: padrões de design são justificados pelo contexto, não aplicados genericamente.
+- [ ] Sem tratamento decorativo de erros: todo catch trata o erro de forma útil.
+- [ ] Sem dependências fantasma: todo import referencia uma biblioteca instalada no projeto.
+- [ ] Sem código plausível mas inventado: métodos, parâmetros de API e configurações foram verificados contra documentação oficial.
+- [ ] Sem repetição disfarçada: lógica duplicada com variações cosméticas foi consolidada.
+
+**Para tasks com integração Codex (se aplicável):**
+
+- [ ] Review cruzado do Codex foi executado e findings tratados (minor/major).
 
 ## 6.2 Protocolo de Reversão
 
@@ -36,9 +53,9 @@ Quando uma implementação aprovada revelar problemas após a conclusão (bugs d
 
 ## 6.3 Templates
 
-Os templates de PR e Issue são mantidos em arquivos separados. O agente deve consultá-los quando necessário:
+Os templates de PR e Issue são mantidos em `.claude/templates/`. O agente deve consultá-los quando necessário:
 
-- **Pull Request:** `.claude/pr-template.md` — usar ao criar ou auxiliar na criação de PRs.
-- **Issue:** `.claude/issue-template.md` — usar ao criar ou auxiliar na criação de issues.
+- **Pull Request:** `.claude/templates/pr-template.md` — usar ao criar ou auxiliar na criação de PRs.
+- **Issue:** `.claude/templates/issue-template.md` — usar ao criar ou auxiliar na criação de issues.
 
 O agente preenche os templates com base nos dados da task ativa e na avaliação pós-implementação. Os campos de checklist devem refletir o resultado real da verificação, não ser marcados automaticamente.

@@ -13,9 +13,9 @@ Esta trava é incondicional e se aplica independentemente de:
 
 O agente só pode implementar código quando TODAS as condições abaixo forem verdadeiras simultaneamente:
 
-1. **Task registrada:** Existe uma task formalmente descrita no arquivo `tasks.md` (localizado na raiz do projeto, junto a este arquivo). Se `tasks.md` não existir ou estiver vazio, o agente deve solicitar ao usuário que crie e preencha a task antes de qualquer ação.
+1. **Task registrada:** Existe uma task formalmente descrita no arquivo `tasks.md` (localizado em `.claude/tasks.md`). Se `tasks.md` não existir ou estiver vazio, o agente deve solicitar ao usuário que crie e preencha a task antes de qualquer ação.
 2. **Modo selecionado:** O usuário declarou explicitamente o modo de operação (Desenvolvimento, Review ou Tutor) para a sessão atual.
-3. **Codebase reconhecida:** O agente concluiu o reconhecimento obrigatório da codebase (regra `02-reconhecimento`).
+3. **Codebase reconhecida:** O agente concluiu o reconhecimento obrigatório da codebase (regra 02), incluindo leitura do PRD se existir (`.claude/prd.md`).
 4. **Registro verificado:** O agente leu o Registro de Projeto (`registry.md`) e verificou o estado atual da codebase, incluindo a última implementação registrada.
 
 **Exceções por modo:**
@@ -41,3 +41,10 @@ Solicitações que não envolvem implementação de código são permitidas a qu
 A trava se aplica exclusivamente a ações que modifiquem ou criem arquivos de código no projeto.
 
 **Limite entre explicação e implementação:** O agente pode explicar conceitos, descrever abordagens e discutir trade-offs livremente. Porém, qualquer output que contenha código executável direcionado a arquivos específicos do projeto, instruções passo-a-passo de modificação de arquivos existentes, ou blocos de código prontos para copiar e colar na codebase é considerado implementação e exige task registrada. Pseudo-código genérico para ilustrar um conceito é permitido; código que referencia módulos, variáveis ou estruturas reais do projeto não é.
+
+## 0.4 Validação de Escopo contra o PRD
+
+Se o projeto possui um PRD (`.claude/prd.md`), o agente deve verificar se a task solicitada está alinhada ao escopo definido:
+
+- Tasks que implementam funcionalidades listadas em "Fora de Escopo" do PRD devem ser sinalizadas ao usuário antes de prosseguir.
+- O PRD não bloqueia a implementação (o usuário pode decidir expandir o escopo), mas o agente deve registrar a divergência no Log de Andamento da task.
