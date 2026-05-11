@@ -1,6 +1,6 @@
-# 12. Portfólio Público — GitHub como Artefato de Trabalho
+# Guia de Portfólio Público — GitHub como Artefato de Trabalho
 
-> Esta regra define como o trabalho realizado sob as regras 00-11 se apresenta publicamente no GitHub. As regras anteriores garantem qualidade interna do projeto; esta regra garante que essa qualidade seja legível para terceiros (recrutador, tech lead avaliador, contribuidor externo).
+> Guia condicional — carregar quando o usuário mencionar publicação, README, GitHub ou portfólio.
 > Complementa as regras 05 (Convenções) e 06 (CRURA).
 
 ## 12.0 Princípio
@@ -56,8 +56,8 @@ Evite frases genéricas como "I love coffee and coding" — ocupam espaço sem p
 O histórico do GitHub é prova passiva do processo. Os pontos abaixo já são exigidos pelas regras 05 e 06 para o trabalho interno; aqui se registra que o leitor externo *vê* esse trabalho:
 
 - **Commits.** Conventional Commits (regra 05.2) é também posicionamento público. `update`, `fix`, `ajustes finais` no histórico de um repositório fixado comunica amadorismo independentemente da qualidade do código.
-- **Pull Requests.** PRs preenchidos via `pr-template.md` (regra 06.3) ficam públicos no histórico do repositório. A qualidade da argumentação técnica registrada é uma soft skill visível — demonstra como o autor sugere mudanças sem ser difícil de trabalhar.
-- **Issues.** Issues bem descritas via `issue-template.md` mostram capacidade de identificar e comunicar problemas técnicos.
+- **Pull Requests.** PRs preenchidos via `.claude/templates/pr-template.md` (regra 06.3) ficam públicos no histórico do repositório. A qualidade da argumentação técnica registrada é uma soft skill visível — demonstra como o autor sugere mudanças sem ser difícil de trabalhar.
+- **Issues.** Issues bem descritas via `.claude/templates/issue-template.md` mostram capacidade de identificar e comunicar problemas técnicos.
 
 ## 12.5 Sinais de Atividade Contínua
 
@@ -94,5 +94,5 @@ Use como autoavaliação periódica do estado público. Opera em camada diferent
 - [ ] READMEs em inglês com contexto de negócio, diagrama de arquitetura, decisões de engenharia e instruções de execução.
 - [ ] Repositórios de curso, exercícios e projetos abandonados arquivados.
 - [ ] Histórico de commits conforme regra 05.2 nos repositórios fixados.
-- [ ] Pull Requests públicos preenchidos via `pr-template.md` visíveis no histórico.
+- [ ] Pull Requests públicos preenchidos via `.claude/templates/pr-template.md` visíveis no histórico.
 - [ ] Ao menos uma contribuição open source registrada.

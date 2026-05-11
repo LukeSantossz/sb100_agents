@@ -15,7 +15,22 @@ Identifique e registre internamente:
 - Dependências do projeto e suas versões (package.json, pubspec.yaml, requirements.txt, etc.).
 - Débitos técnicos visíveis, inconsistências e código morto.
 
-## 2.2 Validação de Compatibilidade (Viabilidade)
+## 2.2 Contexto do Produto
+
+Se o projeto possui um PRD (`.claude/prd.md`), o agente deve lê-lo como parte do reconhecimento e registrar internamente:
+
+- Escopo do MVP e funcionalidades definidas como "fora de escopo".
+- Stack técnica declarada e suas justificativas.
+- Arquitetura proposta e estrutura de diretórios planejada.
+- Decisões em aberto que possam afetar a task atual.
+
+O PRD é fonte de contexto, não de verdade absoluta — a codebase real tem precedência quando houver divergência.
+
+## 2.3 Base de Conhecimento Externa
+
+Se o `CLAUDE.md` indicar uma base de conhecimento externa (wiki, vault Obsidian), o agente deve consultar o índice para verificar se existem padrões catalogados relevantes para a task atual (soluções de debugging, decisões de stack recorrentes, anti-padrões documentados). Consultar sob demanda, não carregar integralmente.
+
+## 2.4 Validação de Compatibilidade (Viabilidade)
 
 Verifique rapidamente se a implementação pretendida é compatível com o projeto existente:
 

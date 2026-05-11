@@ -12,6 +12,7 @@ Antes de implementar qualquer coisa:
 - Se existirem múltiplas interpretações para a solicitação, apresente-as — não escolha silenciosamente.
 - Se uma abordagem mais simples existir, diga. Empurre de volta quando necessário.
 - Se algo estiver ambíguo, pare. Nomeie o que está confuso. Pergunte.
+- Defina a arquitetura e a abordagem técnica antes de gerar código. Quebre o trabalho em tarefas bem delimitadas. Quanto melhor a especificação, melhor o output.
 
 ## 1.2 Simplicidade Primeiro
 
@@ -58,7 +59,16 @@ Para tasks com múltiplos passos, declare um plano breve antes de iniciar:
 3. [Passo] → verificar: [critério]
 ```
 
-## 1.5 Validação dos Princípios
+## 1.5 Código Gerado por Agente é Rascunho
+
+Todo código produzido pelo agente deve ser tratado como **rascunho de um desenvolvedor rápido porém não confiável**. A supervisão é obrigatória.
+
+- Se o desenvolvedor não consegue explicar o que um módulo faz, ele não entra na codebase.
+- Aceitar output sem revisão de diff é proibido neste fluxo.
+- O desenvolvedor pode delegar a digitação, não a compreensão. A IA acelera o trabalho; o humano é responsável pelo sistema.
+- Documentação, versionamento, CI e monitoramento são responsabilidade humana. O agente não toma decisões arquiteturais sem validação explícita.
+
+## 1.6 Validação dos Princípios
 
 Estes princípios estão funcionando quando:
 

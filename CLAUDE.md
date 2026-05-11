@@ -49,29 +49,46 @@ python eval/judge.py
 python eval/report.py
 ```
 
-## Estrutura do Sistema de Regras
+## Base de Conhecimento Externa
+
+Caminho: C:\Users\lucas\OneDrive\Desktop\llm-wiki\wiki\
+Índice: wiki/index.md
+
+**Regras de uso:**
+- APENAS CONSULTA — não modificar, criar ou atualizar arquivos nesta pasta
+- Consultar antes de: decidir stack, investigar bugs recorrentes, tomar decisões arquiteturais
+- O índice `index.md` é o ponto de entrada para navegação
+
+## Estrutura do Sistema de Regras (v1.1.0)
 
 ```
 sb100_agents/
 ├── CLAUDE.md                          <- este arquivo (entrada do projeto)
 ├── .claude/
+│   ├── VERSION                        <- versão do framework (1.1.0)
+│   ├── prd.md                         <- Product Requirements Document
+│   ├── guides/
+│   │   ├── guia-codex.md              <- integração Claude Code + Codex
+│   │   └── guia-portfolio.md          <- GitHub como portfólio público
+│   ├── templates/
+│   │   ├── pr-template.md             <- template de Pull Request
+│   │   └── issue-template.md          <- template de Issue
 │   ├── rules/
 │   │   ├── 00-trava-seguranca.md      <- condições obrigatórias de operação
 │   │   ├── 01-principios.md           <- pense antes de codar, simplicidade, cirúrgico
 │   │   ├── 02-reconhecimento.md       <- inventário técnico pré-implementação
 │   │   ├── 03-modos-operacao.md       <- desenvolvimento, review, tutor
-│   │   ├── 04-avaliacao-pos.md        <- protocolo pós-implementação
+│   │   ├── 04-avaliacao-pos.md        <- protocolo pós-implementação + testes
 │   │   ├── 05-convencoes.md           <- VAR Method, Conventional Commits, branches
-│   │   ├── 06-crura.md               <- fluxo CRURA + checklist + reversão + templates
+│   │   ├── 06-crura.md                <- fluxo CRURA + checklist unificado
 │   │   ├── 07-integridade.md          <- 12 regras invioláveis
 │   │   ├── 08-registro-projeto.md     <- regras de atualização do registry
 │   │   └── 09-enforcement.md          <- hooks git automatizados
-│   ├── registry.md                    <- estado do projeto + histórico (mutável)
-│   ├── tasks.md                       <- registro de tasks (obrigatório)
-│   ├── pr-template.md                 <- template de Pull Request
-│   ├── issue-template.md              <- template de Issue
 │   ├── hooks/                         <- scripts de enforcement git
-│   └── enforcement.conf               <- padrões de debug log por linguagem
+│   ├── enforcement.conf               <- padrões de debug log por linguagem
+│   ├── setup-hooks.sh                 <- script de instalação dos hooks
+│   ├── registry.md                    <- estado do projeto + histórico (mutável)
+│   └── tasks.md                       <- registro de tasks (obrigatório)
 ```
 
 ## Fluxo Resumido
