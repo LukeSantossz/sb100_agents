@@ -56,18 +56,19 @@
 | 36 | 2026-05-04 | TASK-T52 | patch | 5 arquivos — .claude/rules/ (3 novos) + guia-configuracao-codex.md (novo) + 05-convencoes.md (editado) | aprovado | Sincronização .claude/ com .claude_config/: regras 10-12, guia Codex, parágrafo portfolio em 05. Checklist agêntico: N/A |
 | 37 | 2026-05-04 | TASK-T53 | minor | 2 arquivos — README.md (reescrito), ARCHITECTURE.md (removido) | aprovado | README conforme regra 12.2: contexto de negocio, Mermaid embutido, decisoes de engenharia, setup conciso. ARCHITECTURE.md absorvido. Checklist agentico: N/A |
 | 38 | 2026-05-04 | TASK-T54 | minor | 3 arquivos — .gitignore, .claude/hooks/pre-commit, CONTRIBUTING.md | aprovado | Hardening preventivo: .env nunca esteve no historico git. Duplicatas removidas do .gitignore, guard no pre-commit hook, secao secrets no CONTRIBUTING.md. Issue #48 fechada. Checklist agentico: aplicado |
+| 39 | 2026-05-13 | TASK-T55 | major | 8 arquivos — .claude/ (VERSION, CLAUDE.md, quick-ref.md, rules/00,06,08,10) + raiz (CLAUDE.md removido) | aprovado | Migração framework v1.1.0 → v1.2.0: âncoras always-on (quick-ref), modelo por complexidade, micro-checkpoint, gatilho "desviou". .claude_update e TEMP_MIGRATION_PROMPT.md deletados. |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-04
+- **Última atualização:** 2026-05-13
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** main
+- **Branch ativa:** dev
 - **Dependências alteradas recentemente:** nenhuma
 - **Testes passando:** sim (18 unitários, `pytest -o addopts=`)
 - **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T54 — Hardening preventivo de secrets (issue #48)
+- **Última task concluída:** TASK-T55 — Migração framework .claude v1.2.0
 
 ## Pendências Conhecidas
 

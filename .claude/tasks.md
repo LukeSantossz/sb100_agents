@@ -90,6 +90,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T55 — Migração Framework .claude v1.2.0 ✓
+- **Concluída em:** 2026-05-13
+- **Branch:** dev
+- **Commit:** c9f6c96
+- **Avaliação:** aprovado
+- **Nota:** Migração v1.1.0 → v1.2.0: quick-ref.md (âncoras always-on), rules/10-modelo-e-atencao.md (modelo por complexidade, micro-checkpoint, gatilho "desviou"), regra 00 com 5 condições, regra 06 com caminho enxuto patch, regra 08 com formato condensado. CLAUDE.md migrado para .claude/. .claude_update e TEMP_MIGRATION_PROMPT.md removidos. 11/11 critérios de aceite validados.
+
 ### TASK-T54 — Hardening preventivo de secrets (issue #48) ✓
 - **Concluída em:** 2026-05-04
 - **Branch:** dev
