@@ -68,3 +68,5 @@ Quando o histórico ultrapassar 30 entradas, o agente deve mover as entradas mai
 ## 8.6 Formato do Escopo Alterado
 
 Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
+
+**Caminho enxuto para tasks `patch`:** A entrada no Histórico de Implementações pode ser uma linha condensada combinando data, task, escopo e resultado em formato livre. Ex: `2026-05-13 — TASK-042 patch — rename userData→userProfileData (3 arq, módulo auth) — ok`. Tasks `minor` e `major` usam o formato tabular completo.

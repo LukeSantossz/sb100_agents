@@ -17,12 +17,13 @@ O agente só pode implementar código quando TODAS as condições abaixo forem v
 2. **Modo selecionado:** O usuário declarou explicitamente o modo de operação (Desenvolvimento, Review ou Tutor) para a sessão atual.
 3. **Codebase reconhecida:** O agente concluiu o reconhecimento obrigatório da codebase (regra 02), incluindo leitura do PRD se existir (`.claude/prd.md`).
 4. **Registro verificado:** O agente leu o Registro de Projeto (`registry.md`) e verificou o estado atual da codebase, incluindo a última implementação registrada.
+5. **Micro-checkpoint emitido:** Imediatamente antes de qualquer tool call que crie, edite ou delete arquivo do projeto, o agente emitiu a linha `[CHECKPOINT] TASK-NNN | Modo: X | Complexidade: Y | Ação: Z` conforme regra 10.2. Se qualquer campo não puder ser preenchido com verdade, o write não é executado.
 
 **Exceções por modo:**
 
 - **Modo Tutor:** O agente pode iniciar orientação com uma descrição informal do problema fornecida pelo usuário na conversa, sem task registrada em `tasks.md`. Porém, se a orientação evoluir para implementação de código (o desenvolvedor pedindo que o agente escreva ou modifique arquivos), a task deve ser registrada antes de qualquer modificação.
 - **Modo Review:** O agente pode iniciar revisão de código apresentado na conversa sem task registrada. Porém, se a revisão resultar em modificações diretas na codebase pelo agente, a task deve ser registrada antes.
-- **Modo Desenvolvimento:** Todas as 4 condições são obrigatórias sem exceção.
+- **Modo Desenvolvimento:** Todas as 5 condições são obrigatórias sem exceção.
 
 ## 0.2 Comportamento Quando Condições Não São Atendidas
 

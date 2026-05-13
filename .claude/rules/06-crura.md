@@ -16,7 +16,16 @@ Todo código produzido segue obrigatoriamente este fluxo antes de ser submetido:
 
 Antes de solicitar revisão, confirme:
 
-**Base (toda task):**
+**Caminho enxuto (tasks `patch` — 4 itens):**
+
+- [ ] Diff revisado na aba "Files Changed".
+- [ ] Sem códigos comentados, console.logs ou prints residuais.
+- [ ] Commit segue Conventional Commits (sem body, sem co-auth).
+- [ ] Avaliação pós-implementação (4.1 + 4.3 resumido, regra 04.0) passou.
+
+Tasks `patch` não precisam dos blocos completos abaixo. Se durante a execução ficar claro que a mudança extrapolou patch (tocou múltiplos módulos, alterou lógica de negócio, exigiu nova dependência), a task foi mal classificada — reclassificar como `minor` ou `major` e aplicar o checklist completo correspondente.
+
+**Base (tasks `minor` e `major`):**
 
 - [ ] Realizei a auto-revisão na aba "Files Changed".
 - [ ] Removi códigos comentados e console.logs desnecessários.
