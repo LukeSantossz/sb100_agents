@@ -317,7 +317,11 @@ def search(query: str, top_k: int = 5):
 # CLI
 # ─────────────────────────────────────────────
 
-if __name__ == "__main__":
+
+def main() -> None:
+    """Entry point for CLI usage. Parses arguments and runs index or search."""
+    global OLLAMA_MODEL, SIMILARITY_THRESHOLD, QDRANT_URL, QDRANT_API_KEY, COLLECTION_NAME
+
     parser = argparse.ArgumentParser(description="Semantic Chunking Pipeline com Llama + Qdrant")
     subparsers = parser.add_subparsers(dest="command")
 
@@ -365,3 +369,7 @@ if __name__ == "__main__":
 
     else:
         parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
