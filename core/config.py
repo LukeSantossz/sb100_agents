@@ -28,8 +28,7 @@ class Settings(BaseSettings):
         llm_max_tokens: Limite de tokens por resposta do LLM.
         hallucination_threshold: Limiar de entropia para detecção de alucinação.
         verification_enabled: Habilita verificação de alucinações via entropia.
-        openai_api_key: Chave da API OpenAI (para verificação de alucinações).
-        groq_api_key: Chave da API Groq (para pipeline de avaliação).
+        groq_api_key: Chave da API Groq (para verificação e pipeline de avaliação).
         openrouter_api_key: Chave da API OpenRouter (para pipeline de avaliação).
         jwt_secret_key: Segredo para assinatura de tokens JWT.
     """
@@ -50,7 +49,6 @@ class Settings(BaseSettings):
     verification_provider: str = "groq"  # groq | ollama | openrouter
     verification_chat_model: str = ""  # Empty = use provider default
     entropy_num_samples: int = 2
-    openai_api_key: str = ""
     groq_api_key: str = ""
     openrouter_api_key: str = ""
     jwt_secret_key: str = ""

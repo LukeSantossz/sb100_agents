@@ -32,9 +32,6 @@ build/
 # SQLite (local dev; never commit DB contents)
 smartb100_v2.db
 
-# Qdrant storage (optional - uncomment if you want to track)
-/qdrant_storage
-
 # OS
 .DS_Store
 Thumbs.db
@@ -48,13 +45,10 @@ Thumbs.db
 .claude/settings.local.json
 
 # Miscellaneous
-/tutor.md
-/review.md
-task.md
+coverage.xml
+.coverage
 
 # Runtime data - do not version
 /qdrant_storage/
 
-# Out of scope for MVP
-/auth/
-/nginx/
+
