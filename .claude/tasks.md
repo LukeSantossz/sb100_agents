@@ -90,6 +90,13 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T57 — Regenerar uv.lock e requirements.txt (follow-up T56) ✓
+- **Concluída em:** 2026-05-21
+- **Branch:** refactor/TASK-T56-cleanup-dead-code
+- **Commit:** 8e17392 chore(deps): sync uv.lock and requirements.txt with pyproject
+- **Avaliação:** aprovado
+- **Nota:** T56 removeu deps do pyproject.toml mas deixou os locks stale. uv.lock (-583) e requirements.txt (-367) regenerados sem torch/transformers/sentence-transformers/pypdf e ~580 transitivos. 3/3 critérios verificados: pytest (18 passed, cov 24.10%), ruff (all passed), mypy (exit 0). CI validate-requirements usa `uv export --frozen` e não detecta drift pyproject↔lock.
+
 ### TASK-T56
 - **Status:** concluída
 - **Modo:** desenvolvimento

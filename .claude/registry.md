@@ -58,18 +58,19 @@
 | 38 | 2026-05-04 | TASK-T54 | minor | 3 arquivos — .gitignore, .claude/hooks/pre-commit, CONTRIBUTING.md | aprovado | Hardening preventivo: .env nunca esteve no historico git. Duplicatas removidas do .gitignore, guard no pre-commit hook, secao secrets no CONTRIBUTING.md. Issue #48 fechada. Checklist agentico: aplicado |
 | 39 | 2026-05-13 | TASK-T55 | major | 8 arquivos — .claude/ (VERSION, CLAUDE.md, quick-ref.md, rules/00,06,08,10) + raiz (CLAUDE.md removido) | aprovado | Migração framework v1.1.0 → v1.2.0: âncoras always-on (quick-ref), modelo por complexidade, micro-checkpoint, gatilho "desviou". .claude_update e TEMP_MIGRATION_PROMPT.md deletados. |
 | 40 | 2026-05-13 | TASK-T56 | major | 7 arquivos + 2 removidos — profiling/, pyproject.toml, core/config.py, .env.example, .gitignore, database/semantic_chunker.py | aprovado | Auditoria: código morto removido, dependências não usadas removidas, configuração sincronizada. |
+| 41 | 2026-05-21 | TASK-T57 | patch | 2 arquivos — uv.lock, requirements.txt | aprovado | Follow-up T56: locks regenerados (-950 linhas) sem torch/transformers/sentence-transformers/pypdf e transitivos. pytest 18 ok (cov 24.10%), ruff ok, mypy ok |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-13
+- **Última atualização:** 2026-05-21
 - **Último responsável:** Assistente (sessão local)
 - **Branch ativa:** refactor/TASK-T56-cleanup-dead-code
-- **Dependências alteradas recentemente:** sentence-transformers, pypdf, torch, transformers (removidas)
-- **Testes passando:** pendente (uv sync necessário após remoção de dependências)
+- **Dependências alteradas recentemente:** sentence-transformers, pypdf, torch, transformers (removidas; locks regenerados na T57)
+- **Testes passando:** sim — 18 passed, cobertura 24.10% (≥23%); ruff e mypy ok (verificado 2026-05-21)
 - **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T56 — Limpeza de código morto e dependências
+- **Última task concluída:** TASK-T57 — Regeneração de uv.lock e requirements.txt (follow-up T56)
 
 ## Pendências Conhecidas
 
