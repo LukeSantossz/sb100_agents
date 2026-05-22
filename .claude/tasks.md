@@ -90,6 +90,86 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T57 — Regenerar uv.lock e requirements.txt (follow-up T56) ✓
+- **Concluída em:** 2026-05-21
+- **Branch:** refactor/TASK-T56-cleanup-dead-code
+- **Commit:** 8e17392 chore(deps): sync uv.lock and requirements.txt with pyproject
+- **Avaliação:** aprovado
+- **Nota:** T56 removeu deps do pyproject.toml mas deixou os locks stale. uv.lock (-583) e requirements.txt (-367) regenerados sem torch/transformers/sentence-transformers/pypdf e ~580 transitivos. 3/3 critérios verificados: pytest (18 passed, cov 24.10%), ruff (all passed), mypy (exit 0). CI validate-requirements usa `uv export --frozen` e não detecta drift pyproject↔lock.
+
+### TASK-T56
+- **Status:** concluída
+- **Modo:** desenvolvimento
+- **Complexidade:** major
+- **Data de criação:** 2026-05-13
+
+#### Objetivo (!obrigatório)
+Corrigir código morto, dependências não utilizadas e inconsistências de configuração identificadas na auditoria completa da codebase.
+
+#### Contexto (!obrigatório)
+Auditoria realizada em 2026-05-13 identificou:
+- 1 import quebrado crítico (scripts/ingest.py)
+- 2 funções nunca utilizadas no módulo profiling/
+- 2 dependências não utilizadas (sentence-transformers, pypdf)
+- 4 variáveis de ambiente não documentadas em .env.example
+- 1 variável documentada mas nunca usada (OPENAI_API_KEY)
+- 1 duplicata no .gitignore
+
+#### Escopo Técnico (!obrigatório)
+- **Arquivos/módulos envolvidos:**
+  - scripts/ingest.py (remover import quebrado)
+  - profiling/profile.py (remover função adapt_response_for_profile)
+  - profiling/intent_filter.py (remover função is_agricultural_intent)
+  - profiling/__init__.py (atualizar exports)
+  - pyproject.toml (remover sentence-transformers, pypdf)
+  - .env.example (adicionar variáveis faltantes, remover OPENAI_API_KEY)
+  - .gitignore (remover duplicata /qdrant_storage)
+  - core/config.py (remover openai_api_key se não usado)
+- **Dependências necessárias:** nenhuma (remoção apenas)
+- **Impacto em funcionalidades existentes:** nenhum (código morto não afeta runtime)
+
+#### Critérios de Aceite (!obrigatório)
+- [x] Import quebrado em scripts/ingest.py corrigido ou removido
+- [x] Funções adapt_response_for_profile e is_agricultural_intent removidas de profiling/
+- [x] profiling/__init__.py atualizado sem exports mortos
+- [x] sentence-transformers e pypdf removidos de pyproject.toml
+- [x] .env.example atualizado com VERIFICATION_PROVIDER, VERIFICATION_CHAT_MODEL, ENTROPY_NUM_SAMPLES, LLM_MAX_TOKENS
+- [x] OPENAI_API_KEY removido de .env.example e core/config.py
+- [x] Duplicata /qdrant_storage removida do .gitignore
+- [ ] uv sync executa sem erros após remoção de dependências (pendente — processo usando .venv)
+- [ ] pytest tests/ -v passa após alterações (pendente — aguarda sync)
+- [ ] ruff check . passa sem erros (pendente — aguarda sync)
+
+#### Restrições (opcional)
+- Não alterar lógica de negócio em módulos funcionais
+- Manter comentários de documentação válidos
+- Preservar estrutura do módulo profiling/ (apenas remover código morto)
+
+#### Referências (opcional)
+- Auditoria completa realizada em sessão 2026-05-13
+- Regra 04 (avaliação pós-implementação) para verificação
+
+#### Log de Andamento (atualizado pelo agente)
+> Registro cronológico do progresso da task. O agente adiciona uma entrada a cada sessão em que a task for trabalhada, incluindo sessões onde houve travamento ou interrupção. Nunca remova entradas anteriores.
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-13 | 1 | Reconhecimento concluído; branch criada; implementação completa; commit criado | concluída |
+
+#### Resultado (preenchido ao concluir)
+- **Data de conclusão:** 2026-05-13
+- **Branch:** refactor/TASK-T56-cleanup-dead-code
+- **Commit(s):** 69cfb0b refactor(cleanup): remove dead code and unused dependencies
+- **Avaliação pós-implementação:** aprovado com ressalvas
+- **Observações:** 7/10 critérios verificados. 3 pendentes de verificação após `uv sync` (erro de permissão no Windows — processo usando .venv). Sintaxe validada via py_compile. Desenvolvedor deve executar `uv sync`, `ruff check .` e `pytest` após fechar processos Python.
+
+### TASK-T55 — Migração Framework .claude v1.2.0 ✓
+- **Concluída em:** 2026-05-13
+- **Branch:** dev
+- **Commit:** 2144da2
+- **Avaliação:** aprovado
+- **Nota:** Migração v1.1.0 → v1.2.0: quick-ref.md (âncoras always-on), rules/10-modelo-e-atencao.md (modelo por complexidade, micro-checkpoint, gatilho "desviou"), regra 00 com 5 condições, regra 06 com caminho enxuto patch, regra 08 com formato condensado. CLAUDE.md migrado para .claude/. .claude_update e TEMP_MIGRATION_PROMPT.md removidos. 11/11 critérios de aceite validados.
+
 ### TASK-T54 — Hardening preventivo de secrets (issue #48) ✓
 - **Concluída em:** 2026-05-04
 - **Branch:** dev

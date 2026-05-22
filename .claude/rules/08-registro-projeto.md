@@ -21,7 +21,28 @@ Antes de qualquer ação, o agente deve ler o `registry.md` e validar:
 - Se há pendências documentadas da sessão anterior.
 - Se o estado registrado é compatível com a nova task.
 
-## 8.3 Ao Executar Pull, Merge ou Qualquer Ação que Altera a Codebase Externamente
+## 8.3 Recuperação de Sessão Interrompida
+
+Quando o agente inicia uma sessão e detecta que a anterior pode ter sido interrompida (task em andamento sem resultado preenchido, Log de Andamento sem conclusão), deve executar:
+
+```
+RECUPERAÇÃO DE SESSÃO
+1. Último estado registrado: [ler registry.md]
+2. Task ativa: [ler tasks.md — seção Tasks Ativas]
+3. Último Log de Andamento: [última entrada no log da task]
+4. Branch atual: [git branch --show-current]
+5. Último commit: [git log -1 --oneline]
+6. Divergências: [comparar estado registrado vs real]
+7. Decisão: [retomar do ponto do log / solicitar orientação do usuário]
+```
+
+Reportar ao usuário antes de prosseguir:
+
+- Se o estado real divergir do registrado, listar as divergências.
+- Se o Log de Andamento indicar trabalho em progresso, perguntar se deve retomar daquele ponto.
+- Se não houver divergência, informar que a sessão anterior foi encerrada corretamente e prosseguir normalmente.
+
+## 8.4 Ao Executar Pull, Merge ou Qualquer Ação que Altera a Codebase Externamente
 
 Quando o usuário indicar que houve alterações externas (pull, merge, rebase, contribuição de terceiros), o agente deve:
 
@@ -40,10 +61,12 @@ Impacto na task atual: [sim/não — se sim, detalhar]
 Decisão: [seguro para prosseguir / requer atenção do usuário]
 ```
 
-## 8.4 Política de Arquivamento
+## 8.5 Política de Arquivamento
 
 Quando o histórico ultrapassar 30 entradas, o agente deve mover as entradas mais antigas (mantendo as 15 mais recentes) para o arquivo `registry-archive.md` na mesma pasta. O arquivo de arquivo é cumulativo e nunca editado após a inserção. Ao verificar histórico, o agente consulta ambos os arquivos se necessário.
 
-## 8.5 Formato do Escopo Alterado
+## 8.6 Formato do Escopo Alterado
 
 Registre de forma resumida — quantidade de arquivos e módulo afetado. Ex: "3 arquivos — módulo auth", "1 arquivo — config". O detalhamento completo de arquivos fica no Log de Andamento da task em `tasks.md` e no diff do commit.
+
+**Caminho enxuto para tasks `patch`:** A entrada no Histórico de Implementações pode ser uma linha condensada combinando data, task, escopo e resultado em formato livre. Ex: `2026-05-13 — TASK-042 patch — rename userData→userProfileData (3 arq, módulo auth) — ok`. Tasks `minor` e `major` usam o formato tabular completo.

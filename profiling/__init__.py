@@ -1,6 +1,10 @@
-"""Profiling module for user adaptation and intent filtering."""
+"""Profiling module for user adaptation and intent filtering.
 
-from .intent_filter import is_agricultural_intent
-from .profile import adapt_response_for_profile
+Note:
+    This module is currently a placeholder. Profile-based adaptation
+    is handled at prompt generation time in generation/llm.py.
+    Intent filtering for domain classification is planned for future
+    implementation.
+"""
 
-__all__ = ["is_agricultural_intent", "adapt_response_for_profile"]
+__all__: list[str] = []
