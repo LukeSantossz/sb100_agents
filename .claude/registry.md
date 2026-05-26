@@ -60,19 +60,21 @@
 | 40 | 2026-05-13 | TASK-T56 | major | 7 arquivos + 2 removidos — profiling/, pyproject.toml, core/config.py, .env.example, .gitignore, database/semantic_chunker.py | aprovado | Auditoria: código morto removido, dependências não usadas removidas, configuração sincronizada. |
 | 41 | 2026-05-21 | TASK-T57 | patch | 2 arquivos — uv.lock, requirements.txt | aprovado | Follow-up T56: locks regenerados (-950 linhas) sem torch/transformers/sentence-transformers/pypdf e transitivos. pytest 18 ok (cov 24.10%), ruff ok, mypy ok |
 | 42 | 2026-05-26 | TASK-T58 | patch | 0 arquivos — issue #59 fechada no GitHub | aprovado | Issue resolvida pela T56 (commit 69cfb0b, PR #64); close via gh CLI com comentário referenciando o estado atual do módulo profiling/ |
+| 43 | 2026-05-26 | TASK-T59 | minor | 3 arquivos — pyproject.toml, uv.lock, requirements.txt | aprovado | Bump dependências vulneráveis: idna 3.11→3.16, urllib3 2.6.3→2.7.0, python-multipart 0.0.26→0.0.29, pygments 2.19.2→2.20.0. Resolve 9 alertas Dependabot. pytest 18/18 (cov 24.10%), ruff, mypy ok |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T58 — housekeeping)
+- **Última atualização:** 2026-05-26 (TASK-T59 — recovery + padrão recorrente registrado)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** chore/TASK-T58-close-issue-59 (pendente de commit + push para main)
-- **Dependências alteradas recentemente:** sentence-transformers, pypdf, torch, transformers (removidas; locks regenerados na T57)
-- **Testes passando:** sim — 18 passed, cobertura 24.10% (≥23%); ruff e mypy ok (verificado 2026-05-26)
-- **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T58 — Fechar issue #59 do GitHub (resolvida pela T56)
-- **Backlog ativo:** 15 tasks pendentes (T59 ativa — bump deps Dependabot; T60–T73 enfileiradas em tasks.md)
+- **Branch ativa:** chore/TASK-T58-close-issue-59 (PR #68 base=main → recovery dos 3 commits órfãos da T59)
+- **Dependências alteradas recentemente:** idna, urllib3, python-multipart, pygments (atualizadas em T59 — pendente de chegar em main via PR #68)
+- **Testes passando:** sim — 18 passed, cobertura 24.10% (≥23%); ruff check + format + mypy --strict ok (verificado 2026-05-26)
+- **Divergências externas pendentes:** T59 mergeada em chore/TASK-T58 mas não em main (PR #67 misconfigured); recovery via PR #68 em aberto
+- **Última task concluída:** TASK-T59 — Bump dependências vulneráveis (mergeada em PR #67; propagação para main via PR #68)
+- **Backlog ativo:** 14 tasks pendentes (T60 ativa — bug(auth) bcrypt+rate-limit+JWT; T61–T73 enfileiradas em tasks.md)
+- **PRs abertos:** #68 (T59 recovery → main)
 
 ## Pendências Conhecidas
 
@@ -94,6 +96,7 @@
 | Commit sem task registrada | 1x (T27) | Médio — quebra rastreabilidade | Agente deve recusar modificações até task existir. Criar task retroativa se violação ocorrer |
 | Commit direto em branch protegida (dev) | 1x (T27) | Médio — pula review | Sempre criar branch dedicada, mesmo para fixes urgentes |
 | Modo de operação não declarado | 1x | Baixo — ambiguidade de contexto | Agente deve perguntar modo antes de qualquer ação |
+| PR encadeado vira órfão | 1x (T59→PR #67) | **Alto** — commits "mergeados" não chegam em main | **Sempre criar PR com `--base main`**, mesmo se a branch foi feita a partir de outra branch local. GitHub não auto-rebasea a base quando o PR pai mergeia primeiro |
 
 ---
 
@@ -102,3 +105,4 @@
 > Espaço para anotações pontuais sobre contextos que influenciam futuras sessões.
 
 - **2026-04-27:** Migração de `.claude/instructions.md` monolítico para estrutura modular em `.claude/rules/` + `registry.md` separado. Dados preservados integralmente.
+- **2026-05-26 (T59 recovery):** PR #67 foi aberto com `--base chore/TASK-T58-close-issue-59` esperando auto-rebase para main quando o PR pai (#66) mergeasse. GitHub manteve a base original — o merge do #67 foi para a branch T58 (já mergeada), deixando os 3 commits de T59 órfãos fora de main. Recuperação via PR #68 (base=main, head=chore/TASK-T58-close-issue-59) trazendo os commits órfãos. Padrão registrado para evitar repetição.
