@@ -14,6 +14,7 @@ Cache de sessões:
     - Máximo: 1000 sessões simultâneas (LRU eviction).
 """
 
+import threading
 import time
 from collections import OrderedDict
 
@@ -35,6 +36,7 @@ _SESSION_TTL_SECONDS = 3600  # 1 hora
 _SESSION_MAX_SIZE = 1000
 
 _sessions: OrderedDict[str, tuple[ConversationBuffer, float]] = OrderedDict()
+_sessions_lock = threading.Lock()
 
 
 def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
@@ -42,6 +44,9 @@ def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
 
     Implementa cache LRU com TTL para gerenciar memória de sessões.
     Cleanup lazy de sessões expiradas (até 10 por chamada).
+
+    Thread-safe: todas as operações sobre ``_sessions`` ocorrem sob
+    ``_sessions_lock`` para evitar race conditions no thread pool do FastAPI.
 
     Args:
         session_id: Identificador único da sessão.
@@ -51,29 +56,31 @@ def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
     """
     now = time.time()
 
-    # Cleanup de sessões expiradas (lazy, até 10 por chamada)
-    expired = []
-    for sid, (_, ts) in list(_sessions.items())[:10]:
-        if now - ts > _SESSION_TTL_SECONDS:
-            expired.append(sid)
-        else:
-            break  # OrderedDict mantém ordem de inserção
-    for sid in expired:
-        del _sessions[sid]
+    with _sessions_lock:
+        # Cleanup de sessões expiradas (lazy, até 10 por chamada)
+        expired = []
+        for sid, (_, ts) in list(_sessions.items())[:10]:
+            if now - ts > _SESSION_TTL_SECONDS:
+                expired.append(sid)
+            else:
+                break  # OrderedDict mantém ordem de inserção
+        for sid in expired:
+            _sessions.pop(sid, None)
 
-    # Enforce max size (remove mais antigas)
-    while len(_sessions) >= _SESSION_MAX_SIZE:
-        _sessions.popitem(last=False)
+        # Enforce max size (remove mais antigas)
+        while len(_sessions) >= _SESSION_MAX_SIZE:
+            _sessions.popitem(last=False)
 
-    # Recupera ou cria
-    if session_id in _sessions:
-        buffer, _ = _sessions.pop(session_id)  # Remove para reinserir no final
+        # Recupera ou cria
+        existing = _sessions.pop(session_id, None)
+        if existing is not None:
+            buffer, _ = existing
+            _sessions[session_id] = (buffer, now)
+            return buffer
+
+        buffer = ConversationBuffer(maxlen=settings.buffer_maxlen)
         _sessions[session_id] = (buffer, now)
         return buffer
-
-    buffer = ConversationBuffer(maxlen=settings.buffer_maxlen)
-    _sessions[session_id] = (buffer, now)
-    return buffer
 
 
 @router.post("", response_model=ChatResponse)
