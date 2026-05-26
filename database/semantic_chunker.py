@@ -1,4 +1,5 @@
 import argparse
+import logging
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -12,6 +13,8 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 from tqdm import tqdm
 
 from retrieval.ollama_embeddings import embed_text
+
+logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────
 # Configurações globais
@@ -191,9 +194,12 @@ def init_qdrant(client: QdrantClient, embed_dim: int):
             collection_name=COLLECTION_NAME,
             vectors_config=VectorParams(size=embed_dim, distance=Distance.COSINE),
         )
-        print(f"  [OK] Collection '{COLLECTION_NAME}' criada (dim={embed_dim})")
+        logger.info(
+            "semantic_chunker.collection_created",
+            extra={"collection": COLLECTION_NAME, "dim": embed_dim},
+        )
     else:
-        print(f"  [OK] Collection '{COLLECTION_NAME}' ja existe, reutilizando.")
+        logger.info("semantic_chunker.collection_exists", extra={"collection": COLLECTION_NAME})
 
 
 def upsert_chunks(client: QdrantClient, chunks: list[Chunk]):
@@ -224,23 +230,26 @@ def upsert_chunks(client: QdrantClient, chunks: list[Chunk]):
 def process_pdf(pdf_path: str, client: QdrantClient) -> int:
     """Processa um único PDF e indexa no Qdrant. Retorna número de chunks."""
     filename = Path(pdf_path).name
-    print(f"\n[PDF] Processando: {filename}")
+    logger.info("semantic_chunker.pdf_start", extra={"file": filename})
 
     # 1. Extração de texto
     raw_text = extract_text_from_pdf(pdf_path)
     if not raw_text.strip():
-        print("  [WARN] Nenhum texto extraido (PDF pode ser imagem). Pulando.")
+        logger.warning("semantic_chunker.empty_pdf", extra={"file": filename})
         return 0
 
     # 2. Divisão em frases
     raw_sentences = split_into_sentences(raw_text)
-    print(f"  -> {len(raw_sentences)} frases extraidas")
+    logger.info(
+        "semantic_chunker.sentences_extracted",
+        extra={"file": filename, "count": len(raw_sentences)},
+    )
 
     if len(raw_sentences) == 0:
         return 0
 
     # 3. Embeddings das frases
-    print(f"  -> Gerando embeddings via {OLLAMA_MODEL}...")
+    logger.info("semantic_chunker.embeddings_start", extra={"model": OLLAMA_MODEL})
     texts = list(raw_sentences)
     embeddings = get_embeddings_batch(texts)
 
@@ -250,7 +259,9 @@ def process_pdf(pdf_path: str, client: QdrantClient) -> int:
 
     # 4. Chunking semântico
     sentence_groups = semantic_chunking(sentences)
-    print(f"  -> {len(sentence_groups)} chunks semanticos gerados")
+    logger.info(
+        "semantic_chunker.chunks_built", extra={"file": filename, "count": len(sentence_groups)}
+    )
 
     # 5. Construção dos chunks com metadados
     metadata = {
@@ -261,7 +272,7 @@ def process_pdf(pdf_path: str, client: QdrantClient) -> int:
 
     # 6. Indexação no Qdrant
     count = upsert_chunks(client, chunks)
-    print(f"  [OK] {count} chunks indexados no Qdrant")
+    logger.info("semantic_chunker.chunks_indexed", extra={"file": filename, "count": count})
     return count
 
 
@@ -269,10 +280,13 @@ def process_folder(folder_path: str):
     """Processa todos os PDFs de uma pasta."""
     pdf_files = list(Path(folder_path).glob("**/*.pdf"))
     if not pdf_files:
-        print(f"Nenhum PDF encontrado em: {folder_path}")
+        logger.warning("semantic_chunker.no_pdfs_found", extra={"folder": folder_path})
         return
 
-    print(f"[INFO] {len(pdf_files)} PDFs encontrados em '{folder_path}'")
+    logger.info(
+        "semantic_chunker.folder_start",
+        extra={"folder": folder_path, "pdf_count": len(pdf_files)},
+    )
 
     # Inicializa Qdrant
     client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
@@ -282,11 +296,15 @@ def process_folder(folder_path: str):
     for pdf_path in tqdm(pdf_files, desc="Processando PDFs"):
         total_chunks += process_pdf(str(pdf_path), client)
 
-    print("\n[OK] Pipeline concluido!")
-    print(f"   PDFs processados : {len(pdf_files)}")
-    print(f"   Chunks indexados : {total_chunks}")
-    print(f"   Collection       : {COLLECTION_NAME}")
-    print(f"   Qdrant URL       : {QDRANT_URL}")
+    logger.info(
+        "semantic_chunker.pipeline_complete",
+        extra={
+            "pdfs_processed": len(pdf_files),
+            "chunks_indexed": total_chunks,
+            "collection": COLLECTION_NAME,
+            "qdrant_url": QDRANT_URL,
+        },
+    )
 
 
 # ─────────────────────────────────────────────
@@ -306,11 +324,17 @@ def search(query: str, top_k: int = 5):
         with_payload=True,
     ).points
 
-    print(f'\n[SEARCH] Query: "{query}"\n')
+    logger.info("semantic_chunker.search", extra={"query": query, "top_k": top_k})
     for i, r in enumerate(results, 1):
-        print(f"[{i}] Score: {r.score:.4f} | Arquivo: {r.payload.get('source_file')}")
-        print(f"    {r.payload['text'][:300]}...")
-        print()
+        logger.info(
+            "semantic_chunker.search_result",
+            extra={
+                "rank": i,
+                "score": round(r.score, 4),
+                "source_file": r.payload.get("source_file") if r.payload else None,
+                "snippet": (r.payload.get("text", "")[:300] if r.payload else ""),
+            },
+        )
 
 
 # ─────────────────────────────────────────────
@@ -321,6 +345,11 @@ def search(query: str, top_k: int = 5):
 def main() -> None:
     """Entry point for CLI usage. Parses arguments and runs index or search."""
     global OLLAMA_MODEL, SIMILARITY_THRESHOLD, QDRANT_URL, QDRANT_API_KEY, COLLECTION_NAME
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    )
 
     parser = argparse.ArgumentParser(description="Semantic Chunking Pipeline com Llama + Qdrant")
     subparsers = parser.add_subparsers(dest="command")

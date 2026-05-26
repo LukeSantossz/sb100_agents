@@ -10,6 +10,7 @@ Uso:
     uvicorn api.main:app --reload
 """
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -21,6 +22,12 @@ from slowapi.errors import RateLimitExceeded
 from api.dependencies import limiter
 from api.routes import auth, chat, health
 from database.db import Base, engine
+
+# Logging baseline para a aplicação (idempotente; basicConfig é no-op se já configurado).
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+)
 
 ALLOWED_ORIGINS = [
     "http://localhost:7860",
