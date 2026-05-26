@@ -1,6 +1,9 @@
 """Buffer de conversação com janela rolante FIFO."""
 
+import logging
 from collections import deque
+
+logger = logging.getLogger(__name__)
 
 _VALID_ROLES: frozenset[str] = frozenset({"user", "assistant"})
 
@@ -36,6 +39,7 @@ class ConversationBuffer:
         if not content or not content.strip():
             raise ValueError("content must be a non-empty string")
         self._buffer.append({"role": role, "content": content})
+        logger.debug("memory.conversation.add", extra={"role": role, "size": len(self._buffer)})
 
     def to_messages(self) -> list[dict[str, str]]:
         """Retorna o histórico como lista de mensagens.
