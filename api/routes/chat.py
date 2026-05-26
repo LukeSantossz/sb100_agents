@@ -17,10 +17,12 @@ Cache de sessões:
 import time
 from collections import OrderedDict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from api.dependencies import verify_token
 from core.config import settings
 from core.schemas import ChatRequest, ChatResponse
+from database.models import User
 from generation.llm import generate
 from memory.conversation import ConversationBuffer
 from retrieval.embedder import generate_embedding
@@ -75,8 +77,11 @@ def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
 
 
 @router.post("", response_model=ChatResponse)
-def chat(req: ChatRequest) -> ChatResponse:
-    """Processa pergunta do usuário e retorna resposta do assistente.
+def chat(
+    req: ChatRequest,
+    current_user: User = Depends(verify_token),
+) -> ChatResponse:
+    """Processa pergunta do usuário autenticado e retorna resposta do assistente.
 
     Pipeline RAG completo:
     1. Recupera/cria buffer de conversação para a sessão.
@@ -87,13 +92,16 @@ def chat(req: ChatRequest) -> ChatResponse:
 
     Args:
         req: Requisição contendo session_id, question e profile.
+        current_user: Usuário autenticado (injetado por ``verify_token``).
 
     Returns:
         Resposta do assistente com score de alucinação.
 
     Raises:
+        HTTPException(401): Se o token JWT estiver ausente, inválido ou expirado.
         HTTPException(503): Se Ollama ou Qdrant estiverem indisponíveis.
     """
+    _ = current_user  # auth gate aplicado por Depends(verify_token); identidade não consumida aqui
     buffer = _get_or_create_buffer(req.session_id)
 
     try:
