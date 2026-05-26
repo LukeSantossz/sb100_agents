@@ -66,14 +66,15 @@
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T59 — bump deps)
+- **Última atualização:** 2026-05-26 (TASK-T59 — recovery + padrão recorrente registrado)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** chore/TASK-T59-bump-vulnerable-deps (pendente de push + PR; saiu de chore/TASK-T58-close-issue-59 → PR #66 ainda em review)
-- **Dependências alteradas recentemente:** idna, urllib3, python-multipart, pygments (atualizadas em T59 para resolver Dependabot)
+- **Branch ativa:** chore/TASK-T58-close-issue-59 (PR #68 base=main → recovery dos 3 commits órfãos da T59)
+- **Dependências alteradas recentemente:** idna, urllib3, python-multipart, pygments (atualizadas em T59 — pendente de chegar em main via PR #68)
 - **Testes passando:** sim — 18 passed, cobertura 24.10% (≥23%); ruff check + format + mypy --strict ok (verificado 2026-05-26)
-- **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T59 — Bump dependências vulneráveis (resolve 9 alertas Dependabot)
+- **Divergências externas pendentes:** T59 mergeada em chore/TASK-T58 mas não em main (PR #67 misconfigured); recovery via PR #68 em aberto
+- **Última task concluída:** TASK-T59 — Bump dependências vulneráveis (mergeada em PR #67; propagação para main via PR #68)
 - **Backlog ativo:** 14 tasks pendentes (T60 ativa — bug(auth) bcrypt+rate-limit+JWT; T61–T73 enfileiradas em tasks.md)
+- **PRs abertos:** #68 (T59 recovery → main)
 
 ## Pendências Conhecidas
 
@@ -95,6 +96,7 @@
 | Commit sem task registrada | 1x (T27) | Médio — quebra rastreabilidade | Agente deve recusar modificações até task existir. Criar task retroativa se violação ocorrer |
 | Commit direto em branch protegida (dev) | 1x (T27) | Médio — pula review | Sempre criar branch dedicada, mesmo para fixes urgentes |
 | Modo de operação não declarado | 1x | Baixo — ambiguidade de contexto | Agente deve perguntar modo antes de qualquer ação |
+| PR encadeado vira órfão | 1x (T59→PR #67) | **Alto** — commits "mergeados" não chegam em main | **Sempre criar PR com `--base main`**, mesmo se a branch foi feita a partir de outra branch local. GitHub não auto-rebasea a base quando o PR pai mergeia primeiro |
 
 ---
 
@@ -103,3 +105,4 @@
 > Espaço para anotações pontuais sobre contextos que influenciam futuras sessões.
 
 - **2026-04-27:** Migração de `.claude/instructions.md` monolítico para estrutura modular em `.claude/rules/` + `registry.md` separado. Dados preservados integralmente.
+- **2026-05-26 (T59 recovery):** PR #67 foi aberto com `--base chore/TASK-T58-close-issue-59` esperando auto-rebase para main quando o PR pai (#66) mergeasse. GitHub manteve a base original — o merge do #67 foi para a branch T58 (já mergeada), deixando os 3 commits de T59 órfãos fora de main. Recuperação via PR #68 (base=main, head=chore/TASK-T58-close-issue-59) trazendo os commits órfãos. Padrão registrado para evitar repetição.
