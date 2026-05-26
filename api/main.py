@@ -15,7 +15,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
+from api.dependencies import limiter
 from api.routes import auth, chat, health
 from database.db import Base, engine
 
@@ -48,6 +51,10 @@ app = FastAPI(
     description="API para o sistema SmartB100",
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+# slowapi: handler aceita RateLimitExceeded, mas Starlette tipa o segundo arg como Exception genérico.
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 app.add_middleware(
     CORSMiddleware,
