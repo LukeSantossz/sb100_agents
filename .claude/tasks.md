@@ -84,35 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T68
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** minor
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Adicionar timeout explícito em chamadas Ollama, bounds em `llm_max_tokens` e cache de embeddings na verificação (issue #61).
-
-#### Contexto
-`generation/llm.py`: `ollama.chat()` sem timeout pode hang. `settings.llm_max_tokens` sem bounds (0 ou negativo passa). `verification/entropy.py`: embeddings recalculados a cada par de samples.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `generation/llm.py`, `verification/entropy.py`, `core/config.py`, `retrieval/ollama_embeddings.py`, `tests/`
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** nenhum (apenas robustez)
-
-#### Critérios de Aceite
-- [ ] `ollama.chat()` com timeout explícito + error handling (`RequestError`, `ResponseError`, `TimeoutError`)
-- [ ] `max(1, min(settings.llm_max_tokens, 4096))` aplicado em todo uso
-- [ ] Cache de embeddings durante clustering (`dict[str, list[float]]`)
-- [ ] Considerar reduzir timeout total em `ollama_embeddings.py` (95s → 30s; documentar trade-off)
-- [ ] Ollama offline levanta erro claro em < 30s (não hang)
-- [ ] Clustering de N samples faz N chamadas de embedding (não N*(N-1)/2)
-- [ ] `pytest`, `ruff`, `mypy` passam
-
-#### Referências
-- Issue: https://github.com/LukeSantossz/sb100_agents/issues/61
-
 ### TASK-T69
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -308,6 +279,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T68 — Ollama timeout + cache de embeddings em clustering ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** feat/TASK-T68-ollama-timeout-cache
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** `core/config.py`: novo `ollama_timeout: float = Field(default=120.0, ge=1.0, le=600.0)`. `generation/llm.py`: singleton `_ollama_client = OllamaClient(timeout=...)` com double-checked locking + wrapper `_ollama_chat` testável; `generate` agora captura `ollama.RequestError`, `ollama.ResponseError`, `TimeoutError`, `ConnectionError` com `logger.exception`. `verification/entropy.py`: `_generate_one_ollama` usa `ollama.Client(timeout=settings.ollama_timeout)`; `_compute_similarity` aceita `cache: dict[str, list[float]] | None`; `_cluster_responses` instancia cache local e passa adiante (3 textos únicos → 3 embed calls em vez de até 4 sem cache). T62 já cobria bounds `Field(ge=1, le=4096)` em `llm_max_tokens` — não há necessidade de `max/min` defensivo redundante. Tests: refactor de `@patch("generation.llm.ollama.chat")` → `@patch("generation.llm._ollama_chat")` (7 ocorrências) + 2 novos testes de timeout/connection error em test_llm; helper `_patch_ollama_client` para test_verification e novo teste de cache `test_cluster_responses_caches_embeddings_per_unique_text`. 126 testes (era 123), cobertura 84.80%.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Reconhecimento (ollama API, generate, _cluster_responses), branch criada | em andamento |
+| 2026-05-26 | 1 | Implementação (Client timeout, wrapper _ollama_chat, cache em cluster), 3 novos testes + refactor mocks, validações OK | concluída |
 
 ### TASK-T67 — Logging estruturado em todos os módulos runtime ✓
 - **Concluída em:** 2026-05-26

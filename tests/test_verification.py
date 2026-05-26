@@ -13,6 +13,7 @@ from core.schemas import ChatResponse, ExpertiseLevel, UserProfile
 from verification import entropy as entropy_module
 from verification import gate as gate_module
 from verification.entropy import (
+    _cluster_responses,
     _compute_similarity,
     _generate_one_ollama,
     _generate_samples,
@@ -38,6 +39,27 @@ def test_compute_similarity_returns_unit_for_identical_vectors() -> None:
     with patch.object(entropy_module, "embed_text", side_effect=[vec, vec]):
         score = _compute_similarity("a", "a")
     assert score == pytest.approx(1.0, abs=1e-9)
+
+
+def test_cluster_responses_caches_embeddings_per_unique_text() -> None:
+    """TASK-T68: cache local evita re-embedding do mesmo texto durante o clustering."""
+    call_count = {"n": 0}
+    embeddings = {
+        "A": [1.0, 0.0],
+        "B": [0.0, 1.0],
+        "C": [0.7, 0.7],
+    }
+
+    def fake_embed(model: str, text: str) -> list[float]:
+        call_count["n"] += 1
+        return embeddings[text]
+
+    with patch.object(entropy_module, "embed_text", side_effect=fake_embed):
+        clusters = _cluster_responses(["A", "B", "C"], threshold=0.99)
+
+    # 3 textos únicos → no máximo 3 chamadas a embed_text (cache evita repetição)
+    assert call_count["n"] == 3
+    assert len(clusters) == 3  # A, B, C distintos com threshold alto
 
 
 # ----------------------------- missing API key warns -----------------------------
@@ -108,23 +130,32 @@ def test_generate_samples_propagates_when_all_fail() -> None:
 # ----------------------------- ollama safe access -----------------------------
 
 
+def _patch_ollama_client(response: dict[str, Any]) -> Any:
+    """Patcha ``ollama.Client`` para retornar um mock cujo ``chat`` devolve ``response``."""
+    from unittest.mock import MagicMock
+
+    fake = MagicMock()
+    fake.chat.return_value = response
+    return patch.object(entropy_module.ollama, "Client", return_value=fake)
+
+
 def test_generate_one_ollama_handles_missing_message_key() -> None:
     bad_response: dict[str, Any] = {}  # sem chave "message"
-    with patch.object(entropy_module.ollama, "chat", return_value=bad_response):
+    with _patch_ollama_client(bad_response):
         out = _generate_one_ollama("q", "c", "m")
     assert out == ""
 
 
 def test_generate_one_ollama_handles_missing_content_key() -> None:
     bad_response: dict[str, Any] = {"message": {}}
-    with patch.object(entropy_module.ollama, "chat", return_value=bad_response):
+    with _patch_ollama_client(bad_response):
         out = _generate_one_ollama("q", "c", "m")
     assert out == ""
 
 
 def test_generate_one_ollama_returns_content() -> None:
     response: dict[str, Any] = {"message": {"content": "hello"}}
-    with patch.object(entropy_module.ollama, "chat", return_value=response):
+    with _patch_ollama_client(response):
         out = _generate_one_ollama("q", "c", "m")
     assert out == "hello"
 
