@@ -84,41 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T67
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** major
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Adicionar logging estruturado em todos os módulos de runtime; substituir `print()` no chunker (issue #60).
-
-#### Contexto
-Nenhum módulo runtime (retrieval/, generation/, verification/, memory/) usa `logging`. `database/semantic_chunker.py` usa `print()`. Impossibilita debug em produção.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `retrieval/*.py`, `generation/llm.py`, `verification/*.py`, `memory/*.py`, `database/semantic_chunker.py`, `api/main.py`
-- **Dependências necessárias:** nenhuma (logging stdlib)
-- **Impacto em funcionalidades existentes:** nenhum (logging é aditivo)
-
-#### Critérios de Aceite
-- [ ] `import logging; logger = logging.getLogger(__name__)` em cada módulo runtime
-- [ ] `retrieval/embedder.py`: log de dimensão e tempo
-- [ ] `retrieval/vector_store.py`: log de query, chunks retornados, warnings
-- [ ] `generation/llm.py`: log de modelo, contexto, tempo de geração
-- [ ] `verification/entropy.py`: log de provider, samples, clustering
-- [ ] `verification/gate.py`: log de score, decisão
-- [ ] `database/semantic_chunker.py`: todos `print()` → `logger.info()`/`warning()` (exceto argparse help)
-- [ ] `api/main.py`: `logging.basicConfig(level=INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")`
-- [ ] `pytest --log-level=ERROR` não polui output
-- [ ] `pytest`, `ruff`, `mypy` passam
-
-#### Restrições
-- Sobreposição com T66 (logging em retrieval/). Se T66 já foi feita, T67 só consolida o restante.
-
-#### Referências
-- Issue: https://github.com/LukeSantossz/sb100_agents/issues/60
-
 ### TASK-T68
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -343,6 +308,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T67 — Logging estruturado em todos os módulos runtime ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** feat/TASK-T67-structured-logging
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** Consolidação de logging que T64 (verification) e T66 (retrieval) já tinham iniciado. `api/main.py`: `logging.basicConfig(level=INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")` no nível de módulo (idempotente). `generation/llm.py`: `logger.info` em request (model, expertise, context_chars, history_turns) e response (elapsed_ms, answer_chars). `memory/conversation.py`: `logger.debug` em add. `database/semantic_chunker.py`: todos os 11 `print()` substituídos por `logger.info/warning` com extras estruturados (file, count, model, collection, etc.); `basicConfig` no `main()` para output da CLI. 123 testes (sem novos), cobertura 82.67%. T67 nota original previa sobreposição com T66 e T64 — confirmada e respeitada.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Reconhecimento (semantic_chunker, generation/llm, memory, api/main), branch criada | em andamento |
+| 2026-05-26 | 1 | Implementação (basicConfig, loggers, 11 prints→logger), validações OK | concluída |
 
 ### TASK-T66 — Singleton QdrantClient + dim validation + logging em retrieval ✓
 - **Concluída em:** 2026-05-26

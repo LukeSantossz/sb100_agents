@@ -7,12 +7,16 @@ Inclui mitigações contra prompt injection (TASK-T61):
 - Aviso anti-injection embutido no system prompt.
 """
 
+import logging
 import re
+import time
 
 import ollama
 
 from core.config import settings
 from core.schemas import ExpertiseLevel, UserProfile
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPTS = {
     ExpertiseLevel.beginner: """Você é um assistente especializado em agronomia e agricultura.
@@ -141,10 +145,26 @@ def generate(
     )
     messages.append({"role": "user", "content": user_content})
 
+    logger.info(
+        "generation.llm.request",
+        extra={
+            "model": settings.chat_model,
+            "expertise": str(profile.expertise),
+            "context_chars": len(sanitized_context),
+            "history_turns": len(history),
+        },
+    )
+    start = time.monotonic()
     response = ollama.chat(
         model=settings.chat_model,
         messages=messages,
         options={"num_predict": settings.llm_max_tokens},
     )
+    elapsed_ms = (time.monotonic() - start) * 1000
+    answer = str(response["message"]["content"])
+    logger.info(
+        "generation.llm.response",
+        extra={"elapsed_ms": round(elapsed_ms, 1), "answer_chars": len(answer)},
+    )
 
-    return str(response["message"]["content"])
+    return answer
