@@ -69,20 +69,21 @@
 | 49 | 2026-05-26 | TASK-T65 | minor | 4 arquivos — api/routes/chat.py, memory/conversation.py, tests/test_conversation.py, tests/test_chat_concurrency.py (novo) | aprovado | Thread-safety: `_sessions_lock = threading.Lock()` envolve cleanup/eviction/lookup em `_get_or_create_buffer`; `del` → `.pop(sid, None)`. `ConversationBuffer.add()` valida role em `{"user", "assistant"}` e content não-vazio (ValueError). 6 novos testes (validação + 3 de concorrência ThreadPoolExecutor 50 threads). 120 testes, cobertura 81.84%. |
 | 50 | 2026-05-26 | TASK-T66 | minor | 4 arquivos — retrieval/vector_store.py, retrieval/embedder.py, retrieval/ollama_embeddings.py, tests/test_vector_store.py | aprovado | Singleton QdrantClient com double-checked locking + dim validation (768), logger.warning em payload sem `text`, logger em embedder+ollama_embeddings, `assert` substituído por `raise RuntimeError` defensivo. test_vector_store reescrito em pytest (5 testes incl. singleton reuse). 123 testes, cobertura 82.27%. |
 | 51 | 2026-05-26 | TASK-T67 | major | 4 arquivos — api/main.py, generation/llm.py, memory/conversation.py, database/semantic_chunker.py | aprovado | Logging estruturado consolidado: `logging.basicConfig` em `api/main.py` (INFO level + formato com timestamp/logger/level/msg); logger em `generation/llm.py` com info/timing em request e response; logger em memory/conversation; 11 prints em `database/semantic_chunker.py` substituídos por logger.info/warning com extras estruturados; basicConfig no `main()` do chunker CLI. 123 testes, cobertura 82.67%. |
+| 52 | 2026-05-26 | TASK-T68 | minor | 5 arquivos — core/config.py, generation/llm.py, verification/entropy.py, tests/test_llm.py, tests/test_verification.py | aprovado | Ollama Client com timeout (`ollama_timeout` settings, default 120s, bounds 1-600); wrapper `_ollama_chat` testável; error handling em `generate` (RequestError/ResponseError/TimeoutError/ConnectionError); singleton thread-safe `_ollama_client`. Cache local de embeddings em `_cluster_responses` reduz embed calls de O(N²) para O(N único). Tests refatorados (7 mocks atualizados + 2 timeouts + 1 cache). 126 testes, cobertura 84.80%. |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T67 — logging estruturado consolidado)
+- **Última atualização:** 2026-05-26 (TASK-T68 — Ollama timeout + cache embeddings)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** feat/TASK-T67-structured-logging
+- **Branch ativa:** feat/TASK-T68-ollama-timeout-cache
 - **Dependências alteradas recentemente:** nenhuma desde T60 — todas em main
-- **Testes passando:** sim — 123 passed, cobertura 82.67%; ruff + format + mypy strict em todos críticos ok
-- **Divergências externas pendentes:** PR #74 (T65), #75 (T66) mergeadas em main; T67 local
-- **Última task concluída:** TASK-T67 — logging estruturado em api/main + generation + memory + chunker (consolidação)
-- **Backlog ativo:** 7 tasks pendentes (T68 ativa — Ollama timeout + bounds + cache embeddings; T69–T74 enfileiradas)
-- **PRs abertos:** nenhum; PR T67 a abrir após push
+- **Testes passando:** sim — 126 passed, cobertura 84.80%; ruff + format + mypy strict em todos críticos ok
+- **Divergências externas pendentes:** PRs #74 (T65), #75 (T66), #76 (T67) mergeadas em main; T68 local
+- **Última task concluída:** TASK-T68 — Ollama Client com timeout, error handling, cache de embeddings em clustering
+- **Backlog ativo:** 6 tasks pendentes (T69 ativa — testes verification ≥50% e mocks robustos; T70–T74 enfileiradas)
+- **PRs abertos:** nenhum; PR T68 a abrir após push
 
 ## Pendências Conhecidas
 
