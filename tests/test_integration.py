@@ -1,18 +1,35 @@
 """Testes de integração end-to-end do pipeline RAG."""
 
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
+from api.dependencies import verify_token
 from api.main import app
 from core.schemas import ChatResponse, ExpertiseLevel
+from database.models import User
+
+
+def _override_verify_token() -> User:
+    """Stub do gate JWT para integração — devolve usuário fixo sem hit no DB."""
+    return User(
+        id=1,
+        username="testuser",
+        hashed_password="x",
+        created_at=datetime.now(UTC),
+    )
 
 
 @pytest.fixture
 def client():
-    """TestClient do FastAPI."""
-    return TestClient(app)
+    """TestClient do FastAPI com gate JWT mockado por dependency override."""
+    app.dependency_overrides[verify_token] = _override_verify_token
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.fixture
