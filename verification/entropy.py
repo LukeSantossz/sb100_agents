@@ -63,9 +63,11 @@ def _generate_one_groq(question: str, context: str, model: str) -> str:
 def _generate_one_ollama(question: str, context: str, model: str) -> str:
     # ollama-py retorna ChatResponse; cast para dict[str, Any] mantém o acesso
     # seguro via ``.get`` (que continua válido em runtime para ChatResponse).
+    # Client com timeout explícito evita hang indefinido se o servidor Ollama estiver indisponível.
+    client = ollama.Client(timeout=settings.ollama_timeout)
     resp = cast(
         dict[str, Any],
-        ollama.chat(
+        client.chat(
             model=model,
             messages=_build_messages(question, context),
             options={
@@ -121,14 +123,30 @@ def _generate_samples(provider: str, question: str, context: str, model: str, n:
     return samples
 
 
-def _compute_similarity(text1: str, text2: str) -> float:
+def _compute_similarity(
+    text1: str,
+    text2: str,
+    cache: dict[str, list[float]] | None = None,
+) -> float:
     """Calcula similaridade de cosseno entre dois textos via embeddings Ollama.
 
-    Usa epsilon ``1e-10`` para evitar divisão por zero em vetores degenerados
-    (raro mas possível com embeddings tudo-zero).
+    Usa epsilon ``1e-10`` para evitar divisão por zero em vetores degenerados.
+    Aceita um dicionário ``cache`` opcional para reutilizar embeddings entre
+    chamadas (TASK-T68: clustering de N respostas faz N embed calls em vez de
+    até ``N*(N-1)`` sem cache).
     """
-    vec1 = embed_text(settings.embed_model, text1)
-    vec2 = embed_text(settings.embed_model, text2)
+
+    def _embed(text: str) -> list[float]:
+        if cache is None:
+            return embed_text(settings.embed_model, text)
+        cached = cache.get(text)
+        if cached is None:
+            cached = embed_text(settings.embed_model, text)
+            cache[text] = cached
+        return cached
+
+    vec1 = _embed(text1)
+    vec2 = _embed(text2)
 
     dot_product = sum(a * b for a, b in zip(vec1, vec2, strict=True))
     norm1 = math.sqrt(sum(a * a for a in vec1))
@@ -140,17 +158,22 @@ def _compute_similarity(text1: str, text2: str) -> float:
 
 
 def _cluster_responses(responses: list[str], threshold: float = 0.85) -> list[list[str]]:
-    """Agrupa respostas por similaridade semântica usando clustering guloso."""
+    """Agrupa respostas por similaridade semântica usando clustering guloso.
+
+    Cache local de embeddings (``{text: vec}``) garante que cada texto único
+    seja embedded apenas uma vez, mesmo em clustering O(N²) entre samples.
+    """
     if not responses:
         return []
 
+    embedding_cache: dict[str, list[float]] = {}
     clusters: list[list[str]] = []
 
     for response in responses:
         placed = False
         for cluster in clusters:
             representative = cluster[0]
-            if _compute_similarity(response, representative) >= threshold:
+            if _compute_similarity(response, representative, cache=embedding_cache) >= threshold:
                 cluster.append(response)
                 placed = True
                 break
