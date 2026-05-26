@@ -84,41 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T60
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** major
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Substituir SHA-256 por bcrypt, adicionar rate-limit, validação de input e autenticação JWT no endpoint `/chat` (issue #47).
-
-#### Contexto
-`api/routes/auth.py` usa `hashlib.sha256` sem salt (criptograficamente inadequado) e comparação `==` (vulnerável a timing attack). Endpoint `/chat` não exige JWT. Não há rate-limit. JWT_SECRET_KEY pode ter <32 chars.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `api/routes/auth.py`, `api/routes/chat.py`, `api/main.py`, `core/config.py`, `core/schemas.py`, `pyproject.toml`, `tests/`
-- **Dependências necessárias:** `passlib[bcrypt]`, `slowapi`
-- **Impacto em funcionalidades existentes:** breaking — hashes antigos SHA-256 não funcionarão; migração documentada (recriar usuários ou hash dual-mode)
-
-#### Critérios de Aceite
-- [ ] `passlib[bcrypt]` e `slowapi` adicionados a `pyproject.toml`
-- [ ] `get_password_hash()` usa `CryptContext(schemes=["bcrypt"])`
-- [ ] `verify_password()` usa comparação timing-safe (`CryptContext.verify`)
-- [ ] `UserCreate`: password min 8 chars, username regex `^[a-zA-Z0-9_-]+$` max 50 chars
-- [ ] Endpoint `POST /chat` exige `Depends(verify_token)` e retorna 401 sem token
-- [ ] Rate-limit slowapi: 5 tentativas/15min em `/auth/token`, 3 registros/hora em `/auth/register`
-- [ ] Validação no startup: `JWT_SECRET_KEY` mínimo 32 chars
-- [ ] Logging de eventos de segurança (login falho, registro, etc.)
-- [ ] Testes unitários cobrindo cenários: hash bcrypt, timing-safe verify, rate-limit, JWT obrigatório
-- [ ] `pytest`, `ruff`, `mypy` passam
-
-#### Restrições
-- Documentar em README/SETUP que usuários existentes precisarão recriar credenciais
-
-#### Referências
-- Issue: https://github.com/LukeSantossz/sb100_agents/issues/47
-
 ### TASK-T61
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -556,6 +521,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T60 — Bcrypt + JWT gate + rate-limit em /chat ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** feat/TASK-T60-bcrypt-rate-limit-jwt
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** Senhas migradas para bcrypt via `CryptContext` (timing-safe verify, salt aleatório); `/chat` exige `Depends(verify_token)` com busca de usuário no DB (revogação instantânea); rate-limit slowapi (5 logins/15min, 3 registros/hora por IP); `JWT_SECRET_KEY` validado em `Settings` (≥32 chars no startup); `UserCreate` com regex `^[a-zA-Z0-9_-]+$` (max 50) + password min 8. Novo `api/dependencies.py` (verify_token + ALGORITHM + limiter). bcrypt pinado `<5` por incompat com passlib 1.7.4 (bcrypt 5.0 derruba senhas mesmo curtas). 23 novos testes em `tests/test_auth.py`; `tests/test_integration.py` atualizado com `dependency_overrides`; `tests/conftest.py` garante `JWT_SECRET_KEY` válido. 48 testes passando (era 18), cobertura 68.32% (era 24.10%). Breaking: hashes SHA-256 antigos não funcionam mais — documentado em README.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Reconhecimento codebase, plano aprovado, branch `feat/TASK-T60-bcrypt-rate-limit-jwt` criada | em andamento |
+| 2026-05-26 | 1 | Implementação completa (deps, config, auth, dependencies, main, chat, testes, docs), validações OK, T60 pronta para commit | concluída |
 
 ### TASK-T59 — Bump dependências vulneráveis (Dependabot) ✓
 - **Concluída em:** 2026-05-26
