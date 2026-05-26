@@ -107,6 +107,7 @@ sequenceDiagram
 | **Sync endpoint for /chat** | `def chat()` instead of `async def chat()`. FastAPI runs sync handlers in a thread pool, which frees the event loop for `/health` and other concurrent requests while the LLM blocks. |
 | **mypy `ignore_missing_imports=true`** | Ollama, qdrant-client, and other dependencies lack type stubs. Avoids false positives without compromising type checking on project code. |
 | **Profile-aware system prompts** | Three expertise levels (`beginner`, `intermediate`, `expert`) select different system prompts. Same RAG context, different response complexity. No separate models or fine-tuning needed. |
+| **bcrypt + JWT gate on `/chat`** | Passwords hashed with bcrypt (timing-safe verify via passlib); `/chat` requires `Authorization: Bearer <JWT>`. Rate-limit via slowapi: 5 logins / 15 min and 3 registrations / hour per IP. `JWT_SECRET_KEY` must be ≥32 chars (validated at startup). **Breaking:** users created before this gate (SHA-256) must be re-registered. |
 
 ## How to Run
 
@@ -158,15 +159,19 @@ curl http://localhost:8000/health            # API: {"status":"ok"}
 
 | Endpoint | Description |
 |----------|-------------|
-| `POST /chat` | RAG query; returns answer with hallucination score |
-| `POST /auth/register` | Creates new user |
-| `POST /auth/token` | OAuth2 login; returns JWT |
+| `POST /chat` | RAG query (requires JWT); returns answer with hallucination score |
+| `POST /auth/register` | Creates new user (rate-limit 3/hour per IP) |
+| `POST /auth/token` | OAuth2 login; returns JWT (rate-limit 5 / 15min per IP) |
 | `GET /health` | API health status |
 
 **POST /chat:**
 
 ```bash
+TOKEN=$(curl -s -X POST "http://localhost:8000/auth/token" \
+  -d "username=demo&password=long-enough-pw" | jq -r .access_token)
+
 curl -X POST "http://localhost:8000/chat" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "session_id": "demo-session",
@@ -175,6 +180,8 @@ curl -X POST "http://localhost:8000/chat" \
   }'
 # {"answer": "...", "hallucination_score": 0.18}
 ```
+
+Without the `Authorization` header the API returns `401 Unauthorized`.
 
 | Request Field | Type | Description |
 |---------------|------|-------------|

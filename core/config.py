@@ -8,6 +8,7 @@ Exemplo de uso:
     print(settings.chat_model)  # "llama3.2:3b"
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,6 +53,16 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     openrouter_api_key: str = ""
     jwt_secret_key: str = ""
+
+    @field_validator("jwt_secret_key")
+    @classmethod
+    def _validate_jwt_secret_key(cls, value: str) -> str:
+        """Garante que o segredo do JWT existe e tem entropia mínima."""
+        if not value:
+            raise ValueError("JWT_SECRET_KEY must be configured in .env or environment variables")
+        if len(value) < 32:
+            raise ValueError(f"JWT_SECRET_KEY must be at least 32 characters (got {len(value)})")
+        return value
 
 
 settings = Settings()
