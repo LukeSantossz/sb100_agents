@@ -82,6 +82,31 @@ class TestConversationBuffer(unittest.TestCase):
         self.assertEqual(buffer.to_messages()[0]["content"], "Teste")
         self.assertEqual(len(buffer.to_messages()), 1)
 
+    # ---------------- T65: validação de role/content ----------------
+
+    def test_add_rejects_invalid_role(self):
+        """add() rejeita roles fora de {user, assistant}."""
+        buffer = ConversationBuffer(maxlen=5)
+        with self.assertRaises(ValueError):
+            buffer.add("system", "tentativa de override")
+        with self.assertRaises(ValueError):
+            buffer.add("", "vazio")
+
+    def test_add_rejects_empty_content(self):
+        """add() rejeita content vazio ou só whitespace."""
+        buffer = ConversationBuffer(maxlen=5)
+        with self.assertRaises(ValueError):
+            buffer.add("user", "")
+        with self.assertRaises(ValueError):
+            buffer.add("user", "   \n  ")
+
+    def test_add_accepts_valid_roles(self):
+        """add() aceita 'user' e 'assistant'."""
+        buffer = ConversationBuffer(maxlen=5)
+        buffer.add("user", "ola")
+        buffer.add("assistant", "oi")
+        self.assertEqual(len(buffer.to_messages()), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

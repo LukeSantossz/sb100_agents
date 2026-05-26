@@ -66,20 +66,21 @@
 | 46 | 2026-05-26 | TASK-T62 | minor | 4 arquivos — core/config.py, core/schemas.py, tests/test_schemas.py, tests/test_config.py (novo) | aprovado | Validações rigorosas: `VerificationProvider(StrEnum)`, `Field(ge/le)` em top_k/buffer_maxlen/llm_max_tokens/hallucination_threshold/entropy_num_samples, API keys `str \| None`, schemas com bounds (session_id, name, hallucination_score). 26 novos testes. 90 testes (era 64), cobertura 70.82%. |
 | 47 | 2026-05-26 | TASK-T63 | minor | 4 arquivos — database/models.py, database/db.py, tests/test_db.py (novo), README.md | aprovado | Integridade SQLAlchemy: NOT NULL em campos obrigatórios, index em FKs, ondelete=CASCADE + passive_deletes, Boolean em is_hallucinated, DateTime(timezone=True), connect_args timeout=10, PRAGMA foreign_keys=ON via event listener, get_db rollback-on-exception. 11 novos testes (NULL, CASCADE, tz, rollback). 101 testes, cobertura 70.82%. Breaking: schemas legados ficam frouxos — recriar `smartb100_v2.db`. |
 | 48 | 2026-05-26 | TASK-T64 | minor | 4 arquivos — verification/entropy.py, verification/gate.py, core/config.py, tests/test_verification.py (novo) | aprovado | Estabilidade verificação: epsilon 1e-10 em cosseno, logger.warning em missing API key, try/except parcial em samples, resp.get safe access em ollama, validação provider antes de dispatch, gate fallback score=0.5 em falha de entropia, entropy_temperature em Settings (ge=0.0, le=2.0). 13 novos testes. 114 testes, cobertura 81.37%. mypy strict agora limpo em verification/entropy.py (resolve parte da T74). |
+| 49 | 2026-05-26 | TASK-T65 | minor | 4 arquivos — api/routes/chat.py, memory/conversation.py, tests/test_conversation.py, tests/test_chat_concurrency.py (novo) | aprovado | Thread-safety: `_sessions_lock = threading.Lock()` envolve cleanup/eviction/lookup em `_get_or_create_buffer`; `del` → `.pop(sid, None)`. `ConversationBuffer.add()` valida role em `{"user", "assistant"}` e content não-vazio (ValueError). 6 novos testes (validação + 3 de concorrência ThreadPoolExecutor 50 threads). 120 testes, cobertura 81.84%. |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T64 — estabilidade numérica em verification)
+- **Última atualização:** 2026-05-26 (TASK-T65 — thread-safety em /chat _sessions)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** feat/TASK-T64-verification-stability (empilhada sobre T63; PR pendente)
-- **Dependências alteradas recentemente:** passlib[bcrypt], bcrypt (<5), slowapi (T60). T59 deps ainda em PR #68
-- **Testes passando:** sim — 114 passed, cobertura 81.37% (≥23%); ruff + format + mypy strict em **todos** os módulos críticos (api, core, verification, retrieval, generation, memory) ok (verificado 2026-05-26)
-- **Divergências externas pendentes:** PR #68 (T59), #69 (T60), #70 (T61), #71 (T62), #72 (T63); T64 ainda local
-- **Última task concluída:** TASK-T64 — verification estabilidade (epsilon, warnings, partial-retry, gate fallback, entropy_temperature)
-- **Backlog ativo:** 10 tasks pendentes (T65 ativa — thread-safety cache /chat; T66–T74 enfileiradas)
-- **PRs abertos:** #68, #69, #70, #71, #72; PR T64 a abrir após push
+- **Branch ativa:** feat/TASK-T65-sessions-thread-safety (a partir de main pós-merge T60-T64)
+- **Dependências alteradas recentemente:** passlib[bcrypt], bcrypt (<5), slowapi (T60) — agora em main
+- **Testes passando:** sim — 120 passed, cobertura 81.84% (≥23%); ruff + format + mypy strict em todos críticos ok (verificado 2026-05-26)
+- **Divergências externas pendentes:** PRs #68-#73 todos mergeados em main; T65 local
+- **Última task concluída:** TASK-T65 — thread-safety _sessions + validação ConversationBuffer
+- **Backlog ativo:** 9 tasks pendentes (T66 ativa — singleton QdrantClient + validação dim; T67–T74 enfileiradas)
+- **PRs abertos:** nenhum (#68-#73 mergeados); PR T65 a abrir após push
 
 ## Pendências Conhecidas
 
