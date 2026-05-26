@@ -29,7 +29,12 @@ class UserProfile(BaseModel):
         }
     )
 
-    name: str = Field(..., description="Nome de exibição ou identificação do usuário.")
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Nome de exibição ou identificação do usuário (1 a 255 caracteres).",
+    )
     expertise: ExpertiseLevel = Field(
         ...,
         description="Grau de experiência do usuário no domínio (beginner, intermediate ou expert).",
@@ -54,7 +59,12 @@ class ChatRequest(BaseModel):
         }
     )
 
-    session_id: str = Field(..., description="Identificador da sessão de conversa.")
+    session_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Identificador da sessão de conversa (1 a 255 caracteres).",
+    )
     question: str = Field(
         ...,
         min_length=1,
@@ -84,5 +94,7 @@ class ChatResponse(BaseModel):
     answer: str = Field(..., description="Conteúdo textual da resposta ao usuário.")
     hallucination_score: float = Field(
         ...,
-        description="Métrica numérica associada ao risco estimado de alucinação na resposta.",
+        ge=0.0,
+        le=1.0,
+        description="Risco estimado de alucinação (0.0 grounded — 1.0 likely hallucinated).",
     )

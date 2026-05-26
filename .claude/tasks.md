@@ -84,35 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T62
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** minor
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Adicionar validação rigorosa em `core/config.py` e `core/schemas.py` — bounds numéricos, enums, length constraints, API keys tipadas como Optional (issue #51).
-
-#### Contexto
-Defaults `""` para secrets causam falhas silenciosas. `top_k`, `hallucination_threshold` sem bounds. `verification_provider` aceita typos. Schemas sem `min/max_length`.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `core/config.py`, `core/schemas.py`, `tests/`
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** baixo — quebra apenas configurações inválidas que já estavam erradas
-
-#### Critérios de Aceite
-- [ ] API keys opcionais: `str | None = None` (não `str = ""`)
-- [ ] `Field(ge=1, le=100)` em `top_k`; `Field(ge=0.0, le=1.0)` em `hallucination_threshold`; `Field(ge=2)` em `entropy_num_samples`
-- [ ] `VerificationProvider(StrEnum)` com `groq | ollama | openrouter`
-- [ ] `@field_validator('jwt_secret_key')` mínimo 32 chars (coordenar com T60)
-- [ ] Schemas: `min_length=1, max_length=2000` em `question`; `ge=0.0, le=1.0` em `hallucination_score`; `min_length=1, max_length=255` em `session_id`/`name`
-- [ ] Testes para cada validação
-- [ ] `pytest`, `ruff`, `mypy` passam
-
-#### Referências
-- Issue: https://github.com/LukeSantossz/sb100_agents/issues/51
-
 ### TASK-T63
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -492,6 +463,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T62 — Validações rigorosas em config.py e schemas.py ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** feat/TASK-T62-config-schemas-validation
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** `core/config.py`: `VerificationProvider(StrEnum)` (groq|ollama|openrouter); `Field(ge=1, le=100)` em `top_k` e `buffer_maxlen`; `Field(ge=1, le=4096)` em `llm_max_tokens`; `Field(ge=0.0, le=1.0)` em `hallucination_threshold`; `Field(ge=2)` em `entropy_num_samples`; `groq_api_key`/`openrouter_api_key` migrados para `str | None = None` (eram `str = ""` — defaults silenciosos). `jwt_secret_key` validator preservado da T60. `core/schemas.py`: `UserProfile.name` min/max 1-255; `ChatRequest.session_id` min/max 1-255; `ChatResponse.hallucination_score` `ge=0.0, le=1.0`. 26 novos testes (7 em test_schemas + 19 em test_config). 90 testes (era 64), cobertura 70.82%.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Reconhecimento (config.py, schemas.py, entropy.py, vector_store.py usage), branch criada | em andamento |
+| 2026-05-26 | 1 | Implementação (bounds, StrEnum, schemas), 26 testes, validações OK | concluída |
 
 ### TASK-T61 — Mitigação prompt injection RAG ✓
 - **Concluída em:** 2026-05-26

@@ -63,20 +63,21 @@
 | 43 | 2026-05-26 | TASK-T59 | minor | 3 arquivos — pyproject.toml, uv.lock, requirements.txt | aprovado | Bump dependências vulneráveis: idna 3.11→3.16, urllib3 2.6.3→2.7.0, python-multipart 0.0.26→0.0.29, pygments 2.19.2→2.20.0. Resolve 9 alertas Dependabot. pytest 18/18 (cov 24.10%), ruff, mypy ok |
 | 44 | 2026-05-26 | TASK-T60 | major | 13 arquivos — auth.py, chat.py, main.py, config.py, dependencies.py (novo), pyproject.toml, uv.lock, requirements.txt, tests/conftest.py (novo), tests/test_auth.py (novo), tests/test_integration.py, README.md, tasks.md | aprovado | bcrypt+JWT gate em /chat + rate-limit slowapi (5/15min token, 3/h register). passlib CryptContext (timing-safe). verify_token busca usuário no DB. JWT_SECRET_KEY ≥32 chars validado em Settings. UserCreate regex + min_length. bcrypt pinado <5 por incompat com passlib 1.7.4. 48 testes (era 18), cobertura 68.32% (era 24.10%). Breaking: hashes SHA-256 antigos obsoletos. |
 | 45 | 2026-05-26 | TASK-T61 | minor | 4 arquivos — generation/llm.py, core/schemas.py, tests/test_llm.py, tests/test_schemas.py (novo) | aprovado | Mitigação prompt injection RAG: `_sanitize_context` (delimitador [DOCUMENTO RECUPERADO ...]), `_sanitize_question` (remove [SYSTEM]/[INST]/<<SYS>>/<\|im_*\|>/### System: case-insensitive), aviso anti-injection no system prompt. `ChatRequest.question` min/max 1-2000. 12 novos testes em test_llm + 4 em test_schemas. 64 testes (era 48), cobertura 69.69%. |
+| 46 | 2026-05-26 | TASK-T62 | minor | 4 arquivos — core/config.py, core/schemas.py, tests/test_schemas.py, tests/test_config.py (novo) | aprovado | Validações rigorosas: `VerificationProvider(StrEnum)`, `Field(ge/le)` em top_k/buffer_maxlen/llm_max_tokens/hallucination_threshold/entropy_num_samples, API keys `str \| None`, schemas com bounds (session_id, name, hallucination_score). 26 novos testes. 90 testes (era 64), cobertura 70.82%. |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T61 — mitigação prompt injection RAG)
+- **Última atualização:** 2026-05-26 (TASK-T62 — validações rigorosas em config/schemas)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** feat/TASK-T61-prompt-injection-mitigation (empilhada sobre feat/TASK-T60; PR pendente de abertura)
-- **Dependências alteradas recentemente:** passlib[bcrypt], bcrypt (<5), slowapi (T60). Em T59: idna, urllib3, python-multipart, pygments — ainda em PR #68 esperando merge em main
-- **Testes passando:** sim — 64 passed, cobertura 69.69% (≥23%); ruff check + format + mypy CI-modules ok (verificado 2026-05-26)
-- **Divergências externas pendentes:** PR #68 (recovery T59 → main) aberto; PR #69 (T60 → main) aberto; T61 ainda local
-- **Última task concluída:** TASK-T61 — mitigação prompt injection RAG via sanitização + delimitador + anti-injection notice
-- **Backlog ativo:** 13 tasks pendentes (T62 ativa — validações rigorosas em config/schemas; T63–T74 enfileiradas)
-- **PRs abertos:** #68 (T59 recovery → main); #69 (T60 → main); PR T61 a abrir após push
+- **Branch ativa:** feat/TASK-T62-config-schemas-validation (empilhada sobre T61; PR pendente)
+- **Dependências alteradas recentemente:** passlib[bcrypt], bcrypt (<5), slowapi (T60). T59 deps ainda em PR #68
+- **Testes passando:** sim — 90 passed, cobertura 70.82% (≥23%); ruff check + format + mypy CI-modules ok (verificado 2026-05-26)
+- **Divergências externas pendentes:** PR #68 (T59 recovery → main); PR #69 (T60 → main); PR #70 (T61 → main); T62 ainda local
+- **Última task concluída:** TASK-T62 — bounds numéricos, StrEnum de provider, API keys Optional, schemas com min/max_length
+- **Backlog ativo:** 12 tasks pendentes (T63 ativa — integridade SQLAlchemy; T64–T74 enfileiradas)
+- **PRs abertos:** #68, #69, #70; PR T62 a abrir após push
 
 ## Pendências Conhecidas
 
