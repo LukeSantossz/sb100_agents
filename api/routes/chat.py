@@ -14,6 +14,7 @@ Cache de sessões:
     - Máximo: 1000 sessões simultâneas (LRU eviction).
 """
 
+import logging
 import threading
 import time
 from collections import OrderedDict
@@ -29,6 +30,8 @@ from memory.conversation import ConversationBuffer
 from retrieval.embedder import generate_embedding
 from retrieval.vector_store import search_context
 from verification.gate import evaluate as verify_and_generate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -108,12 +111,19 @@ def chat(
         HTTPException(401): Se o token JWT estiver ausente, inválido ou expirado.
         HTTPException(503): Se Ollama ou Qdrant estiverem indisponíveis.
     """
-    _ = current_user  # auth gate aplicado por Depends(verify_token); identidade não consumida aqui
+    logger.info(
+        "chat.access",
+        extra={"username": current_user.username, "session_id": req.session_id},
+    )
     buffer = _get_or_create_buffer(req.session_id)
 
     try:
         embedding = generate_embedding(req.question)
     except Exception as e:
+        logger.warning(
+            "chat.embedding_failure",
+            extra={"username": current_user.username, "error": str(e)},
+        )
         raise HTTPException(
             status_code=503,
             detail=f"Erro ao gerar embedding: {str(e)}. Verifique se o Ollama está rodando.",
@@ -122,6 +132,10 @@ def chat(
     try:
         context_chunks = search_context(embedding)
     except Exception as e:
+        logger.warning(
+            "chat.context_failure",
+            extra={"username": current_user.username, "error": str(e)},
+        )
         raise HTTPException(
             status_code=503,
             detail=f"Erro ao buscar contexto: {str(e)}. Verifique se o Qdrant está rodando.",
@@ -147,6 +161,10 @@ def chat(
             )
             response = ChatResponse(answer=answer, hallucination_score=0.0)
     except Exception as e:
+        logger.warning(
+            "chat.generation_failure",
+            extra={"username": current_user.username, "error": str(e)},
+        )
         raise HTTPException(
             status_code=503,
             detail=f"Erro ao gerar resposta: {str(e)}. Verifique se o Ollama está rodando.",
