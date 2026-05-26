@@ -9,14 +9,44 @@ Inclui mitigações contra prompt injection (TASK-T61):
 
 import logging
 import re
+import threading
 import time
 
 import ollama
+from ollama import Client as OllamaClient
 
 from core.config import settings
 from core.schemas import ExpertiseLevel, UserProfile
 
 logger = logging.getLogger(__name__)
+
+_ollama_client: OllamaClient | None = None
+_ollama_client_lock = threading.Lock()
+
+
+def _get_ollama_client() -> OllamaClient:
+    """Singleton thread-safe do Ollama Client com timeout configurado.
+
+    O cliente reusa a conexão HTTP entre chamadas e aplica
+    ``settings.ollama_timeout`` (default 120s) — sem isso, o handler bloqueia
+    indefinidamente se o servidor Ollama estiver indisponível.
+    """
+    global _ollama_client
+    if _ollama_client is None:
+        with _ollama_client_lock:
+            if _ollama_client is None:
+                _ollama_client = OllamaClient(timeout=settings.ollama_timeout)
+    return _ollama_client
+
+
+def _ollama_chat(
+    model: str, messages: list[dict[str, str]], options: dict[str, int]
+) -> dict[str, dict[str, str]]:
+    """Wrapper testável para ``ollama.Client.chat`` com timeout aplicado."""
+    return _get_ollama_client().chat(  # type: ignore[return-value]
+        model=model, messages=messages, options=options
+    )
+
 
 SYSTEM_PROMPTS = {
     ExpertiseLevel.beginner: """Você é um assistente especializado em agronomia e agricultura.
@@ -155,11 +185,24 @@ def generate(
         },
     )
     start = time.monotonic()
-    response = ollama.chat(
-        model=settings.chat_model,
-        messages=messages,
-        options={"num_predict": settings.llm_max_tokens},
-    )
+    try:
+        response = _ollama_chat(
+            model=settings.chat_model,
+            messages=messages,
+            options={"num_predict": settings.llm_max_tokens},
+        )
+    except (
+        ollama.RequestError,
+        ollama.ResponseError,
+        TimeoutError,
+        ConnectionError,
+    ) as exc:
+        logger.exception(
+            "generation.llm.failure",
+            extra={"error": str(exc), "model": settings.chat_model},
+        )
+        raise
+
     elapsed_ms = (time.monotonic() - start) * 1000
     answer = str(response["message"]["content"])
     logger.info(

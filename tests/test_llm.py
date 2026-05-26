@@ -38,7 +38,7 @@ class TestBuildSystemPrompt(unittest.TestCase):
 
 
 class TestGenerate(unittest.TestCase):
-    @patch("generation.llm.ollama.chat")
+    @patch("generation.llm._ollama_chat")
     def test_messages_structure_with_history(self, mock_chat: MagicMock):
         mock_chat.return_value = {"message": {"content": "Resposta do LLM"}}
 
@@ -85,7 +85,7 @@ class TestGenerate(unittest.TestCase):
         # Retorno correto
         self.assertEqual(result, "Resposta do LLM")
 
-    @patch("generation.llm.ollama.chat")
+    @patch("generation.llm._ollama_chat")
     def test_messages_without_history(self, mock_chat: MagicMock):
         mock_chat.return_value = {"message": {"content": "Resposta"}}
 
@@ -106,7 +106,7 @@ class TestGenerate(unittest.TestCase):
         self.assertIn(SYSTEM_PROMPTS[ExpertiseLevel.expert], messages[0]["content"])
         self.assertEqual(messages[1]["role"], "user")
 
-    @patch("generation.llm.ollama.chat")
+    @patch("generation.llm._ollama_chat")
     def test_messages_without_context(self, mock_chat: MagicMock):
         mock_chat.return_value = {"message": {"content": "Resposta"}}
 
@@ -126,7 +126,7 @@ class TestGenerate(unittest.TestCase):
         self.assertNotIn("[DOCUMENTO RECUPERADO", user_message)
         self.assertIn("Pergunta: Pergunta sem contexto", user_message)
 
-    @patch("generation.llm.ollama.chat")
+    @patch("generation.llm._ollama_chat")
     def test_each_expertise_level_uses_different_system_prompt(self, mock_chat: MagicMock):
         mock_chat.return_value = {"message": {"content": "OK"}}
 
@@ -194,7 +194,7 @@ class TestSanitization(unittest.TestCase):
 
 
 class TestInjectionInGenerate(unittest.TestCase):
-    @patch("generation.llm.ollama.chat")
+    @patch("generation.llm._ollama_chat")
     def test_injection_payload_in_question_is_sanitized(self, mock_chat: MagicMock):
         mock_chat.return_value = {"message": {"content": "OK"}}
         profile = UserProfile(name="Test", expertise=ExpertiseLevel.beginner)
@@ -211,7 +211,7 @@ class TestInjectionInGenerate(unittest.TestCase):
         self.assertNotIn("[/SYSTEM]", sent_user_msg)
         self.assertIn("what is the weather", sent_user_msg)
 
-    @patch("generation.llm.ollama.chat")
+    @patch("generation.llm._ollama_chat")
     def test_anti_injection_notice_present_in_system_prompt(self, mock_chat: MagicMock):
         mock_chat.return_value = {"message": {"content": "OK"}}
         profile = UserProfile(name="Test", expertise=ExpertiseLevel.expert)
@@ -223,7 +223,7 @@ class TestInjectionInGenerate(unittest.TestCase):
         self.assertIn("DOCUMENTO RECUPERADO", system_msg)
         self.assertIn("nunca como ordem", system_msg)
 
-    @patch("generation.llm.ollama.chat")
+    @patch("generation.llm._ollama_chat")
     def test_context_wrapped_with_delimiter_in_user_message(self, mock_chat: MagicMock):
         mock_chat.return_value = {"message": {"content": "OK"}}
         profile = UserProfile(name="Test", expertise=ExpertiseLevel.intermediate)
@@ -239,6 +239,24 @@ class TestInjectionInGenerate(unittest.TestCase):
         self.assertIn("[DOCUMENTO RECUPERADO", user_msg)
         self.assertIn("[/DOCUMENTO RECUPERADO]", user_msg)
         self.assertIn("calcário dolomítico", user_msg)
+
+
+class TestOllamaTimeout(unittest.TestCase):
+    @patch("generation.llm._ollama_chat")
+    def test_generate_propagates_timeout_error(self, mock_chat: MagicMock):
+        mock_chat.side_effect = TimeoutError("ollama deadline exceeded")
+        profile = UserProfile(name="Test", expertise=ExpertiseLevel.beginner)
+
+        with self.assertRaises(TimeoutError):
+            generate(question="q", context="c", history=[], profile=profile)
+
+    @patch("generation.llm._ollama_chat")
+    def test_generate_propagates_connection_error(self, mock_chat: MagicMock):
+        mock_chat.side_effect = ConnectionError("ollama offline")
+        profile = UserProfile(name="Test", expertise=ExpertiseLevel.beginner)
+
+        with self.assertRaises(ConnectionError):
+            generate(question="q", context="c", history=[], profile=profile)
 
 
 class TestNoQdrantImport(unittest.TestCase):
