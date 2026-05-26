@@ -59,18 +59,20 @@
 | 39 | 2026-05-13 | TASK-T55 | major | 8 arquivos — .claude/ (VERSION, CLAUDE.md, quick-ref.md, rules/00,06,08,10) + raiz (CLAUDE.md removido) | aprovado | Migração framework v1.1.0 → v1.2.0: âncoras always-on (quick-ref), modelo por complexidade, micro-checkpoint, gatilho "desviou". .claude_update e TEMP_MIGRATION_PROMPT.md deletados. |
 | 40 | 2026-05-13 | TASK-T56 | major | 7 arquivos + 2 removidos — profiling/, pyproject.toml, core/config.py, .env.example, .gitignore, database/semantic_chunker.py | aprovado | Auditoria: código morto removido, dependências não usadas removidas, configuração sincronizada. |
 | 41 | 2026-05-21 | TASK-T57 | patch | 2 arquivos — uv.lock, requirements.txt | aprovado | Follow-up T56: locks regenerados (-950 linhas) sem torch/transformers/sentence-transformers/pypdf e transitivos. pytest 18 ok (cov 24.10%), ruff ok, mypy ok |
+| 42 | 2026-05-26 | TASK-T58 | patch | 0 arquivos — issue #59 fechada no GitHub | aprovado | Issue resolvida pela T56 (commit 69cfb0b, PR #64); close via gh CLI com comentário referenciando o estado atual do módulo profiling/ |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (verificação pós-pull, regra 08.4)
+- **Última atualização:** 2026-05-26 (TASK-T58 — housekeeping)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** main (fast-forward até `fe7bcee`; T56 + T57 mergeados via PR #64 em 2026-05-13)
+- **Branch ativa:** chore/TASK-T58-close-issue-59 (pendente de commit + push para main)
 - **Dependências alteradas recentemente:** sentence-transformers, pypdf, torch, transformers (removidas; locks regenerados na T57)
 - **Testes passando:** sim — 18 passed, cobertura 24.10% (≥23%); ruff e mypy ok (verificado 2026-05-26)
 - **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T57 — Regeneração de uv.lock e requirements.txt (follow-up T56) — mergeada em main via PR #64
+- **Última task concluída:** TASK-T58 — Fechar issue #59 do GitHub (resolvida pela T56)
+- **Backlog ativo:** 15 tasks pendentes (T59 ativa — bump deps Dependabot; T60–T73 enfileiradas em tasks.md)
 
 ## Pendências Conhecidas
 
