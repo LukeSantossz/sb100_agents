@@ -4,8 +4,12 @@ Utiliza o modelo configurado em settings.embed_model (default: nomic-embed-text)
 para converter texto em vetores densos de 768 dimensões.
 """
 
+import logging
+
 from core.config import settings
 from retrieval.ollama_embeddings import embed_text
+
+logger = logging.getLogger(__name__)
 
 
 def generate_embedding(text: str) -> list[float]:
@@ -23,4 +27,5 @@ def generate_embedding(text: str) -> list[float]:
     Raises:
         Exception: Última falha retornada pelo Ollama após esgotar retries (ex.: modelo ausente).
     """
+    logger.debug("embedder.generate", extra={"chars": len(text)})
     return embed_text(settings.embed_model, text)
