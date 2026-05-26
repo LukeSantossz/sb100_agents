@@ -84,35 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T59
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** minor
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Atualizar dependências vulneráveis (`idna`, `urllib3`, `python-multipart`, `Pygments`) para resolver 9 alertas Dependabot.
-
-#### Contexto
-Versões atuais em `requirements.txt` e `uv.lock`: `idna==3.11` (CVE-2026-45409, medium), `urllib3==2.6.3` (CVE-2026-44431 high + CVE-2026-44432 high), `python-multipart==0.0.26` (CVE-2026-42561 high), `pygments==2.19.2` (CVE-2026-4539 low). Todos são bumps minor/patch sem breaking changes esperadas.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `pyproject.toml`, `uv.lock`, `requirements.txt`
-- **Dependências necessárias:** `idna>=3.15`, `urllib3>=2.7.0`, `python-multipart>=0.0.27`, `Pygments>=2.20.0`
-- **Impacto em funcionalidades existentes:** nenhum esperado (CVEs em funcionalidades não utilizadas pelo runtime)
-
-#### Critérios de Aceite
-- [ ] `pyproject.toml` com pins atualizados (se houver pin) ou constraints atualizadas
-- [ ] `uv.lock` regenerado via `uv lock --upgrade-package idna --upgrade-package urllib3 --upgrade-package python-multipart --upgrade-package pygments`
-- [ ] `requirements.txt` regenerado via `uv export --frozen --no-hashes -o requirements.txt` (ou comando do projeto)
-- [ ] `pytest tests/ -v --ignore=tests/test_integration.py` passa
-- [ ] `ruff check .` passa
-- [ ] `mypy retrieval/ generation/ memory/ --strict` passa
-- [ ] Dependabot mostra 0 alertas após merge
-
-#### Referências
-- CVE-2026-45409 (idna), CVE-2026-44431/-44432 (urllib3), CVE-2026-42561 (python-multipart), CVE-2026-4539 (Pygments)
-
 ### TASK-T60
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -549,6 +520,13 @@ Falta tracing em produção: visibilidade de latência, retrieval quality, corre
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T59 — Bump dependências vulneráveis (Dependabot) ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** chore/TASK-T59-bump-vulnerable-deps
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** `pyproject.toml` recebeu `python-multipart>=0.0.27`. `uv lock --upgrade-package` atualizou idna 3.11→3.16, urllib3 2.6.3→2.7.0, python-multipart 0.0.26→0.0.29, pygments 2.19.2→2.20.0. `uv export --frozen --no-dev` regenerou `requirements.txt`. Validações: pytest 18/18 (cov 24.10%), ruff check ok, ruff format ok (37 files), mypy --strict ok (8 files). 6/7 critérios cumpridos; 7º (Dependabot 0 alertas) verificado após merge.
 
 ### TASK-T58 — Fechar issue #59 (resolvida pela T56) ✓
 - **Concluída em:** 2026-05-26
