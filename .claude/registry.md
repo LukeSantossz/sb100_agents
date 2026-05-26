@@ -64,13 +64,13 @@
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-21
+- **Última atualização:** 2026-05-26 (verificação pós-pull, regra 08.4)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** refactor/TASK-T56-cleanup-dead-code
+- **Branch ativa:** main (fast-forward até `fe7bcee`; T56 + T57 mergeados via PR #64 em 2026-05-13)
 - **Dependências alteradas recentemente:** sentence-transformers, pypdf, torch, transformers (removidas; locks regenerados na T57)
-- **Testes passando:** sim — 18 passed, cobertura 24.10% (≥23%); ruff e mypy ok (verificado 2026-05-21)
+- **Testes passando:** sim — 18 passed, cobertura 24.10% (≥23%); ruff e mypy ok (verificado 2026-05-26)
 - **Divergências externas pendentes:** nenhuma
-- **Última task concluída:** TASK-T57 — Regeneração de uv.lock e requirements.txt (follow-up T56)
+- **Última task concluída:** TASK-T57 — Regeneração de uv.lock e requirements.txt (follow-up T56) — mergeada em main via PR #64
 
 ## Pendências Conhecidas
 
