@@ -84,35 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T66
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** minor
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Singleton de `QdrantClient`, validação de dimensão de embedding e logging em `retrieval/` (issue #52).
-
-#### Contexto
-`retrieval/vector_store.py:29` instancia novo `QdrantClient` a cada `search_context()`. Sem validação de dim. `ollama_embeddings.py:55` usa `assert` (removido com `-O`). Sem logging.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `retrieval/vector_store.py`, `retrieval/embedder.py`, `retrieval/ollama_embeddings.py`, `tests/`
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** baixo (singleton compatível com API atual)
-
-#### Critérios de Aceite
-- [ ] Singleton `_qdrant_client` thread-safe com lazy init
-- [ ] Validação `if len(embedding) != 768: raise ValueError(...)` antes da query
-- [ ] `logger.warning()` quando payload vazio ou sem chave `"text"`
-- [ ] `logger = logging.getLogger(__name__)` em todos módulos retrieval
-- [ ] `assert` em `ollama_embeddings.py:55` substituído por `raise RuntimeError`
-- [ ] Testes: 100 chamadas usam mesma instância (mock); dim incorreta levanta ValueError
-- [ ] `pytest`, `ruff`, `mypy` passam
-
-#### Referências
-- Issue: https://github.com/LukeSantossz/sb100_agents/issues/52
-
 ### TASK-T67
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -372,6 +343,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T66 — Singleton QdrantClient + dim validation + logging em retrieval ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** feat/TASK-T66-retrieval-singleton-logging
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** `retrieval/vector_store.py`: singleton `_qdrant_client` com double-checked locking (`_qdrant_lock = threading.Lock()`), validação `len(embedding) != 768 → ValueError`, `logger.warning` quando payload sem chave `text` (com payload_keys nos extras). `retrieval/embedder.py`: `logger.debug` em `generate_embedding`. `retrieval/ollama_embeddings.py`: `logger.warning` por tentativa falha; `assert last_exc is not None` substituído por `if last_exc is None: raise RuntimeError(...)`. `tests/test_vector_store.py` reescrito em pytest (singleton reset via autouse fixture; 5 testes: dim correta, dim 10 rejeita, embedding vazio rejeita, text vazio loga warning, singleton reutiliza client). 123 testes (era 120), cobertura 82.27%.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Reconhecimento (vector_store, embedder, ollama_embeddings, test_vector_store), branch criada | em andamento |
+| 2026-05-26 | 1 | Implementação (singleton, dim validation, warnings, raise RuntimeError), tests rewrite, validações OK | concluída |
 
 ### TASK-T65 — Thread-safety em /chat _sessions + validação ConversationBuffer ✓
 - **Concluída em:** 2026-05-26
