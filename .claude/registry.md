@@ -15,47 +15,11 @@
 ## Histórico de Implementações
 
 > Registro de conclusões. Cada entrada representa uma task finalizada. O agente adiciona uma nova linha após cada task concluída. Nunca remova entradas anteriores.
+>
+> **Nota (TASK-T75, 2026-05-26):** Entradas #1-#38 foram movidas para `.claude/registry-archive.md` conforme regra 08.5 (histórico ativo cap em ~15 entradas mais recentes). Consultar o arquivo para histórico anterior à TASK-T55.
 
 | # | Data | Task | Complexidade | Escopo Alterado | Resultado | Observações |
 |---|------|------|--------------|-----------------|-----------|-------------|
-| 1 | 2026-04-24 | TASK-000 | major | 6 arquivos — .claude/hooks/, enforcement.conf | aprovado | Hooks funcionais, .gitignore ajustado |
-| 2 | 2026-04-25 | TASK-T18 | minor | 1 arquivo — README.md | aprovado | Documentação MVP completa |
-| 3 | 2026-04-24 | TASK-T21 | minor | 4 arquivos — pyproject.toml, ci.yml, README.md, TASK-T21.md | aprovado c/ ressalvas | Ruff, mypy --strict, pytest-cov configurados. CI pode falhar até correção de tipos |
-| 4 | 2026-04-24 | TASK-T22 | major | 13 arquivos — core, retrieval, generation, verification, api | aprovado | Docstrings Google Style em todos os módulos públicos |
-| 5 | 2026-04-25 | TASK-T24-UI | major | 7 arquivos — ui/, docker-compose.yml, pyproject.toml, requirements.txt | aprovado | Interface Gradio + Docker Compose com profiles infra/app |
-| 6 | 2026-04-25 | TASK-T27 | patch | 1 arquivo — ui/chat_ui.py | aprovado c/ ressalvas | Fix formatação ruff. Task retroativa — violação de fluxo documentada |
-| 7 | 2026-04-24 | TASK-T23 | major | 0 arquivos — verificação apenas | aprovado | Contratos já tipados; mypy --strict passa em 22 arquivos |
-| 8 | 2026-04-25 | TASK-T17 | major | 3 arquivos — .github/workflows/ci.yml, requirements.txt | aprovado | CI com 4 jobs: lint, test, validate-requirements, typecheck |
-| 9 | 2026-04-25 | TASK-T24 | major | 4 arquivos — core/config.py, database/models.py, retrieval/vector_store.py, tests/ | aprovado | Auditoria Clean Code + fixes (datetime.UTC, remoção alias) |
-| 10 | 2026-04-25 | TASK-T25 | minor | 6 arquivos — SETUP.md, .env.example, core/, retrieval/, database/, tests/ | aprovado | Guia setup local/remoto + suporte QDRANT_API_KEY |
-| 11 | 2026-04-25 | TASK-T26 | patch | 2 arquivos — start.bat, start.ps1 | aprovado | Resolução dinâmica Ollama via PATH |
-| 12 | 2026-04-25 | TASK-T28 | major | 11 arquivos + 2 removidos — codebase completa | aprovado | Remoção completa de React/npm/Node.js; scripts reescritos para Python puro |
-| 13 | 2026-04-25 | TASK-T29 | patch | 2 arquivos — .env.example, docker-compose.yml | aprovado | CHAT_MODEL alinhado para llama3.2:3b |
-| 14 | 2026-04-25 | TASK-T30 | patch | 1 arquivo — .env.example | aprovado | COLLECTION_NAME alinhado para archives_v2 |
-| 15 | 2026-04-25 | TASK-T31 | minor | 1 arquivo — api/routes/auth.py | aprovado | JWT_SECRET_KEY via settings + validação de erro |
-| 16 | 2026-04-25 | TASK-T33 | minor | 1 arquivo — database/db.py | aprovado | os.path substituído por pathlib.Path |
-| 17 | 2026-04-25 | TASK-T32 | minor | 3 arquivos — docker-compose.yml, README.md, SETUP.md | aprovado | Ollama removido do Docker, uso local exclusivo documentado |
-| 18 | 2026-04-25 | TASK-T34 | patch | 1 arquivo — api/routes/auth.py | aprovado | datetime.utcnow() substituído por datetime.now(UTC) |
-| 19 | 2026-04-25 | TASK-T35 | patch | 1 arquivo — README.md | aprovado | Badge coverage corrigido de 80% para 25% |
-| 20 | 2026-04-25 | TASK-T36 | minor | 7 arquivos — semantic_entropy/ removido, .gitignore, pyproject.toml | aprovado | Módulo duplicado removido |
-| 21 | 2026-04-26 | TASK-T37 | patch | 1 arquivo — database/semantic_chunker.py | aprovado | Emojis Unicode removidos dos prints; prefixos ASCII ([OK], [INFO]) |
-| 22 | 2026-04-26 | TASK-T38 | patch | 2 arquivos — archives/smart_boletim.pdf, .gitignore | aprovado | PDF versionado em archives/; entradas removidas do .gitignore |
-| 23 | 2026-04-26 | TASK-T39 | minor | 1 arquivo — README.md | aprovado | Getting Started com 7 passos, .env explícito, verificação por etapa |
-| 24 | 2026-04-27 | TASK-T40 | minor | 1 arquivo — api/routes/chat.py | aprovado | async def -> def; event loop desbloqueado |
-| 25 | 2026-04-27 | TASK-T41 | patch | 1 arquivo — database/db.py | aprovado | parents[2] -> parents[1]; DB na raiz do projeto |
-| 26 | 2026-04-27 | TASK-T42 | patch | 1 arquivo — start.bat | aprovado | >nul -> >NUL; evita criação de arquivo literal |
-| 27 | 2026-04-27 | TASK-T43 | patch | 1 arquivo — ui/chat_ui.py | aprovado | REQUEST_TIMEOUT 120s -> 300s; LLM local demora ~120s |
-| 28 | 2026-04-27 | TASK-T45 | minor | 2 arquivos — verification/entropy.py, core/config.py | aprovado | Verificação migrada de OpenAI para multi-provedor (Groq/Ollama/OpenRouter); embeddings via Ollama local |
-| 29 | 2026-04-27 | TASK-T44 | minor | 3 arquivos — ui/chat_ui.py, generation/llm.py, README.md | aprovado | Timeout 600s, TimeoutException separada, num_predict no Ollama |
-| 30 | 2026-04-27 | TASK-T46 | patch | 2 arquivos — database/db.py, .gitignore; filesystem smartb100_v2.db | aprovado | Diretório espúrio removido; guard se path for pasta; DB local ignorado no git; bind mount documentado |
-| 31 | 2026-04-27 | TASK-T47 | minor | 6 arquivos — retrieval/ollama_embeddings.py (novo), embedder, semantic_chunker, entropy, db.py, tests | aprovado | Retries/backoff + truncagem embeddings; URL SQLite as_posix; reduz 500/tcp reset Ollama no Windows |
-| 32 | 2026-04-27 | TASK-T48 | patch | 1 arquivo — retrieval/ollama_embeddings.py | aprovado | Variável tipada resolve mypy no-any-return; CI typecheck desbloqueado |
-| 33 | 2026-04-27 | TASK-T49 | major | 22 arquivos — .claude/ reestruturado | aprovado | Migração instructions.md monolítico para rules/ modular + registry.md separado |
-| 34 | 2026-04-27 | TASK-T50 | minor | 3 arquivos — CONTRIBUTING.md, LICENSE, README.md | aprovado | Guia contribuição open-source + MIT License + seção Contribuindo no README |
-| 35 | 2026-04-27 | TASK-T51 | major | 3 arquivos — .github/workflows/claude-auto.yml, claude-respond.yml, README.md | aprovado | GitHub Actions: auto-implementação de issues (claude-auto label) + resposta interativa (@claude) via anthropics/claude-code-action@v1 |
-| 36 | 2026-05-04 | TASK-T52 | patch | 5 arquivos — .claude/rules/ (3 novos) + guia-configuracao-codex.md (novo) + 05-convencoes.md (editado) | aprovado | Sincronização .claude/ com .claude_config/: regras 10-12, guia Codex, parágrafo portfolio em 05. Checklist agêntico: N/A |
-| 37 | 2026-05-04 | TASK-T53 | minor | 2 arquivos — README.md (reescrito), ARCHITECTURE.md (removido) | aprovado | README conforme regra 12.2: contexto de negocio, Mermaid embutido, decisoes de engenharia, setup conciso. ARCHITECTURE.md absorvido. Checklist agentico: N/A |
-| 38 | 2026-05-04 | TASK-T54 | minor | 3 arquivos — .gitignore, .claude/hooks/pre-commit, CONTRIBUTING.md | aprovado | Hardening preventivo: .env nunca esteve no historico git. Duplicatas removidas do .gitignore, guard no pre-commit hook, secao secrets no CONTRIBUTING.md. Issue #48 fechada. Checklist agentico: aplicado |
 | 39 | 2026-05-13 | TASK-T55 | major | 8 arquivos — .claude/ (VERSION, CLAUDE.md, quick-ref.md, rules/00,06,08,10) + raiz (CLAUDE.md removido) | aprovado | Migração framework v1.1.0 → v1.2.0: âncoras always-on (quick-ref), modelo por complexidade, micro-checkpoint, gatilho "desviou". .claude_update e TEMP_MIGRATION_PROMPT.md deletados. |
 | 40 | 2026-05-13 | TASK-T56 | major | 7 arquivos + 2 removidos — profiling/, pyproject.toml, core/config.py, .env.example, .gitignore, database/semantic_chunker.py | aprovado | Auditoria: código morto removido, dependências não usadas removidas, configuração sincronizada. |
 | 41 | 2026-05-21 | TASK-T57 | patch | 2 arquivos — uv.lock, requirements.txt | aprovado | Follow-up T56: locks regenerados (-950 linhas) sem torch/transformers/sentence-transformers/pypdf e transitivos. pytest 18 ok (cov 24.10%), ruff ok, mypy ok |
@@ -71,20 +35,21 @@
 | 51 | 2026-05-26 | TASK-T67 | major | 4 arquivos — api/main.py, generation/llm.py, memory/conversation.py, database/semantic_chunker.py | aprovado | Logging estruturado consolidado: `logging.basicConfig` em `api/main.py` (INFO level + formato com timestamp/logger/level/msg); logger em `generation/llm.py` com info/timing em request e response; logger em memory/conversation; 11 prints em `database/semantic_chunker.py` substituídos por logger.info/warning com extras estruturados; basicConfig no `main()` do chunker CLI. 123 testes, cobertura 82.67%. |
 | 52 | 2026-05-26 | TASK-T68 | minor | 5 arquivos — core/config.py, generation/llm.py, verification/entropy.py, tests/test_llm.py, tests/test_verification.py | aprovado | Ollama Client com timeout (`ollama_timeout` settings, default 120s, bounds 1-600); wrapper `_ollama_chat` testável; error handling em `generate` (RequestError/ResponseError/TimeoutError/ConnectionError); singleton thread-safe `_ollama_client`. Cache local de embeddings em `_cluster_responses` reduz embed calls de O(N²) para O(N único). Tests refatorados (7 mocks atualizados + 2 timeouts + 1 cache). 126 testes, cobertura 84.80%. |
 | 53 | 2026-05-26 | TASK-T69 | major | 3 arquivos — tests/test_vector_store.py, tests/test_embedder.py, tests/test_integration.py | aprovado | Robustez de testes: `ScoredPoint` real (não MagicMock) em test_vector_store; 3 edge cases em test_embedder (string vazia/longa/Unicode); autouse fixture `_clear_sessions_cache` em test_integration evita leak entre testes. Coverage critério ≥50% alcançado: **84.80%**. Critérios de verification e Ollama already cobertos por T64+T68. 129 testes, cobertura 84.80%. |
+| 54 | 2026-05-26 | TASK-T75 | minor | 4 arquivos — .claude/registry-archive.md (novo), .claude/registry.md, retrieval/ollama_embeddings.py, api/routes/chat.py | aprovado | Correções pós-review T60-T69: arquivamento regra 08.5 (entradas #1-#38 → archive; 15 ativas restantes); ollama_embeddings com `Client(timeout=5.0)` + retries reduzidos para 4 (worst-case ~25s, era indeterminado); logger.info `chat.access` + warnings nos paths 503. Padrões Recorrentes ampliados com push sem autorização, arquivamento esquecido e checklist agêntico ausente. 129 testes, cobertura 83.23%. |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T69 — robustez de testes + edge cases)
+- **Última atualização:** 2026-05-26 (TASK-T75 — correções pós-review)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** feat/TASK-T69-test-coverage-robustness
+- **Branch ativa:** chore/TASK-T75-post-review-fixes
 - **Dependências alteradas recentemente:** nenhuma desde T60 — todas em main
-- **Testes passando:** sim — 129 passed, cobertura 84.80%; ruff + format + mypy strict em todos críticos ok
-- **Divergências externas pendentes:** PRs #74-#77 mergeadas em main; T69 local
-- **Última task concluída:** TASK-T69 — ScoredPoint real, edge cases embedder, autouse session cleanup
+- **Testes passando:** sim — 129 passed, cobertura 83.23%; ruff + format + mypy strict em todos críticos ok
+- **Divergências externas pendentes:** PRs #74-#78 mergeadas em main; T75 local
+- **Última task concluída:** TASK-T75 — arquivamento de registry, timeout reduzido em ollama_embeddings, logging de acesso em /chat
 - **Backlog ativo:** 5 tasks pendentes (T70 ativa — hardening eval pipeline; T71–T74 enfileiradas)
-- **PRs abertos:** nenhum; PR T69 a abrir após push
+- **PRs abertos:** nenhum; PR T75 a abrir após push
 
 ## Pendências Conhecidas
 
@@ -109,6 +74,9 @@
 | Commit direto em branch protegida (dev) | 1x (T27) | Médio — pula review | Sempre criar branch dedicada, mesmo para fixes urgentes |
 | Modo de operação não declarado | 1x | Baixo — ambiguidade de contexto | Agente deve perguntar modo antes de qualquer ação |
 | PR encadeado vira órfão | 1x (T59→PR #67) | **Alto** — commits "mergeados" não chegam em main | **Sempre criar PR com `--base main`**, mesmo se a branch foi feita a partir de outra branch local. GitHub não auto-rebasea a base quando o PR pai mergeia primeiro |
+| Push/PR sem autorização explícita por task | múltiplas (T61-T69) | Médio — viola regra 06 (ponto de transferência) | Autorização pontual ou autorização durável registrada no início da sessão. Default: pedir antes |
+| Arquivamento de registry esquecido | 1x (T60-T69) | Baixo — registry inflado mas operacional | Verificar contagem do histórico no início/fim de sessão; arquivar quando passar de 30 entradas (regra 08.5) |
+| Checklist agêntico não-aplicado em PRs | múltiplas (T60-T69) | Médio — perde rastreio de revisão obrigatória | Anexar checklist da regra 06.1 (8 itens estendidos) no corpo de cada PR de código gerado por agente |
 
 ---
 
@@ -118,3 +86,4 @@
 
 - **2026-04-27:** Migração de `.claude/instructions.md` monolítico para estrutura modular em `.claude/rules/` + `registry.md` separado. Dados preservados integralmente.
 - **2026-05-26 (T59 recovery):** PR #67 foi aberto com `--base chore/TASK-T58-close-issue-59` esperando auto-rebase para main quando o PR pai (#66) mergeasse. GitHub manteve a base original — o merge do #67 foi para a branch T58 (já mergeada), deixando os 3 commits de T59 órfãos fora de main. Recuperação via PR #68 (base=main, head=chore/TASK-T58-close-issue-59) trazendo os commits órfãos. Padrão registrado para evitar repetição.
+- **2026-05-26 (review pós-T60-T69):** Review formal da sessão identificou 3 não-conformidades de código (arquivamento, T68 timeout em ollama_embeddings, T60 logging em /chat) e 4 comportamentais (autorização git, wiki externa, checklist agêntico, checkpoints incrementais). Correções de código entram via TASK-T75; comportamentais ficam como diretrizes para próximas sessões e foram registradas como Padrões Recorrentes.
