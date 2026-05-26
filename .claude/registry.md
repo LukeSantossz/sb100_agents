@@ -64,20 +64,21 @@
 | 44 | 2026-05-26 | TASK-T60 | major | 13 arquivos — auth.py, chat.py, main.py, config.py, dependencies.py (novo), pyproject.toml, uv.lock, requirements.txt, tests/conftest.py (novo), tests/test_auth.py (novo), tests/test_integration.py, README.md, tasks.md | aprovado | bcrypt+JWT gate em /chat + rate-limit slowapi (5/15min token, 3/h register). passlib CryptContext (timing-safe). verify_token busca usuário no DB. JWT_SECRET_KEY ≥32 chars validado em Settings. UserCreate regex + min_length. bcrypt pinado <5 por incompat com passlib 1.7.4. 48 testes (era 18), cobertura 68.32% (era 24.10%). Breaking: hashes SHA-256 antigos obsoletos. |
 | 45 | 2026-05-26 | TASK-T61 | minor | 4 arquivos — generation/llm.py, core/schemas.py, tests/test_llm.py, tests/test_schemas.py (novo) | aprovado | Mitigação prompt injection RAG: `_sanitize_context` (delimitador [DOCUMENTO RECUPERADO ...]), `_sanitize_question` (remove [SYSTEM]/[INST]/<<SYS>>/<\|im_*\|>/### System: case-insensitive), aviso anti-injection no system prompt. `ChatRequest.question` min/max 1-2000. 12 novos testes em test_llm + 4 em test_schemas. 64 testes (era 48), cobertura 69.69%. |
 | 46 | 2026-05-26 | TASK-T62 | minor | 4 arquivos — core/config.py, core/schemas.py, tests/test_schemas.py, tests/test_config.py (novo) | aprovado | Validações rigorosas: `VerificationProvider(StrEnum)`, `Field(ge/le)` em top_k/buffer_maxlen/llm_max_tokens/hallucination_threshold/entropy_num_samples, API keys `str \| None`, schemas com bounds (session_id, name, hallucination_score). 26 novos testes. 90 testes (era 64), cobertura 70.82%. |
+| 47 | 2026-05-26 | TASK-T63 | minor | 4 arquivos — database/models.py, database/db.py, tests/test_db.py (novo), README.md | aprovado | Integridade SQLAlchemy: NOT NULL em campos obrigatórios, index em FKs, ondelete=CASCADE + passive_deletes, Boolean em is_hallucinated, DateTime(timezone=True), connect_args timeout=10, PRAGMA foreign_keys=ON via event listener, get_db rollback-on-exception. 11 novos testes (NULL, CASCADE, tz, rollback). 101 testes, cobertura 70.82%. Breaking: schemas legados ficam frouxos — recriar `smartb100_v2.db`. |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T62 — validações rigorosas em config/schemas)
+- **Última atualização:** 2026-05-26 (TASK-T63 — integridade SQLAlchemy)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** feat/TASK-T62-config-schemas-validation (empilhada sobre T61; PR pendente)
+- **Branch ativa:** feat/TASK-T63-sqlalchemy-integrity (empilhada sobre T62; PR pendente)
 - **Dependências alteradas recentemente:** passlib[bcrypt], bcrypt (<5), slowapi (T60). T59 deps ainda em PR #68
-- **Testes passando:** sim — 90 passed, cobertura 70.82% (≥23%); ruff check + format + mypy CI-modules ok (verificado 2026-05-26)
-- **Divergências externas pendentes:** PR #68 (T59 recovery → main); PR #69 (T60 → main); PR #70 (T61 → main); T62 ainda local
-- **Última task concluída:** TASK-T62 — bounds numéricos, StrEnum de provider, API keys Optional, schemas com min/max_length
-- **Backlog ativo:** 12 tasks pendentes (T63 ativa — integridade SQLAlchemy; T64–T74 enfileiradas)
-- **PRs abertos:** #68, #69, #70; PR T62 a abrir após push
+- **Testes passando:** sim — 101 passed, cobertura 70.82% (≥23%); ruff check + format + mypy CI-modules ok (verificado 2026-05-26)
+- **Divergências externas pendentes:** PR #68 (T59), #69 (T60), #70 (T61), #71 (T62); T63 ainda local
+- **Última task concluída:** TASK-T63 — integridade SQLAlchemy (NOT NULL, CASCADE, tz-aware, FK pragma, rollback em get_db)
+- **Backlog ativo:** 11 tasks pendentes (T64 ativa — estabilidade numérica em verification/entropy; T65–T74 enfileiradas)
+- **PRs abertos:** #68, #69, #70, #71; PR T63 a abrir após push
 
 ## Pendências Conhecidas
 
