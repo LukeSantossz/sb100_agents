@@ -247,6 +247,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T75 — Correções pós-review (arquivamento, ollama timeout, /chat logging) ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** chore/TASK-T75-post-review-fixes
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** Aplica 3 correções identificadas no review pós-T60-T69. (1) Arquivamento (regra 08.5): `.claude/registry-archive.md` (novo) com entradas #1-#38 do histórico; `.claude/registry.md` agora contém 15 entradas ativas (#39-#53) + nota de redirect. (2) T68 follow-up: `retrieval/ollama_embeddings.py` com cliente `ollama.Client(timeout=5.0)` singleton, `_MAX_RETRIES=4` (era 6), `_RETRY_MAX_SEC=2.0` (era 60.0); worst-case ~25s (era indeterminado por hang). (3) T60 follow-up: `api/routes/chat.py` ganha `logger` + `logger.info("chat.access", extra={username, session_id})` no handler e `logger.warning` nos 3 paths de falha (embedding/context/generation). Padrões Recorrentes do registry atualizados com 3 novos itens (push sem autorização, arquivamento esquecido, checklist agêntico). 129 testes (sem novos), cobertura 83.23%, ruff + mypy strict ok.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Review pós-T60-T69 executado em Modo Review; 7 não-conformidades identificadas | em andamento |
+| 2026-05-26 | 1 | TASK-T75 registrada; branch criada; 3 correções de código aplicadas; comportamentais registradas como Padrões | concluída |
+
 ### TASK-T69 — Cobertura de testes + mocks robustos em vector_store/embedder ✓
 - **Concluída em:** 2026-05-26
 - **Branch:** feat/TASK-T69-test-coverage-robustness
