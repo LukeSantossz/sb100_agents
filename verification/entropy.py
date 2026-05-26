@@ -2,16 +2,29 @@
 
 Referência: Semantic Uncertainty (Farquhar et al., 2023)
 https://arxiv.org/abs/2302.09664
+
+TASK-T64 endurece a estabilidade numérica e o error handling:
+
+- Epsilon ``1e-10`` substitui o teste ``> 0`` na similaridade de cosseno.
+- ``logger.warning`` quando provedor selecionado está sem API key.
+- Geração de samples tolera falhas parciais (continua) e propaga apenas se todas falharem.
+- Acesso seguro a ``resp["message"]["content"]`` via ``.get(...)``.
+- Validação do provider contra ``_sample_fns.keys()`` antes do dispatch.
+- Temperatura via ``settings.entropy_temperature`` (era constante hardcoded).
 """
 
+import logging
 import math
+from typing import Any, cast
 
 import ollama
 
 from core.config import settings
 from retrieval.ollama_embeddings import embed_text
 
-TEMPERATURE = 0.7
+logger = logging.getLogger(__name__)
+
+_EPSILON = 1e-10
 
 DEFAULT_VERIFICATION_MODELS = {
     "groq": "llama-3.1-8b-instant",
@@ -34,62 +47,86 @@ def _build_messages(question: str, context: str) -> list[dict[str, str]]:
     ]
 
 
-def _generate_samples_groq(question: str, context: str, model: str, n: int) -> list[str]:
+def _generate_one_groq(question: str, context: str, model: str) -> str:
     from groq import Groq
 
     client = Groq(api_key=settings.groq_api_key)
-    messages = _build_messages(question, context)
-    samples = []
-    for _ in range(n):
-        resp = client.chat.completions.create(
+    resp = client.chat.completions.create(
+        model=model,
+        messages=_build_messages(question, context),  # type: ignore[arg-type]
+        temperature=settings.entropy_temperature,
+        max_tokens=settings.llm_max_tokens,
+    )
+    return resp.choices[0].message.content or ""
+
+
+def _generate_one_ollama(question: str, context: str, model: str) -> str:
+    # ollama-py retorna ChatResponse; cast para dict[str, Any] mantém o acesso
+    # seguro via ``.get`` (que continua válido em runtime para ChatResponse).
+    resp = cast(
+        dict[str, Any],
+        ollama.chat(
             model=model,
-            messages=messages,
-            temperature=TEMPERATURE,
-            max_tokens=settings.llm_max_tokens,
-        )
-        samples.append(resp.choices[0].message.content or "")
-    return samples
+            messages=_build_messages(question, context),
+            options={
+                "temperature": settings.entropy_temperature,
+                "num_predict": settings.llm_max_tokens,
+            },
+        ),
+    )
+    return str(resp.get("message", {}).get("content", ""))
 
 
-def _generate_samples_ollama(question: str, context: str, model: str, n: int) -> list[str]:
-    messages = _build_messages(question, context)
-    samples = []
-    for _ in range(n):
-        resp = ollama.chat(
-            model=model,
-            messages=messages,
-            options={"temperature": TEMPERATURE, "num_predict": settings.llm_max_tokens},
-        )
-        samples.append(str(resp["message"]["content"]))
-    return samples
-
-
-def _generate_samples_openrouter(question: str, context: str, model: str, n: int) -> list[str]:
+def _generate_one_openrouter(question: str, context: str, model: str) -> str:
     from openai import OpenAI
 
     client = OpenAI(base_url=OPENROUTER_BASE_URL, api_key=settings.openrouter_api_key)
-    messages = _build_messages(question, context)
-    samples = []
-    for _ in range(n):
-        resp = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=TEMPERATURE,
-            max_tokens=settings.llm_max_tokens,
-        )
-        samples.append(resp.choices[0].message.content or "")
+    resp = client.chat.completions.create(
+        model=model,
+        messages=_build_messages(question, context),  # type: ignore[arg-type]
+        temperature=settings.entropy_temperature,
+        max_tokens=settings.llm_max_tokens,
+    )
+    return resp.choices[0].message.content or ""
+
+
+def _generate_samples(provider: str, question: str, context: str, model: str, n: int) -> list[str]:
+    """Gera ``n`` samples tolerando falhas parciais.
+
+    Se uma chamada individual levantar exceção, segue para a próxima e registra
+    o erro. Se nenhuma das ``n`` tentativas tiver sucesso, propaga a última
+    exceção para o caller (em geral o gate, que decide o fallback).
+    """
+    sample_fns = {
+        "groq": _generate_one_groq,
+        "ollama": _generate_one_ollama,
+        "openrouter": _generate_one_openrouter,
+    }
+    fn = sample_fns[provider]
+
+    samples: list[str] = []
+    last_exc: Exception | None = None
+    for index in range(n):
+        try:
+            samples.append(fn(question, context, model))
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            logger.warning(
+                "verification.entropy.sample_failure",
+                extra={"provider": provider, "index": index, "error": str(exc)},
+            )
+
+    if not samples and last_exc is not None:
+        raise last_exc
     return samples
 
 
-_sample_fns = {
-    "groq": _generate_samples_groq,
-    "ollama": _generate_samples_ollama,
-    "openrouter": _generate_samples_openrouter,
-}
-
-
 def _compute_similarity(text1: str, text2: str) -> float:
-    """Calcula similaridade de cosseno entre dois textos via embeddings Ollama."""
+    """Calcula similaridade de cosseno entre dois textos via embeddings Ollama.
+
+    Usa epsilon ``1e-10`` para evitar divisão por zero em vetores degenerados
+    (raro mas possível com embeddings tudo-zero).
+    """
     vec1 = embed_text(settings.embed_model, text1)
     vec2 = embed_text(settings.embed_model, text2)
 
@@ -97,7 +134,9 @@ def _compute_similarity(text1: str, text2: str) -> float:
     norm1 = math.sqrt(sum(a * a for a in vec1))
     norm2 = math.sqrt(sum(b * b for b in vec2))
 
-    return dot_product / (norm1 * norm2) if norm1 > 0 and norm2 > 0 else 0.0
+    if norm1 < _EPSILON or norm2 < _EPSILON:
+        return 0.0
+    return dot_product / (norm1 * norm2)
 
 
 def _cluster_responses(responses: list[str], threshold: float = 0.85) -> list[list[str]]:
@@ -142,17 +181,34 @@ def compute_entropy_score(question: str, context: str) -> float:
     Gera múltiplas respostas para a mesma pergunta, agrupa por similaridade
     semântica e calcula entropia de Shannon sobre a distribuição dos clusters.
     Alta entropia indica incerteza/possível alucinação.
+
+    Returns:
+        Score no intervalo [0.0, 1.0]. Retorna 0.0 quando o provider está sem
+        API key (loga warning) ou quando todas as amostras falham e o caller
+        decidir prosseguir.
+
+    Raises:
+        KeyError: Se ``settings.verification_provider`` não estiver em
+            :data:`DEFAULT_VERIFICATION_MODELS` (não deve acontecer com o enum).
     """
-    provider = settings.verification_provider
+    provider = str(settings.verification_provider)
+
+    if provider not in DEFAULT_VERIFICATION_MODELS:
+        logger.error(
+            "verification.entropy.unknown_provider",
+            extra={"provider": provider},
+        )
+        raise ValueError(f"Unknown verification provider: {provider!r}")
 
     if provider == "groq" and not settings.groq_api_key:
+        logger.warning("verification.entropy.missing_api_key", extra={"provider": provider})
         return 0.0
     if provider == "openrouter" and not settings.openrouter_api_key:
+        logger.warning("verification.entropy.missing_api_key", extra={"provider": provider})
         return 0.0
 
     model = settings.verification_chat_model or DEFAULT_VERIFICATION_MODELS[provider]
-    sample_fn = _sample_fns[provider]
-    samples = sample_fn(question, context, model, settings.entropy_num_samples)
+    samples = _generate_samples(provider, question, context, model, settings.entropy_num_samples)
     clusters = _cluster_responses(samples)
     score = _shannon_entropy(clusters, len(samples))
 

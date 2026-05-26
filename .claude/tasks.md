@@ -84,37 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T64
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** minor
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Corrigir estabilidade numérica e error handling no módulo de verificação (issue #53).
-
-#### Contexto
-`verification/entropy.py` tem: divisão por zero próxima (cosseno linha 100), falhas silenciosas com API key vazia, exceções de sample não tratadas, acesso inseguro a `resp["message"]["content"]`, gate sem fallback.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `verification/entropy.py`, `verification/gate.py`, `core/config.py`, `tests/`
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** nenhum (degrada gracefully)
-
-#### Critérios de Aceite
-- [ ] Epsilon `1e-10` ao invés de `> 0` para norms na cosseno
-- [ ] `logger.warning()` quando API key ausente (não retorna 0.0 silenciosamente)
-- [ ] Try/except em geração de samples; se nenhum, re-raise; se parcial, continuar
-- [ ] `resp.get("message", {}).get("content", "")` no Ollama
-- [ ] Validação de provider contra `_sample_fns.keys()` antes de acessar
-- [ ] `gate.evaluate()` com try/except retorna score 0.5 neutro em falha
-- [ ] `TEMPERATURE` movida para `core/config.py` como `entropy_temperature`
-- [ ] Testes para cada cenário de erro
-- [ ] `pytest`, `ruff`, `mypy` passam
-
-#### Referências
-- Issue: https://github.com/LukeSantossz/sb100_agents/issues/53
-
 ### TASK-T65
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -431,6 +400,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T64 — Estabilidade numérica e error handling em verification ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** feat/TASK-T64-verification-stability
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** `verification/entropy.py`: epsilon `1e-10` substitui teste `> 0` em `_compute_similarity`; `logger.warning` em `compute_entropy_score` quando API key ausente (era `return 0.0` silencioso); `_generate_samples` tolera falhas parciais (continua) e propaga última exceção se todas falharem; `_generate_one_ollama` usa `resp.get("message", {}).get("content", "")` com `cast` para mypy strict; valida provider contra `DEFAULT_VERIFICATION_MODELS.keys()` antes do dispatch (raise `ValueError` em typo); `TEMPERATURE` removido, substituído por `settings.entropy_temperature` (com bounds `Field(ge=0.0, le=2.0)`). `verification/gate.py`: `try/except` em `compute_entropy_score` retorna `ChatResponse(answer, score=0.5)` neutro em falha (não derruba pipeline); logger.exception nos paths de falha. 13 novos testes em `tests/test_verification.py`. 114 testes (era 101), cobertura 81.37% (era 70.82%) — verification subiu de 15% para 55-100%. Resolve T74 parcialmente (mypy strict em verification/entropy.py agora clean).
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Reconhecimento (entropy.py, gate.py), branch criada | em andamento |
+| 2026-05-26 | 1 | Implementação (epsilon, warnings, retry parcial, gate fallback), 13 testes, validações OK | concluída |
 
 ### TASK-T63 — Integridade do schema SQLAlchemy ✓
 - **Concluída em:** 2026-05-26
