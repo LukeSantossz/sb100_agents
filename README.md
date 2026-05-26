@@ -108,6 +108,7 @@ sequenceDiagram
 | **mypy `ignore_missing_imports=true`** | Ollama, qdrant-client, and other dependencies lack type stubs. Avoids false positives without compromising type checking on project code. |
 | **Profile-aware system prompts** | Three expertise levels (`beginner`, `intermediate`, `expert`) select different system prompts. Same RAG context, different response complexity. No separate models or fine-tuning needed. |
 | **bcrypt + JWT gate on `/chat`** | Passwords hashed with bcrypt (timing-safe verify via passlib); `/chat` requires `Authorization: Bearer <JWT>`. Rate-limit via slowapi: 5 logins / 15 min and 3 registrations / hour per IP. `JWT_SECRET_KEY` must be ≥32 chars (validated at startup). **Breaking:** users created before this gate (SHA-256) must be re-registered. |
+| **SQLite integrity hardening** | `NOT NULL` on required columns, `CASCADE` on FKs, `Boolean is_hallucinated`, timezone-aware `created_at`, `connect_args["timeout"]=10`, and a `PRAGMA foreign_keys=ON` listener so CASCADE actually fires in SQLite. **Breaking:** old databases must be recreated — delete `smartb100_v2.db` and let `Base.metadata.create_all` regenerate the schema on next API startup. |
 
 ## How to Run
 

@@ -84,38 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T63
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** minor
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Reforçar integridade do modelo SQLAlchemy: `NOT NULL`, indexes em FKs, Boolean correto, CASCADE, timezone-aware datetime (issue #50).
-
-#### Contexto
-`database/models.py` aceita NULL em FKs (`user_id`, `conversation_id`) e em campos obrigatórios (`username`, `hashed_password`, etc.). Usa `Integer` para boolean. Sem indexes em FKs. Sem CASCADE.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `database/models.py`, `database/db.py`, `tests/`
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** breaking — DB existente precisa recriação (já é local/dev, baixo impacto)
-
-#### Critérios de Aceite
-- [ ] `nullable=False` em campos obrigatórios (username, hashed_password, user_id, conversation_id, role, content, title)
-- [ ] `index=True` em foreign keys
-- [ ] `Boolean` em `is_hallucinated`
-- [ ] `ondelete="CASCADE"` em ForeignKey definitions
-- [ ] `DateTime(timezone=True)` em `created_at`
-- [ ] `connect_args={"timeout": 10}` em `create_engine`
-- [ ] `get_db()` faz rollback em exceção antes de fechar
-- [ ] README/SETUP documenta recriação do DB
-- [ ] Testes de integridade (NULL rejeitado, CASCADE funciona)
-- [ ] `pytest`, `ruff`, `mypy` passam
-
-#### Referências
-- Issue: https://github.com/LukeSantossz/sb100_agents/issues/50
-
 ### TASK-T64
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -463,6 +431,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T63 — Integridade do schema SQLAlchemy ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** feat/TASK-T63-sqlalchemy-integrity
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** `database/models.py`: `nullable=False` em campos obrigatórios (username, hashed_password, user_id, conversation_id, role, content, title), `index=True` em FKs, `ondelete="CASCADE"` em FKs com `passive_deletes=True` nos relationships, `Boolean` em `is_hallucinated` (era Integer), `DateTime(timezone=True)` em todos `created_at`, `String(255)` em campos de identificação. `database/db.py`: `connect_args={"check_same_thread": False, "timeout": 10}`, listener `_enable_sqlite_foreign_keys` ativa PRAGMA foreign_keys=ON em SQLite (sem isso CASCADE é silencioso), `get_db()` faz rollback em exceção antes do close. 11 novos testes em `tests/test_db.py` (NULL rejection, CASCADE em delete, tz-aware datetime, rollback). 101 testes (era 90), cobertura 70.82%. README documenta recriação de DBs antigos. Breaking: schemas legados ficam com constraints frouxos — recriar `smartb100_v2.db`.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Reconhecimento (models.py, db.py, is_hallucinated usage), branch criada | em andamento |
+| 2026-05-26 | 1 | Implementação (constraints, CASCADE, PRAGMA, rollback), 11 testes, validações OK | concluída |
 
 ### TASK-T62 — Validações rigorosas em config.py e schemas.py ✓
 - **Concluída em:** 2026-05-26
