@@ -517,6 +517,42 @@ Falta tracing em produção: visibilidade de latência, retrieval quality, corre
 #### Referências
 - Issue: https://github.com/LukeSantossz/sb100_agents/issues/45
 
+### TASK-T74
+- **Status:** pendente
+- **Modo:** desenvolvimento
+- **Complexidade:** major
+- **Data de criação:** 2026-05-26
+
+#### Objetivo
+Alinhar os quality gates para gerar evidencias apresentaveis de Ruff, mypy strict e pytest-cov com threshold minimo de 70%.
+
+#### Contexto
+A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ generation/ verification/ memory/ profiling/ --strict` falha em `verification/entropy.py` e a cobertura dos modulos criticos fica em 26.13% quando testada com `--cov-fail-under=70`. O `pyproject.toml` ainda define `--cov-fail-under=23`, e o CI executa mypy apenas em `retrieval/ generation/ memory/`, portanto as evidencias solicitadas para apresentacao ainda nao refletem o estado real da codebase.
+
+#### Escopo Técnico
+- **Arquivos/módulos envolvidos:** `pyproject.toml`, `.github/workflows/ci.yml`, `verification/entropy.py`, `tests/`, possivelmente `README.md`/`CONTRIBUTING.md` se a documentacao dos comandos for atualizada
+- **Dependências necessárias:** nenhuma prevista
+- **Impacto em funcionalidades existentes:** baixo no runtime; alto no gate de qualidade, pois builds/PRs passam a falhar abaixo de 70% de cobertura nos modulos criticos
+
+#### Critérios de Aceite
+- [ ] `ruff check .` passa sem erros em todos os modulos versionados
+- [ ] `mypy retrieval/ generation/ verification/ memory/ profiling/ --strict` passa sem erros
+- [ ] Erros de tipagem em `verification/entropy.py` corrigidos sem mascarar tipos com `Any` desnecessario
+- [ ] `pytest-cov` mede `retrieval`, `generation`, `verification`, `memory` e `profiling`
+- [ ] `pyproject.toml` define `--cov-fail-under=70`
+- [ ] Suite de testes cobre os modulos criticos o suficiente para atingir cobertura total >=70%
+- [ ] CI executa os mesmos gates: Ruff, mypy strict nos modulos criticos e pytest com coverage threshold
+- [ ] Build/CI falha automaticamente quando a cobertura fica abaixo de 70%
+- [ ] Saidas de terminal ou artefatos de CI ficam aptos para prints de apresentacao
+
+#### Restrições
+- Nao reduzir escopo de cobertura para inflar metricas artificialmente.
+- Nao marcar linhas como `pragma: no cover` sem justificativa tecnica clara.
+- Nao remover testes existentes nem relaxar `strict` para passar o gate.
+
+#### Referências
+- Evidencia local em 2026-05-26: Ruff passou; mypy strict falhou em `verification/entropy.py`; coverage dos modulos pedidos ficou em 26.13% com threshold 70.
+
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
