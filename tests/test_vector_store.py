@@ -1,9 +1,15 @@
-"""Testes do retrieval/vector_store (TASK-T66 — singleton + dim validation + warnings)."""
+"""Testes do retrieval/vector_store (TASK-T66 — singleton + dim validation + warnings).
+
+TASK-T69 endurece os mocks usando ``ScoredPoint`` real do ``qdrant_client.models``
+em vez de ``MagicMock`` genérico — assim eventuais mudanças de contrato no SDK
+são capturadas pelos testes.
+"""
 
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
+from qdrant_client.models import ScoredPoint
 
 from core.config import settings
 from retrieval import vector_store as vs_module
@@ -18,17 +24,17 @@ def _reset_singleton() -> Generator[None, None, None]:
     vs_module._qdrant_client = None
 
 
-def _make_point(text: str | None = "chunk") -> MagicMock:
-    point = MagicMock()
-    point.payload = {"text": text} if text is not None else {}
-    return point
+def _make_point(text: str | None = "chunk", *, id_: int = 1, score: float = 0.9) -> ScoredPoint:
+    """Constrói um ``ScoredPoint`` real para uso nos mocks (TASK-T69)."""
+    payload: dict[str, str] = {} if text is None else {"text": text}
+    return ScoredPoint(id=id_, version=0, score=score, payload=payload)
 
 
 def test_search_returns_text_list_with_top_k_chunks() -> None:
     with patch("retrieval.vector_store.QdrantClient") as mock_cls:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
-        points = [_make_point(f"chunk-{i}") for i in range(settings.top_k)]
+        points = [_make_point(f"chunk-{i}", id_=i) for i in range(settings.top_k)]
         mock_client.query_points.return_value = MagicMock(points=points)
 
         out = search_context([0.1] * 768)

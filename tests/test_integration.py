@@ -1,5 +1,6 @@
 """Testes de integração end-to-end do pipeline RAG."""
 
+from collections.abc import Generator
 from datetime import UTC, datetime
 from unittest.mock import patch
 
@@ -8,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from api.dependencies import verify_token
 from api.main import app
+from api.routes.chat import _sessions
 from core.schemas import ChatResponse, ExpertiseLevel
 from database.models import User
 
@@ -20,6 +22,14 @@ def _override_verify_token() -> User:
         hashed_password="x",
         created_at=datetime.now(UTC),
     )
+
+
+@pytest.fixture(autouse=True)
+def _clear_sessions_cache() -> Generator[None, None, None]:
+    """TASK-T69: garante que ``_sessions`` começa vazio em cada teste para evitar leak."""
+    _sessions.clear()
+    yield
+    _sessions.clear()
 
 
 @pytest.fixture
