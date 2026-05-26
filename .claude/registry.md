@@ -61,20 +61,21 @@
 | 41 | 2026-05-21 | TASK-T57 | patch | 2 arquivos — uv.lock, requirements.txt | aprovado | Follow-up T56: locks regenerados (-950 linhas) sem torch/transformers/sentence-transformers/pypdf e transitivos. pytest 18 ok (cov 24.10%), ruff ok, mypy ok |
 | 42 | 2026-05-26 | TASK-T58 | patch | 0 arquivos — issue #59 fechada no GitHub | aprovado | Issue resolvida pela T56 (commit 69cfb0b, PR #64); close via gh CLI com comentário referenciando o estado atual do módulo profiling/ |
 | 43 | 2026-05-26 | TASK-T59 | minor | 3 arquivos — pyproject.toml, uv.lock, requirements.txt | aprovado | Bump dependências vulneráveis: idna 3.11→3.16, urllib3 2.6.3→2.7.0, python-multipart 0.0.26→0.0.29, pygments 2.19.2→2.20.0. Resolve 9 alertas Dependabot. pytest 18/18 (cov 24.10%), ruff, mypy ok |
+| 44 | 2026-05-26 | TASK-T60 | major | 13 arquivos — auth.py, chat.py, main.py, config.py, dependencies.py (novo), pyproject.toml, uv.lock, requirements.txt, tests/conftest.py (novo), tests/test_auth.py (novo), tests/test_integration.py, README.md, tasks.md | aprovado | bcrypt+JWT gate em /chat + rate-limit slowapi (5/15min token, 3/h register). passlib CryptContext (timing-safe). verify_token busca usuário no DB. JWT_SECRET_KEY ≥32 chars validado em Settings. UserCreate regex + min_length. bcrypt pinado <5 por incompat com passlib 1.7.4. 48 testes (era 18), cobertura 68.32% (era 24.10%). Breaking: hashes SHA-256 antigos obsoletos. |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T59 — recovery + padrão recorrente registrado)
+- **Última atualização:** 2026-05-26 (TASK-T60 — bcrypt + JWT gate + rate-limit)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** chore/TASK-T58-close-issue-59 (PR #68 base=main → recovery dos 3 commits órfãos da T59)
-- **Dependências alteradas recentemente:** idna, urllib3, python-multipart, pygments (atualizadas em T59 — pendente de chegar em main via PR #68)
-- **Testes passando:** sim — 18 passed, cobertura 24.10% (≥23%); ruff check + format + mypy --strict ok (verificado 2026-05-26)
-- **Divergências externas pendentes:** T59 mergeada em chore/TASK-T58 mas não em main (PR #67 misconfigured); recovery via PR #68 em aberto
-- **Última task concluída:** TASK-T59 — Bump dependências vulneráveis (mergeada em PR #67; propagação para main via PR #68)
-- **Backlog ativo:** 14 tasks pendentes (T60 ativa — bug(auth) bcrypt+rate-limit+JWT; T61–T73 enfileiradas em tasks.md)
-- **PRs abertos:** #68 (T59 recovery → main)
+- **Branch ativa:** feat/TASK-T60-bcrypt-rate-limit-jwt (PR pendente de abertura)
+- **Dependências alteradas recentemente:** passlib[bcrypt], bcrypt (<5), slowapi (adicionadas em T60). Em T59: idna, urllib3, python-multipart, pygments — ainda em PR #68 esperando merge em main
+- **Testes passando:** sim — 48 passed, cobertura 68.32% (≥23%); ruff check + format + mypy CI-modules ok (verificado 2026-05-26)
+- **Divergências externas pendentes:** PR #68 (recovery T59 → main) ainda aberto; T60 está em feature branch nova partindo de chore/TASK-T58
+- **Última task concluída:** TASK-T60 — bcrypt + JWT gate + rate-limit em /chat
+- **Backlog ativo:** 14 tasks pendentes (T61 ativa — mitigar prompt injection RAG; T62–T74 enfileiradas em tasks.md)
+- **PRs abertos:** #68 (T59 recovery → main); novo PR para T60 a abrir após push
 
 ## Pendências Conhecidas
 
@@ -88,6 +89,8 @@
 - **Embeddings de verificação sempre via Ollama local** (T45): Mesmo quando o provider de geração é Groq ou OpenRouter, os embeddings para clustering de entropia usam Ollama (nomic-embed-text) local. Rápido, gratuito, sem dependência de API externa para embeddings.
 - **SQLite e bind mount em Windows** (T46): O volume `.\smartb100_v2.db` no `docker-compose` cria o path no host. Se faltar, o Docker Desktop pode materializar `smartb100_v2.db` como **diretório**; a API trata isso com `RuntimeError` explícita após a correção em `database/db.py`. Mitigação: criar o arquivo (vazio) antes de subir o `api` ou apagar a pasta e recriar o ficheiro.
 - **Embeddings Ollama com retries** (T47): `retrieval/ollama_embeddings.embed_text` concentra truncagem (8192 chars) e backoff exponencial para `ResponseError`, `ConnectionError`, erros `httpx` e `OSError`, usado pelo chunker, `generate_embedding` e verificação por entropia.
+- **bcrypt pinado `<5` com passlib 1.7.4** (T60): bcrypt 5.0 rejeita senhas mesmo curtas por mudança interna na API, quebrando passlib 1.7.4 (`ValueError: password cannot be longer than 72 bytes` mesmo com input curto). Pin `bcrypt>=4.0.1,<5` resolve até passlib publicar release compatível com bcrypt 5.x. Revisitar quando passlib 1.8+ sair.
+- **`verify_token` busca usuário no DB a cada request** (T60): Cada chamada autenticada a `/chat` faz 1 query SQL para confirmar que o usuário ainda existe. Trade-off escolhido: 1 query/req em troca de revogação imediata por delete. Em produção com volume, considerar cache curto (60s) ou rota de blocklist.
 
 ## Padrões Recorrentes Observados
 
