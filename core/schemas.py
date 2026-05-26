@@ -55,7 +55,12 @@ class ChatRequest(BaseModel):
     )
 
     session_id: str = Field(..., description="Identificador da sessão de conversa.")
-    question: str = Field(..., description="Texto da pergunta enviada pelo usuário.")
+    question: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Texto da pergunta enviada pelo usuário (1 a 2000 caracteres).",
+    )
     profile: UserProfile = Field(
         ...,
         description="Perfil associado ao usuário para ajuste de tom e profundidade da resposta.",
