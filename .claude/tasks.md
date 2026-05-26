@@ -84,34 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T65
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** minor
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Thread-safety no cache `_sessions` da rota /chat e validação no ConversationBuffer (issue #54).
-
-#### Contexto
-`api/routes/chat.py:35` usa `OrderedDict` sem sync. FastAPI thread pool em handler sync gera race conditions (check-then-create). Buffer aceita roles/content arbitrários.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `api/routes/chat.py`, `memory/conversation.py`, `tests/`
-- **Dependências necessárias:** nenhuma (threading da stdlib)
-- **Impacto em funcionalidades existentes:** nenhum
-
-#### Critérios de Aceite
-- [ ] `_sessions_lock = threading.Lock()` (ou RLock) em `chat.py`
-- [ ] `with _sessions_lock:` envolvendo todas operações em `_get_or_create_buffer()`
-- [ ] `_sessions.pop(sid, None)` substitui `del`
-- [ ] `ConversationBuffer.add()` valida `role in ("user", "assistant")` e `content` não vazio (ValueError)
-- [ ] Teste de concorrência com `concurrent.futures.ThreadPoolExecutor` (50 requests no mesmo session_id)
-- [ ] `pytest`, `ruff`, `mypy` passam
-
-#### Referências
-- Issue: https://github.com/LukeSantossz/sb100_agents/issues/54
-
 ### TASK-T66
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -400,6 +372,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T65 — Thread-safety em /chat _sessions + validação ConversationBuffer ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** feat/TASK-T65-sessions-thread-safety
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** `api/routes/chat.py`: `_sessions_lock = threading.Lock()` e `with _sessions_lock:` envolve todo `_get_or_create_buffer` (expiry cleanup + LRU eviction + pop/insert). `del _sessions[sid]` substituído por `.pop(sid, None)` (idempotente, sem KeyError). `memory/conversation.py`: `ConversationBuffer.add()` levanta `ValueError` para role fora de `{"user", "assistant"}` ou content vazio/whitespace. 3 novos testes em `tests/test_conversation.py` (role inválido, content vazio, roles válidos); 3 testes de concorrência em `tests/test_chat_concurrency.py` (ThreadPoolExecutor 50 threads/mesmo session_id → 1 buffer único; 50 session_ids distintos → 50 buffers; idempotência sequencial). 120 testes (era 114), cobertura 81.84%.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Reconhecimento (chat.py, conversation.py), branch criada | em andamento |
+| 2026-05-26 | 1 | Implementação (Lock, pop, ValueError), 6 testes, validações OK | concluída |
 
 ### TASK-T64 — Estabilidade numérica e error handling em verification ✓
 - **Concluída em:** 2026-05-26
