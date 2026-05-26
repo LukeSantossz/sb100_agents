@@ -6,11 +6,14 @@ sob carga; retries com backoff reduzem falhas intermitentes na indexação e no 
 
 from __future__ import annotations
 
+import logging
 import time
 
 import httpx
 import ollama
 from ollama import RequestError, ResponseError
+
+logger = logging.getLogger(__name__)
 
 # Limite conservador para o contexto do modelo de embedding (caracteres).
 _MAX_EMBED_CHARS = 8192
@@ -48,9 +51,15 @@ def embed_text(model: str, prompt: str) -> list[float]:
             OSError,
         ) as exc:
             last_exc = exc
+            logger.warning(
+                "ollama_embeddings.attempt_failed",
+                extra={"attempt": attempt, "error": str(exc)},
+            )
             if attempt >= _MAX_RETRIES - 1:
                 break
             delay = min(_RETRY_BASE_SEC * (2**attempt), _RETRY_MAX_SEC)
             time.sleep(delay)
-    assert last_exc is not None
+    if last_exc is None:
+        # Defensivo: o loop só sai sem exceção se retornar com sucesso.
+        raise RuntimeError("embed_text exhausted retries with no captured exception")
     raise last_exc
