@@ -247,6 +247,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T77 — Fix mypy CI typecheck (cast em _ollama_chat) ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** fix/TASK-T77-mypy-strict-ci-cast
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** CI typecheck em main estava `failure` desde T68 por divergência entre mypy local (1.20.2 pin via uv) e mypy do CI (latest do PyPI). A versão mais recente reporta `[unused-ignore]` no `# type: ignore[return-value]` e `[no-any-return]` no retorno de `get_chat_client().chat(...)`. Fix: substituir o `# type: ignore` por `cast(dict[str, dict[str, str]], ...)` em `generation/llm._ollama_chat`. Cast é runtime no-op + neutro a versão de mypy. Validação local: `mypy retrieval/ generation/ memory/ --ignore-missing-imports` clean; pytest 136/136, cobertura 85.89%, ruff + format ok. **Pendente para T74 (quality gates)**: pinar versão de mypy no CI para evitar drift futuro.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Usuário sinalizou CI red em main; investigação via gh run view identificou typecheck failure desde T68; T77 registrada | em andamento |
+| 2026-05-26 | 1 | Aplicado `cast(...)` no wrapper; validação local com mesmo comando do CI passou | concluída |
+
 ### TASK-T76 — Consolidação de clientes Ollama + cobertura dos gaps T75 ✓
 - **Concluída em:** 2026-05-26
 - **Branch:** refactor/TASK-T76-ollama-client-consolidation

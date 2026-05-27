@@ -37,20 +37,21 @@
 | 53 | 2026-05-26 | TASK-T69 | major | 3 arquivos — tests/test_vector_store.py, tests/test_embedder.py, tests/test_integration.py | aprovado | Robustez de testes: `ScoredPoint` real (não MagicMock) em test_vector_store; 3 edge cases em test_embedder (string vazia/longa/Unicode); autouse fixture `_clear_sessions_cache` em test_integration evita leak entre testes. Coverage critério ≥50% alcançado: **84.80%**. Critérios de verification e Ollama already cobertos por T64+T68. 129 testes, cobertura 84.80%. |
 | 54 | 2026-05-26 | TASK-T75 | minor | 4 arquivos — .claude/registry-archive.md (novo), .claude/registry.md, retrieval/ollama_embeddings.py, api/routes/chat.py | aprovado | Correções pós-review T60-T69: arquivamento regra 08.5 (entradas #1-#38 → archive; 15 ativas restantes); ollama_embeddings com `Client(timeout=5.0)` + retries reduzidos para 4 (worst-case ~25s, era indeterminado); logger.info `chat.access` + warnings nos paths 503. Padrões Recorrentes ampliados com push sem autorização, arquivamento esquecido e checklist agêntico ausente. 129 testes, cobertura 83.23%. |
 | 55 | 2026-05-26 | TASK-T76 | minor | 7 arquivos — core/ollama_clients.py (novo), core/config.py, generation/llm.py, verification/entropy.py, retrieval/ollama_embeddings.py, tests/test_ollama_clients.py (novo), tests/test_verification.py, tests/test_integration.py | aprovado | Consolida 3 padrões de cliente Ollama em módulo único `core/ollama_clients.py` (singletons thread-safe). `settings.ollama_embed_timeout` substitui hardcode. Critério "nenhum `ollama.Client(...)` fora de core" verificado por grep. 7 novos testes (6 cobrindo singletons/timeouts/reset/independência + 1 caplog para chat.access). 136 testes, cobertura 85.87%. Wiki externa consultada (correção comportamental #1 do review T75). |
+| 56 | 2026-05-26 | TASK-T77 | patch | 1 arquivo — generation/llm.py | aprovado | Fix CI typecheck red em main desde T68: `# type: ignore[return-value]` substituído por `cast(dict[str, dict[str, str]], ...)` em `_ollama_chat`. Causa raiz: mypy CI (latest) detecta `unused-ignore` + `no-any-return` que mypy local (1.20.2 pin via uv) não dispara. Cast é runtime no-op + neutro a versão. Validação local com comando exato do CI passou. Padrão Recorrente "drift mypy CI vs local" adicionado; pinning de versão fica para T74. |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T76 — consolidação de clientes Ollama)
+- **Última atualização:** 2026-05-26 (TASK-T77 — fix mypy CI cast em _ollama_chat)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** refactor/TASK-T76-ollama-client-consolidation
+- **Branch ativa:** fix/TASK-T77-mypy-strict-ci-cast
 - **Dependências alteradas recentemente:** nenhuma desde T60 — todas em main
-- **Testes passando:** sim — 136 passed, cobertura 85.87%; ruff + format + mypy strict em todos críticos ok
-- **Divergências externas pendentes:** PRs #74-#79 mergeadas em main; T76 local
-- **Última task concluída:** TASK-T76 — `core/ollama_clients.py` centralizado, 3 consumers consolidados, 7 testes
+- **Testes passando:** sim — 136 passed, cobertura 85.89%; ruff + format + mypy local (CI command) ok
+- **Divergências externas pendentes:** PRs #74-#80 mergeadas em main; T77 local; CI typecheck em main red há 4 commits (T68→T76), corrigido por T77
+- **Última task concluída:** TASK-T77 — fix mypy CI typecheck via cast
 - **Backlog ativo:** 5 tasks pendentes (T70 ativa — hardening eval pipeline; T71–T74 enfileiradas)
-- **PRs abertos:** nenhum; PR T76 a abrir após push (com autorização)
+- **PRs abertos:** nenhum; PR T77 a abrir após push (com autorização)
 
 ## Pendências Conhecidas
 
@@ -78,6 +79,8 @@
 | Push/PR sem autorização explícita por task | múltiplas (T61-T69) | Médio — viola regra 06 (ponto de transferência) | Autorização pontual ou autorização durável registrada no início da sessão. Default: pedir antes |
 | Arquivamento de registry esquecido | 1x (T60-T69) | Baixo — registry inflado mas operacional | Verificar contagem do histórico no início/fim de sessão; arquivar quando passar de 30 entradas (regra 08.5) |
 | Checklist agêntico não-aplicado em PRs | múltiplas (T60-T69) | Médio — perde rastreio de revisão obrigatória | Anexar checklist da regra 06.1 (8 itens estendidos) no corpo de cada PR de código gerado por agente |
+| Drift mypy CI (latest) vs local (1.20.2 pinado) | 1x (T68→T77) | **Alto** — CI red por 4 merges sem detectar | Pinar versão de mypy no CI workflow (e/ou em pyproject) para igualar local. Programado para T74 (quality gates) |
+| Não-monitoramento do CI após merge | 1x (T68→T77) | Médio — main red por 4 commits | Após cada `gh pr merge`, rodar `gh run list --branch main --limit 1` e ver conclusion antes de seguir |
 
 ---
 

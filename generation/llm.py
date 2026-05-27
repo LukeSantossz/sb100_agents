@@ -10,6 +10,7 @@ Inclui mitigações contra prompt injection (TASK-T61):
 import logging
 import re
 import time
+from typing import cast
 
 import ollama
 
@@ -26,10 +27,13 @@ def _ollama_chat(
     """Wrapper testável para ``ollama.Client.chat`` com timeout aplicado.
 
     O cliente compartilhado vem de :func:`core.ollama_clients.get_chat_client`,
-    que aplica ``settings.ollama_timeout`` e reusa a conexão HTTP.
+    que aplica ``settings.ollama_timeout`` e reusa a conexão HTTP. O ``cast``
+    força o tipo declarado — ``ollama.Client.chat`` retorna ``ChatResponse``
+    (TypedDict-like), o que mypy 1.21+ trata como ``Any`` no retorno.
     """
-    return get_chat_client().chat(  # type: ignore[return-value]
-        model=model, messages=messages, options=options
+    return cast(
+        dict[str, dict[str, str]],
+        get_chat_client().chat(model=model, messages=messages, options=options),
     )
 
 
