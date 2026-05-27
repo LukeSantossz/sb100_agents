@@ -17,6 +17,31 @@ SmartB100 indexes agricultural PDF documents into a vector database and uses a l
 
 ## Architecture
 
+### Architectural Style
+
+SmartB100 is a **modular monolith with composed deployment**:
+
+- **One application process.** `api/main.py` loads every domain module (`api/routes/*`, `core/*`, `retrieval/*`, `memory/*`, `generation/*`, `verification/*`, `profiling/*`, `database/*`) into a single FastAPI runtime. Inter-module communication is **function calls inside the same Python interpreter** — no RPC, no message broker, no queue.
+- **Eight internal layers, one binary.** The folder boundary is a convention for testability and review; it is **not** a network boundary.
+- **External processes are limited to genuine third-party services.** No domain code lives outside the API process.
+
+External components (each runs in its own process):
+
+| Component | Role | Containerized? | Protocol |
+|-----------|------|----------------|----------|
+| **Qdrant** | Vector DB (`archives_v2` collection, 768-dim embeddings) | Yes — `docker compose --profile infra` | HTTP REST `:6333` + gRPC `:6334` |
+| **Ollama** | LLM chat (`llama3.2:3b`) + embeddings (`nomic-embed-text`) | **No** — runs on the host | HTTP REST `:11434` via `OLLAMA_HOST` |
+| **SQLite** | Auth + conversation history | No (filesystem) | Bind-mount `./smartb100_v2.db:/app/smartb100_v2.db` |
+
+Client tier (two paths):
+
+- **Gradio UI** (`ui/chat_ui.py`) — stateless HTTP client containerized via `docker compose --profile app`. Calls only `POST /chat`. Does **not** import any domain module — it is a UI shell, not a microservice.
+- **Direct HTTP** — `curl`, scripts, future mobile clients. Same endpoint, same JSON contract.
+
+**Why not microservices.** The RAG pipeline (embed → search → generate → verify) shares the same `ChatRequest`/`ChatResponse` model and runs synchronously within a single request. Splitting any step into its own service would add network latency between calls that are currently in-process, plus contract-versioning overhead, without delivering independent scaling benefit at current load.
+
+**When to reconsider.** If `verification/` (entropy sampling, the slowest step) needs to scale independently of `generation/`, or if the workload grows beyond ~500 req/s, the verification gate is the natural extraction point — it already has a clean async-friendly interface (`evaluate(question, context, answer)`).
+
 ```mermaid
 flowchart TD
     subgraph CLIENT["Client"]
@@ -95,6 +120,42 @@ sequenceDiagram
     A-->>C: ChatResponse {answer, hallucination_score}
 ```
 
+**Deployment Topology:**
+
+```mermaid
+flowchart LR
+    subgraph CLIENTS["Clients"]
+        direction TB
+        BROWSER["Browser"]
+        SCRIPTS["curl / scripts"]
+    end
+
+    subgraph HOST["Developer host"]
+        OLLAMA["Ollama :11434<br/>llama3.2:3b + nomic-embed-text"]
+    end
+
+    subgraph COMPOSE["docker-compose stack"]
+        direction TB
+        subgraph INFRA["profile: infra"]
+            QDRANT[("Qdrant<br/>:6333 REST / :6334 gRPC")]
+        end
+        subgraph APP["profile: app"]
+            API["FastAPI :8000<br/>monolith binary"]
+            GRADIO["Gradio :7860"]
+            SQLITE[("SQLite<br/>bind-mount")]
+        end
+    end
+
+    BROWSER -->|HTTP| GRADIO
+    SCRIPTS -->|HTTP /chat| API
+    GRADIO -->|HTTP /chat| API
+    API -->|HTTP REST| QDRANT
+    API -->|HTTP /api/chat,<br/>/api/embeddings| OLLAMA
+    API -. SQLAlchemy .-> SQLITE
+```
+
+The two earlier diagrams are *logical* (what runs); this one is *topological* (where it runs). They complement, not duplicate.
+
 ## Engineering Decisions
 
 | Decision | Rationale |
@@ -109,6 +170,7 @@ sequenceDiagram
 | **Profile-aware system prompts** | Three expertise levels (`beginner`, `intermediate`, `expert`) select different system prompts. Same RAG context, different response complexity. No separate models or fine-tuning needed. |
 | **bcrypt + JWT gate on `/chat`** | Passwords hashed with bcrypt (timing-safe verify via passlib); `/chat` requires `Authorization: Bearer <JWT>`. Rate-limit via slowapi: 5 logins / 15 min and 3 registrations / hour per IP. `JWT_SECRET_KEY` must be ≥32 chars (validated at startup). **Breaking:** users created before this gate (SHA-256) must be re-registered. |
 | **SQLite integrity hardening** | `NOT NULL` on required columns, `CASCADE` on FKs, `Boolean is_hallucinated`, timezone-aware `created_at`, `connect_args["timeout"]=10`, and a `PRAGMA foreign_keys=ON` listener so CASCADE actually fires in SQLite. **Breaking:** old databases must be recreated — delete `smartb100_v2.db` and let `Base.metadata.create_all` regenerate the schema on next API startup. |
+| **Modular monolith over microservices** | One FastAPI process loads all domain modules (`retrieval/`, `memory/`, `generation/`, `verification/`, `profiling/`) — inter-module calls are function calls, not RPC. External services are limited to genuine third-party (Qdrant, Ollama, SQLite). Microservices would add network latency between RAG steps that share the same `ChatRequest`/`ChatResponse` model, without isolation benefit at current scale. See [§ Architectural Style](#architectural-style) for full rationale. |
 
 ## How to Run
 
