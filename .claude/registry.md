@@ -44,15 +44,15 @@
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T70 — hardening pipeline eval/)
+- **Última atualização:** 2026-05-26 (TASK-T70 — hardening pipeline eval/ mergeado via PR #82)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** feat/TASK-T70-eval-hardening
+- **Branch ativa:** main
 - **Dependências alteradas recentemente:** nenhuma desde T60 — todas em main
-- **Testes passando:** sim — 173 passed (com integração: 181), cobertura 83.07%; ruff + format + mypy strict ok
-- **Divergências externas pendentes:** T77 já em main (#81); T70 local sem push
-- **Última task concluída:** TASK-T70 — hardening pipeline de avaliação
+- **Testes passando:** sim — 173 passed (com integração: 181), cobertura 83.07%; ruff + format + mypy strict ok; CI 4/4 verde em main
+- **Divergências externas pendentes:** nenhuma — main sincronizada
+- **Última task concluída:** TASK-T70 — hardening pipeline de avaliação (merge 28c488e)
 - **Backlog ativo:** 4 tasks pendentes (T71 ativa — Docker hardening; T72–T74 enfileiradas)
-- **PRs abertos:** nenhum; PR T70 a abrir após autorização do desenvolvedor
+- **PRs abertos:** nenhum
 
 ## Pendências Conhecidas
 
@@ -82,6 +82,7 @@
 | Checklist agêntico não-aplicado em PRs | múltiplas (T60-T69) | Médio — perde rastreio de revisão obrigatória | Anexar checklist da regra 06.1 (8 itens estendidos) no corpo de cada PR de código gerado por agente |
 | Drift mypy CI (latest) vs local (1.20.2 pinado) | 1x (T68→T77) | **Alto** — CI red por 4 merges sem detectar | Pinar versão de mypy no CI workflow (e/ou em pyproject) para igualar local. Programado para T74 (quality gates) |
 | Não-monitoramento do CI após merge | 1x (T68→T77) | Médio — main red por 4 commits | Após cada `gh pr merge`, rodar `gh run list --branch main --limit 1` e ver conclusion antes de seguir |
+| pytest sem `pythonpath` para diretórios não-package | 1x (T70) | Médio — testes verdes localmente mas falham no CI Linux | Quando adicionar testes que importam módulos fora de `setuptools.packages` (eval/, scripts/), garantir `pythonpath = ["."]` em `[tool.pytest.ini_options]`. Local Windows pode adicionar rootdir automaticamente; CI Ubuntu não. |
 
 ---
 
@@ -92,3 +93,4 @@
 - **2026-04-27:** Migração de `.claude/instructions.md` monolítico para estrutura modular em `.claude/rules/` + `registry.md` separado. Dados preservados integralmente.
 - **2026-05-26 (T59 recovery):** PR #67 foi aberto com `--base chore/TASK-T58-close-issue-59` esperando auto-rebase para main quando o PR pai (#66) mergeasse. GitHub manteve a base original — o merge do #67 foi para a branch T58 (já mergeada), deixando os 3 commits de T59 órfãos fora de main. Recuperação via PR #68 (base=main, head=chore/TASK-T58-close-issue-59) trazendo os commits órfãos. Padrão registrado para evitar repetição.
 - **2026-05-26 (review pós-T60-T69):** Review formal da sessão identificou 3 não-conformidades de código (arquivamento, T68 timeout em ollama_embeddings, T60 logging em /chat) e 4 comportamentais (autorização git, wiki externa, checklist agêntico, checkpoints incrementais). Correções de código entram via TASK-T75; comportamentais ficam como diretrizes para próximas sessões e foram registradas como Padrões Recorrentes.
+- **2026-05-26 (T70 CI fail + fix):** Primeiro push do PR #82 (b42b59f) passou os 3 jobs de quality (lint/typecheck/validate-requirements) mas reprovou em `test` no Linux CI por `ModuleNotFoundError: No module named 'eval'`. Causa raiz: pytest no Ubuntu não adiciona rootdir ao sys.path automaticamente (Windows local faz). Fix: `pythonpath = ["."]` em `pyproject.toml [tool.pytest.ini_options]` (commit ff30a47). CI verde após fix. Padrão Recorrente "pytest sem pythonpath" registrado. Avaliação agêntica via 3 angles (line-scan, removed-behavior, language-pitfalls) retornou 4 findings PLAUSIBLE de severidade BAIXA, todos aceitos sem follow-up imediato (decisão do usuário). PR mergeado via squash (28c488e), branch deletada.
