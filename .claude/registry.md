@@ -46,15 +46,16 @@
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T72 — Gradio UX em andamento; T71 mergeada via PR #84)
+- **Última atualização:** 2026-05-26 (auditoria pós-T72: registry resync + housekeeping)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** feat/TASK-T72-gradio-ux
+- **Branch ativa:** main
 - **Dependências alteradas recentemente:** nenhuma desde T60 — todas em main
-- **Testes passando:** sim — 173 passed, cobertura 83.07%; ruff + format + mypy strict ok; CI 5/5 verde em main (incluindo novo workflow Docker Build)
-- **Divergências externas pendentes:** nenhuma — main sincronizada com T71 (5c8064a)
-- **Última task concluída:** TASK-T71 — Docker hardening (merge 5c8064a)
-- **Backlog ativo:** 3 tasks pendentes (T72 ativa — Gradio UX; T73–T74 enfileiradas)
-- **PRs abertos:** nenhum (T72 a abrir após implementação)
+- **Testes passando:** sim — 205 passed (era 173 antes de T70-T72; +45 em T70 + 32 em T72), cobertura 83.10%; ruff + format + mypy strict ok; CI verde em main (CI + Docker Build, 5/5 jobs)
+- **Divergências externas pendentes:** nenhuma — main sincronizada (HEAD `743b376`)
+- **Última task concluída:** TASK-T72 — Gradio UX (merge `743b376`, PR #85)
+- **Backlog ativo:** 2 tasks pendentes (T73 ativa — Langfuse tracing major; T74 enfileirada — quality gates major)
+- **PRs abertos:** nenhum
+- **Issues GitHub abertas:** 1 (#45 Langfuse — corresponde a T73); #56/#57/#58 fechadas nesta auditoria com referência aos merges T71/T70/T72
 
 ## Pendências Conhecidas
 
@@ -98,3 +99,5 @@
 - **2026-05-26 (review pós-T60-T69):** Review formal da sessão identificou 3 não-conformidades de código (arquivamento, T68 timeout em ollama_embeddings, T60 logging em /chat) e 4 comportamentais (autorização git, wiki externa, checklist agêntico, checkpoints incrementais). Correções de código entram via TASK-T75; comportamentais ficam como diretrizes para próximas sessões e foram registradas como Padrões Recorrentes.
 - **2026-05-26 (T70 CI fail + fix):** Primeiro push do PR #82 (b42b59f) passou os 3 jobs de quality (lint/typecheck/validate-requirements) mas reprovou em `test` no Linux CI por `ModuleNotFoundError: No module named 'eval'`. Causa raiz: pytest no Ubuntu não adiciona rootdir ao sys.path automaticamente (Windows local faz). Fix: `pythonpath = ["."]` em `pyproject.toml [tool.pytest.ini_options]` (commit ff30a47). CI verde após fix. Padrão Recorrente "pytest sem pythonpath" registrado. Avaliação agêntica via 3 angles (line-scan, removed-behavior, language-pitfalls) retornou 4 findings PLAUSIBLE de severidade BAIXA, todos aceitos sem follow-up imediato (decisão do usuário). PR mergeado via squash (28c488e), branch deletada.
 - **2026-05-26 (T71 avaliação agêntica + refactor):** Avaliação agêntica via 3 angles (Dockerfile/dockerignore, compose semantics, cross-file consistency) retornou 5 findings. 1 CONFIRMED (`.env.example` comment dizia que `OLLAMA_HOST` era ignorado fora do Docker — empiricamente `ollama.Client()` lê a env var via `_get_host`); corrigido em `351db58`. 4 REFUTED por verificação empírica (`:18BD` funcionou — qdrant healthy 0.5s; CMD-SHELL ok em debian-slim; anchor markdown correto; PYTHONPATH legacy era out-of-scope mas elevado a CONFIRMED em segunda análise — `WORKDIR /app/sb100_agents` + bind mount `/app/smartb100_v2.db` eram inconsistentes; refactor cirúrgico em `53982e4` alinhou `WORKDIR /app`). Merge squash em main como `5c8064a` (PR #84); branch deletada. CI 5/5 verde (Docker Build incluído como gate permanente).
+- **2026-05-26 (T72 avaliação agêntica + modo review):** Avaliação agêntica via 3 angles (retry+generator, classification+HTML, error handling) retornou 8 findings. 2 CONFIRMED: XSS surface em `_error_html`/`_score_html` (interpolação sem escape, mitigada pois user_msg vinha de função estática) — fix `e257b3e` aplica `html.escape()` defensivo; label "Última Verificação" perdido na migração `gr.Textbox`→`gr.HTML` — fix mesmo commit restaurou via `gr.Markdown`. 6 REFUTED (TimeoutException é subclass de RequestError em httpx; Mock test acessórios OK; threshold=1.0 edge case aceito; dead code defensivo `assert last_exc` intencional; gradio Chatbot yield-replace por design; empty message UX borderline aceita). Modo Review formal (regra 03.2) em 4 camadas + checklist 06.1 produziu veredicto "Incorporar com ajustes menores" — cleanup cosmético `bb214c2` moveu helpers para antes de `create_interface` (ordem top-down). Merge squash em main como `743b376` (PR #85). CI 4/4 verde.
+- **2026-05-26 (auditoria pós-T72):** Auditoria de bookkeeping a pedido do usuário antes de iniciar T73. Achados: (a) 7 branches locais stale de tasks já mergeadas (T44/T45/T52-T53/T57/T59 + `dev`) — deletadas; (b) 1 branch remota órfã `origin/feat/TASK-T70-eval-hardening` (push final foi `726afe6` mas squash do PR #82 criou commit diferente `28c488e` em main; `--delete-branch` não removeu por causa do push posterior do PR #83 a partir de outra branch) — deletada com `git push origin --delete`; (c) 3 issues mergeadas em código mas abertas no GitHub (#56→T71, #57→T70, #58→T72) — fechadas via `gh issue close` com referência ao hash do squash; (d) Estado da Codebase no registry estava 4 campos desatualizados (branch ativa, última task, PRs, backlog) — corrigido neste commit. Codebase saudável: 205 testes, cov 83.10%, CI 5/5 verde, working tree clean.
