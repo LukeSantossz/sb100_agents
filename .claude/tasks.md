@@ -154,11 +154,25 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T78 — Cleanup de bookkeeping pós-T72 ✓
+- **Concluída em:** 2026-05-27
+- **Branch:** chore/TASK-T78-cleanup-bookkeeping
+- **Commit:** pendente (esta sessão)
+- **PR:** pendente (aguarda autorização do usuário)
+- **Avaliação:** aprovado
+- **Nota:** Cleanup de débito de bookkeeping identificado na avaliação de conformidade de 2026-05-27. (1) Preenchidos `Commit` + `PR` reais em T69 (b645400/#78), T70 (28c488e+55aecb2/#82+#83), T71 (5c8064a/#84), T72 (743b376/#85), T75 (870d1ce/#79), T76 (d8caab0/#80), T77 (5496d59/#81). (2) PRs #86 (audit) e #87 (README docs) registrados como exceções no Histórico de Implementações (#60/#61), marcados como **fora de fluxo** — ambos mergeados sem TASK-NNN (violação trava §00 + regra 05.3). (3) Estado da Codebase ressincronizado: HEAD `17abb16`, data 2026-05-27, última task T78. (4) Padrão Recorrente "Push/PR sem autorização explícita por task" reclassificado de Médio para **Alto** com ação corretiva mais firme (recusar branches sem TASK-NNN, mesmo para docs). (5) 2 branches remotas órfãs deletadas: `chore/post-T72-audit-registry-sync`, `docs/readme-architectural-style`. Sem alteração de código de produção, testes ou CI. 205 testes / cov 83.10% permanecem inalterados (validação não executada — escopo é apenas `.claude/`).
+
+#### Log de Andamento
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-27 | 1 | Avaliação de conformidade executada; débito identificado; branch `chore/TASK-T78-cleanup-bookkeeping` criada; T78 registrada | em andamento |
+| 2026-05-27 | 1 | tasks.md atualizado (7 tasks preenchidas com commit/PR); registry.md atualizado (3 entradas no histórico, Estado da Codebase, Padrão Recorrente, nota de sessão); branches remotas órfãs deletadas | concluída |
+
 ### TASK-T72 — UX do Gradio (issue #58) ✓
 - **Concluída em:** 2026-05-26
 - **Branch:** feat/TASK-T72-gradio-ux
-- **Commit:** pendente
-- **PR:** pendente
+- **Commit:** 743b376
+- **PR:** [#85](https://github.com/LukeSantossz/sb100_agents/pull/85)
 - **Avaliação:** aprovado
 - **Nota:** UX completa do Gradio chat. (1) `settings.chat_timeout` (novo Field, default 600, bounds 1-3600) substitui `REQUEST_TIMEOUT` hardcoded; `.env.example` ganha seção CHAT_TIMEOUT. (2) `respond` agora é generator com 2 yields: o primeiro entrega placeholder `_processing_html()` em <1s (badge cinza "Processando..."); o segundo entrega o resultado. Em sucesso o input é limpo; em erro é preservado para o usuário tentar novamente sem redigitar. (3) `send_with_retry(attempts=2)` com backoff exponencial (`2**attempt` → 1s, 2s) e whitelist `_is_transient_error` (timeout / 503 / 504); ConnectError e 4xx não são retried. (4) `_classify_score(score, threshold)` deriva bandas: verde < threshold*0.6, amarelo < threshold*1.2, vermelho >= threshold*1.2. Com threshold=0.5 default bate com critério literal (0.3, 0.6); ajustar `HALLUCINATION_THRESHOLD` move bandas coerentemente. (5) Score renderizado como HTML badge colorido via `gr.HTML` em vez de Textbox; mesma estilização para erros (`_error_html`) e placeholder. (6) `_user_facing_http_error(status)` produz mensagens amigáveis (503/504/401/429/4xx/5xx) sem leak de URL/body; `logger.error/exception` registra detalhes técnicos. (7) Testes: `tests/test_chat_ui.py` (novo, 32 testes) cobre classification (boundaries + alinhamento threshold custom + edge zero), user-facing errors (parametrizado para 7 status codes, ausência de URL), is_transient_error (whitelist), send_with_retry (success, exhaustion, non-transient, backoff progression). 205 testes (era 173, +32), cobertura 83.10%, ruff + format + mypy strict ok.
 
@@ -172,8 +186,8 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ### TASK-T71 — Hardening do Docker (issue #56) ✓
 - **Concluída em:** 2026-05-26
 - **Branch:** feat/TASK-T71-docker-hardening
-- **Commit:** pendente
-- **PR:** pendente
+- **Commit:** 5c8064a
+- **PR:** [#84](https://github.com/LukeSantossz/sb100_agents/pull/84)
 - **Avaliação:** aprovado
 - **Nota:** Hardening completo do build/deploy Docker. (1) `.dockerignore` (novo) reduz contexto excluindo `.git`, `.venv`, `__pycache__`, `tests/`, `eval/`, `.claude/`, `*.md`, `.github/`, `.coverage` + extras de `.gitignore`; preserva `scripts/` e `archives/` para uso em runtime. (2) `Dockerfile.api` reescrito multi-stage com base pinada `python:3.12.3-slim`: builder com `build-essential` para wheels; runtime apenas com `curl` (necessário aos healthchecks). Venv `/opt/venv` copiado intacto do builder. Verificado: `docker history --no-trunc \| grep -c build-essential = 0`; imagem final 858MB. (3) `docker-compose.yml`: healthchecks via `curl -fsS` para api (`/health`) e gradio (`/`); qdrant usa `/proc/net/tcp :18BD` (porta 6333 hex) porque imagem oficial não traz curl. `depends_on` com `condition: service_healthy` em ambos os elos (`api→qdrant`, `gradio→api`). Logging `max-size: 10m, max-file: 3` em todos os 3 services. `OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}` parametrizado. (4) `.env.example`: nova seção OLLAMA_HOST com nota de Linux. (5) `SETUP.md §9.1` (nova) "Deploy Linux nativo" com 3 caminhos para resolver `host.docker.internal`. (6) `README.md`: nota sobre healthchecks/logging/Linux + entry no Project Structure. (7) `.github/workflows/docker-build.yml` (novo): build via buildx + asserts (sem `build-essential`, com `curl`, compose válido) + image size summary; trigger apenas em mudanças relevantes. Validações locais: docker build OK em ~46s, qdrant healthy em 0.5s, 173 testes Python passam (sem regressão).
 
@@ -186,8 +200,9 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 
 ### TASK-T70 — Hardening do pipeline de avaliação (issue #57) ✓
 - **Concluída em:** 2026-05-26
-- **Branch:** feat/TASK-T70-eval-hardening
-- **Commit:** pendente
+- **Branch:** feat/TASK-T70-eval-hardening (código) + chore/TASK-T70-post-merge-registry (bookkeeping)
+- **Commit:** 28c488e (código) + 55aecb2 (bookkeeping)
+- **PR:** [#82](https://github.com/LukeSantossz/sb100_agents/pull/82) (código) + [#83](https://github.com/LukeSantossz/sb100_agents/pull/83) (bookkeeping)
 - **Avaliação:** aprovado
 - **Nota:** Robustece o pipeline `eval/`. (1) Novo módulo `eval/_utils.py` centraliza paths absolutos via `Path(__file__).resolve()`, `validate_dataset_schema`, `is_valid_question` (20–500 chars + `?`) e `deterministic_sb100_position_is_a` (hash MD5 do `question_id`, independente de `PYTHONHASHSEED`). (2) `collect_references.py` agora grava erros como `{"reference_model": ..., "reference_answer": null, "error": str(e)}`; sucesso traz `error: None`. (3) `run_evaluation.py` reescrito com checkpoint atômico a cada 10 questões (`evaluation_checkpoint.json` via `.tmp + replace`); retoma processamento filtrando `question_id`s já feitos; remove o checkpoint ao concluir. (4) `judge.py` substitui `random.random() < 0.5` por A/B determinístico via hash do `question_id`; aceita refs legadas (`[ERRO]`) e novas (`error` field); `import random` removido. (5) `report.py` retorna `bool` e `main()` exit 1 quando 0 julgamentos válidos. (6) Todos os 5 scripts agora usam defaults de paths absolutos baseados em `__file__` (independentes de CWD). (7) `validate_dataset_schema` aplicada em todos os entry points (`collect_references`, `run_evaluation`, `judge`, `report`). (8) `eval/__init__.py` (novo, vazio) torna `eval` package importável nos testes; `pyproject.toml` mantém `eval*` fora do build/coverage. (9) `tests/test_eval.py` (novo, 45 testes) cobre helpers, parse_questions_json (com filtro), parse_judge_response, normalize_verdict, checkpoint (roundtrip/missing/corrupted/atomic/filter), erro estruturado em collect_references, filtro de erros em judge (novo + legado), determinismo A/B, report (extract/distribution/stats/exit-1) e smoke judge→report end-to-end. 173 testes (era 136, +45 + 8 integration restaurados na execução = 218 quando todos), cobertura 83.07%, ruff + ruff format + mypy strict ok. Breaking: datasets antigos com `[ERRO] ...` em `reference_answer` continuam funcionando em `judge.py` (compat retro mantida), mas novos `collect_references` produzem o formato estruturado.
 
@@ -201,7 +216,8 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ### TASK-T77 — Fix mypy CI typecheck (cast em _ollama_chat) ✓
 - **Concluída em:** 2026-05-26
 - **Branch:** fix/TASK-T77-mypy-strict-ci-cast
-- **Commit:** pendente
+- **Commit:** 5496d59
+- **PR:** [#81](https://github.com/LukeSantossz/sb100_agents/pull/81)
 - **Avaliação:** aprovado
 - **Nota:** CI typecheck em main estava `failure` desde T68 por divergência entre mypy local (1.20.2 pin via uv) e mypy do CI (latest do PyPI). A versão mais recente reporta `[unused-ignore]` no `# type: ignore[return-value]` e `[no-any-return]` no retorno de `get_chat_client().chat(...)`. Fix: substituir o `# type: ignore` por `cast(dict[str, dict[str, str]], ...)` em `generation/llm._ollama_chat`. Cast é runtime no-op + neutro a versão de mypy. Validação local: `mypy retrieval/ generation/ memory/ --ignore-missing-imports` clean; pytest 136/136, cobertura 85.89%, ruff + format ok. **Pendente para T74 (quality gates)**: pinar versão de mypy no CI para evitar drift futuro.
 
@@ -215,7 +231,8 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ### TASK-T76 — Consolidação de clientes Ollama + cobertura dos gaps T75 ✓
 - **Concluída em:** 2026-05-26
 - **Branch:** refactor/TASK-T76-ollama-client-consolidation
-- **Commit:** pendente
+- **Commit:** d8caab0
+- **PR:** [#80](https://github.com/LukeSantossz/sb100_agents/pull/80)
 - **Avaliação:** aprovado
 - **Nota:** Endereça os 3 itens de débito técnico do review pós-T75. (1) `core/ollama_clients.py` (novo) com `get_chat_client()` e `get_embed_client()` thread-safe (DCL); helper `reset_clients()` para testes. (2) `settings.ollama_embed_timeout: float = Field(default=5.0, ge=1.0, le=120.0)` substitui o hardcode `_EMBED_HTTP_TIMEOUT`. (3) Consumers refatorados: `generation/llm.py` (remove singleton local), `verification/entropy.py` (não-singleton vira singleton compartilhado), `retrieval/ollama_embeddings.py` (singleton local removido). 6 novos testes em `tests/test_ollama_clients.py` (singleton chat, singleton embed, timeouts, reset, independência); patch ajustado em `tests/test_verification.py` (passa a mockar `get_chat_client`); 1 teste de `caplog` em `tests/test_integration.py` validando emissão de `chat.access` com username + session_id. Critério "nenhum `ollama.Client(...)` fora de `core/ollama_clients.py`" verificado por grep. 136 testes (era 129; +7), cobertura 85.87% (era 83.23%; +2.64 pp). Wiki externa consultada (correção comportamental #1 do review T75): `ollama.md` cobre setup mas sem pattern de connection pool catalogado, decisão arquitetural própria.
 
@@ -229,7 +246,8 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ### TASK-T75 — Correções pós-review (arquivamento, ollama timeout, /chat logging) ✓
 - **Concluída em:** 2026-05-26
 - **Branch:** chore/TASK-T75-post-review-fixes
-- **Commit:** pendente
+- **Commit:** 870d1ce
+- **PR:** [#79](https://github.com/LukeSantossz/sb100_agents/pull/79)
 - **Avaliação:** aprovado
 - **Nota:** Aplica 3 correções identificadas no review pós-T60-T69. (1) Arquivamento (regra 08.5): `.claude/registry-archive.md` (novo) com entradas #1-#38 do histórico; `.claude/registry.md` agora contém 15 entradas ativas (#39-#53) + nota de redirect. (2) T68 follow-up: `retrieval/ollama_embeddings.py` com cliente `ollama.Client(timeout=5.0)` singleton, `_MAX_RETRIES=4` (era 6), `_RETRY_MAX_SEC=2.0` (era 60.0); worst-case ~25s (era indeterminado por hang). (3) T60 follow-up: `api/routes/chat.py` ganha `logger` + `logger.info("chat.access", extra={username, session_id})` no handler e `logger.warning` nos 3 paths de falha (embedding/context/generation). Padrões Recorrentes do registry atualizados com 3 novos itens (push sem autorização, arquivamento esquecido, checklist agêntico). 129 testes (sem novos), cobertura 83.23%, ruff + mypy strict ok.
 
@@ -243,7 +261,8 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ### TASK-T69 — Cobertura de testes + mocks robustos em vector_store/embedder ✓
 - **Concluída em:** 2026-05-26
 - **Branch:** feat/TASK-T69-test-coverage-robustness
-- **Commit:** pendente
+- **Commit:** b645400
+- **PR:** [#78](https://github.com/LukeSantossz/sb100_agents/pull/78)
 - **Avaliação:** aprovado
 - **Nota:** `tests/test_vector_store.py`: mocks `MagicMock` substituídos por `ScoredPoint` reais do `qdrant_client.models` (captura mudanças de contrato do SDK). `tests/test_embedder.py`: 3 novos testes — string vazia, string longa (10k chars), Unicode (acento+CJK+emoji) — confirmam forwarding intacto. `tests/test_integration.py`: autouse fixture `_clear_sessions_cache` evita leak de `_sessions` entre testes. Coverage ≥50% (critério principal): **84.80%** alcançado. Os critérios já cobertos pelas tasks anteriores: ≥10 testes em test_verification (T64 + T68 → 16 testes); Ollama down + malformed em test_llm (T68 → 2 testes timeout/connection). 129 testes (era 126), cobertura 84.80%.
 
