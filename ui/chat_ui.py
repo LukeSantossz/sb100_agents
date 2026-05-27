@@ -21,6 +21,7 @@ Uso:
 """
 
 import argparse
+import html
 import logging
 import sys
 import time
@@ -210,10 +211,13 @@ def _classify_score(score: float, threshold: float) -> tuple[str, str]:
 def _score_html(score: float, threshold: float) -> str:
     """Renderiza badge HTML colorido para o score."""
     text, color = _classify_score(score, threshold)
+    # `text` é gerado internamente (sem input externo), mas escapamos por
+    # defesa em profundidade: se o conteúdo evoluir para incluir dado dinâmico,
+    # o escape já está em vigor.
     return (
         f'<div style="padding: 8px 12px; border-radius: 6px; '
         f"background: {color}1a; border-left: 4px solid {color}; "
-        f'color: {color}; font-weight: 500;">{text}</div>'
+        f'color: {color}; font-weight: 500;">{html.escape(text)}</div>'
     )
 
 
@@ -367,6 +371,9 @@ def create_interface(api_url: str) -> gr.Blocks:
                 reset_btn = gr.Button("Nova Sessão", variant="secondary")
 
                 gr.Markdown("### Verificação")
+                # `label` via Markdown — gr.HTML não suporta `label=` como Textbox,
+                # então preservamos o título "Última Verificação" acima do badge.
+                gr.Markdown("**Última Verificação**")
                 # gr.HTML aceita markup com cores; substitui o textbox simples
                 # para permitir feedback visual alinhado ao hallucination_threshold.
                 score_display = gr.HTML(value="")
@@ -441,11 +448,16 @@ def _user_facing_http_error(status_code: int) -> str:
 
 
 def _error_html(user_msg: str) -> str:
-    """Renderiza badge vermelho de erro para o painel de verificação."""
+    """Renderiza badge vermelho de erro para o painel de verificação.
+
+    `user_msg` é escapado por defesa em profundidade — atualmente vem de
+    `_user_facing_http_error` (strings estáticas), mas o escape protege
+    contra regressões futuras que venham a incluir conteúdo dinâmico.
+    """
     return (
         '<div style="padding: 8px 12px; border-radius: 6px; '
         "background: #ef44441a; border-left: 4px solid #ef4444; "
-        f'color: #ef4444; font-weight: 500;">{user_msg}</div>'
+        f'color: #ef4444; font-weight: 500;">{html.escape(user_msg)}</div>'
     )
 
 
