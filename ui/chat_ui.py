@@ -230,6 +230,59 @@ def _processing_html() -> str:
     )
 
 
+def _user_facing_http_error(status_code: int) -> str:
+    """Mensagem amigavel para erro HTTP (sem expor URL ou body).
+
+    Detalhes tecnicos vao para o logger; o usuario recebe apenas o que pode
+    acionar (tentar de novo, reportar ao operador).
+    """
+    if status_code == 503:
+        return (
+            "Serviço temporariamente indisponível. O backend pode estar iniciando "
+            "(Ollama ou Qdrant). Tente novamente em alguns instantes."
+        )
+    if status_code == 504:
+        return (
+            "Gateway atingiu o tempo limite. O modelo está demorando mais do que "
+            "o esperado. Tente novamente."
+        )
+    if status_code == 401:
+        return "Sessão expirou. Faça login novamente."
+    if status_code == 429:
+        return "Limite de requisições excedido. Aguarde alguns segundos."
+    if 400 <= status_code < 500:
+        return (
+            f"Sua requisição foi rejeitada (código {status_code}). Revise os dados e tente de novo."
+        )
+    return "O servidor encontrou um problema. Tente novamente em instantes."
+
+
+def _error_html(user_msg: str) -> str:
+    """Renderiza badge vermelho de erro para o painel de verificação.
+
+    `user_msg` é escapado por defesa em profundidade — atualmente vem de
+    `_user_facing_http_error` (strings estáticas), mas o escape protege
+    contra regressões futuras que venham a incluir conteúdo dinâmico.
+    """
+    return (
+        '<div style="padding: 8px 12px; border-radius: 6px; '
+        "background: #ef44441a; border-left: 4px solid #ef4444; "
+        f'color: #ef4444; font-weight: 500;">{html.escape(user_msg)}</div>'
+    )
+
+
+def _history_with_error(
+    history: list[dict[str, str]],
+    user_message: str,
+    error_text: str,
+) -> list[dict[str, str]]:
+    """Acrescenta turn de erro ao histórico sem perder a pergunta do usuário."""
+    return history + [
+        {"role": "user", "content": user_message},
+        {"role": "assistant", "content": f"⚠ {error_text}"},
+    ]
+
+
 def create_interface(api_url: str) -> gr.Blocks:
     """Cria interface Gradio completa.
 
@@ -418,59 +471,6 @@ def create_interface(api_url: str) -> gr.Blocks:
         )
 
     return interface
-
-
-def _user_facing_http_error(status_code: int) -> str:
-    """Mensagem amigavel para erro HTTP (sem expor URL ou body).
-
-    Detalhes tecnicos vao para o logger; o usuario recebe apenas o que pode
-    acionar (tentar de novo, reportar ao operador).
-    """
-    if status_code == 503:
-        return (
-            "Serviço temporariamente indisponível. O backend pode estar iniciando "
-            "(Ollama ou Qdrant). Tente novamente em alguns instantes."
-        )
-    if status_code == 504:
-        return (
-            "Gateway atingiu o tempo limite. O modelo está demorando mais do que "
-            "o esperado. Tente novamente."
-        )
-    if status_code == 401:
-        return "Sessão expirou. Faça login novamente."
-    if status_code == 429:
-        return "Limite de requisições excedido. Aguarde alguns segundos."
-    if 400 <= status_code < 500:
-        return (
-            f"Sua requisição foi rejeitada (código {status_code}). Revise os dados e tente de novo."
-        )
-    return "O servidor encontrou um problema. Tente novamente em instantes."
-
-
-def _error_html(user_msg: str) -> str:
-    """Renderiza badge vermelho de erro para o painel de verificação.
-
-    `user_msg` é escapado por defesa em profundidade — atualmente vem de
-    `_user_facing_http_error` (strings estáticas), mas o escape protege
-    contra regressões futuras que venham a incluir conteúdo dinâmico.
-    """
-    return (
-        '<div style="padding: 8px 12px; border-radius: 6px; '
-        "background: #ef44441a; border-left: 4px solid #ef4444; "
-        f'color: #ef4444; font-weight: 500;">{html.escape(user_msg)}</div>'
-    )
-
-
-def _history_with_error(
-    history: list[dict[str, str]],
-    user_message: str,
-    error_text: str,
-) -> list[dict[str, str]]:
-    """Acrescenta turn de erro ao histórico sem perder a pergunta do usuário."""
-    return history + [
-        {"role": "user", "content": user_message},
-        {"role": "assistant", "content": f"⚠ {error_text}"},
-    ]
 
 
 def main() -> None:
