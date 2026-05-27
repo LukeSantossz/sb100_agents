@@ -84,36 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T72
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** minor
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Melhorar UX do Gradio: loading state, retry, feedback visual no score, timeout configurável (issue #58).
-
-#### Contexto
-Ollama em CPU demora 2-10min por resposta. Sem loading state, usuário assume travamento. Sem retry para 503/504/timeout. URL da API exposta em erro. Score sem código de cores. Input perdido em erro.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `ui/chat_ui.py`, `core/config.py`, `.env.example`
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** nenhum (UX-only)
-
-#### Critérios de Aceite
-- [ ] Generator pattern em `respond()` — "Processando..." em <1s
-- [ ] Retry automático (2 tentativas) com backoff para HTTP 503/504/timeout
-- [ ] URL da API removida de mensagens de erro do usuário (logada internamente)
-- [ ] Score com cores: verde <0.3, amarelo 0.3-0.6, vermelho >0.6 + explicação textual
-- [ ] Thresholds de exibição alinhados com `settings.hallucination_threshold`
-- [ ] Em erro, input do usuário preservado (não limpa)
-- [ ] `REQUEST_TIMEOUT` via env var `CHAT_TIMEOUT` (default 600s)
-- [ ] `pytest`, `ruff` passam (sem mypy em ui/ por design)
-
-#### Referências
-- Issue: https://github.com/LukeSantossz/sb100_agents/issues/58
-
 ### TASK-T73
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -183,6 +153,21 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T72 — UX do Gradio (issue #58) ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** feat/TASK-T72-gradio-ux
+- **Commit:** pendente
+- **PR:** pendente
+- **Avaliação:** aprovado
+- **Nota:** UX completa do Gradio chat. (1) `settings.chat_timeout` (novo Field, default 600, bounds 1-3600) substitui `REQUEST_TIMEOUT` hardcoded; `.env.example` ganha seção CHAT_TIMEOUT. (2) `respond` agora é generator com 2 yields: o primeiro entrega placeholder `_processing_html()` em <1s (badge cinza "Processando..."); o segundo entrega o resultado. Em sucesso o input é limpo; em erro é preservado para o usuário tentar novamente sem redigitar. (3) `send_with_retry(attempts=2)` com backoff exponencial (`2**attempt` → 1s, 2s) e whitelist `_is_transient_error` (timeout / 503 / 504); ConnectError e 4xx não são retried. (4) `_classify_score(score, threshold)` deriva bandas: verde < threshold*0.6, amarelo < threshold*1.2, vermelho >= threshold*1.2. Com threshold=0.5 default bate com critério literal (0.3, 0.6); ajustar `HALLUCINATION_THRESHOLD` move bandas coerentemente. (5) Score renderizado como HTML badge colorido via `gr.HTML` em vez de Textbox; mesma estilização para erros (`_error_html`) e placeholder. (6) `_user_facing_http_error(status)` produz mensagens amigáveis (503/504/401/429/4xx/5xx) sem leak de URL/body; `logger.error/exception` registra detalhes técnicos. (7) Testes: `tests/test_chat_ui.py` (novo, 32 testes) cobre classification (boundaries + alinhamento threshold custom + edge zero), user-facing errors (parametrizado para 7 status codes, ausência de URL), is_transient_error (whitelist), send_with_retry (success, exhaustion, non-transient, backoff progression). 205 testes (era 173, +32), cobertura 83.10%, ruff + format + mypy strict ok.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Reconhecimento ui/chat_ui.py + core/config.py; plano declarado (CHAT_TIMEOUT em Settings, generator com placeholder, retry exponencial 2 retries, cores HTML alinhadas ao threshold, input preservado em erro); branch `feat/TASK-T72-gradio-ux` criada | em andamento |
+| 2026-05-26 | 1 | Implementação completa (6 arquivos); 32 novos testes; 205 total OK; smoke local com `from ui.chat_ui import create_interface` retornou `Blocks` | concluída |
 
 ### TASK-T71 — Hardening do Docker (issue #56) ✓
 - **Concluída em:** 2026-05-26
