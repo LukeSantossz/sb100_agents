@@ -1,23 +1,59 @@
-FROM python:3.12-slim
+# syntax=docker/dockerfile:1.7
+# ============================================================================
+# Stage 1: Builder — instala build-essential + pip install em venv isolado.
+# Apenas o venv resultante é copiado para o runtime; toolchain de compilação
+# nao acompanha a imagem final.
+# ============================================================================
+FROM python:3.12.3-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /build
+
+# Build deps (precisam para wheels com C-extensions, e.g. pydantic/uvicorn)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cria virtualenv que sera copiado intacto para o runtime stage
+ENV VIRTUAL_ENV=/opt/venv
+RUN python -m venv "$VIRTUAL_ENV"
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Aproveita cache de layers: requirements antes do codigo
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ============================================================================
+# Stage 2: Runtime — slim sem build-essential. Apenas curl para healthcheck.
+# ============================================================================
+FROM python:3.12.3-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# curl: necessario pelos healthchecks no docker-compose.yml
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 WORKDIR /app/sb100_agents
 
-# Instala dependências do sistema
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Copia o venv do builder; activate via PATH
+ENV VIRTUAL_ENV=/opt/venv
+COPY --from=builder $VIRTUAL_ENV $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Copia e instala dependências Python primeiro para aproveitar cache
-COPY requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copia todo o projeto para /app/sb100_agents
-# Assumindo que este Dockerfile será construído da pasta sb100_agents
-COPY . .
-
-# Garante que o diretório pai está no PYTHONPATH para imports como "from sb100_agents.database..."
+# Garante imports como `from sb100_agents.database...` (legado do tree atual)
 ENV PYTHONPATH=/app
+
+# Copia codigo (filtrado por .dockerignore — sem tests/, eval/, .git, etc.)
+COPY . .
 
 EXPOSE 8000
 

@@ -1,0 +1,70 @@
+name: Docker Build
+
+# Valida que o Dockerfile multi-stage builda em CI e que a imagem final
+# nao contem build-essential (criterio T71). Trigger so em mudancas
+# relevantes para reduzir custo.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile.api"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - "requirements.txt"
+      - "pyproject.toml"
+      - ".github/workflows/docker-build.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "Dockerfile.api"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - "requirements.txt"
+      - "pyproject.toml"
+      - ".github/workflows/docker-build.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API image (multi-stage)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.api
+          push: false
+          load: true
+          tags: smartb100_api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Assert build-essential is NOT in runtime image
+        run: |
+          # build-essential aparece no builder stage mas nao deve aparecer no runtime final.
+          # docker history mostra layers; o paginate completo expoe instalacoes apt-get install.
+          if docker history --no-trunc smartb100_api:ci | grep -q "build-essential"; then
+            echo "ERROR: build-essential found in final image — multi-stage broken"
+            docker history --no-trunc smartb100_api:ci | head -30
+            exit 1
+          fi
+          echo "OK: build-essential not present in runtime layers"
+
+      - name: Assert curl IS in runtime image (needed for healthchecks)
+        run: |
+          # curl precisa estar instalado para os healthchecks do docker-compose funcionarem.
+          docker run --rm --entrypoint sh smartb100_api:ci -c "command -v curl"
+
+      - name: Validate compose configuration
+        run: |
+          docker compose --profile infra --profile app config > /dev/null
+          echo "OK: docker-compose.yml is syntactically valid"
+
+      - name: Show image size summary
+        run: |
+          docker images smartb100_api:ci --format "{{.Repository}}:{{.Tag}} {{.Size}}"

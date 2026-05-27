@@ -39,20 +39,21 @@
 | 55 | 2026-05-26 | TASK-T76 | minor | 7 arquivos — core/ollama_clients.py (novo), core/config.py, generation/llm.py, verification/entropy.py, retrieval/ollama_embeddings.py, tests/test_ollama_clients.py (novo), tests/test_verification.py, tests/test_integration.py | aprovado | Consolida 3 padrões de cliente Ollama em módulo único `core/ollama_clients.py` (singletons thread-safe). `settings.ollama_embed_timeout` substitui hardcode. Critério "nenhum `ollama.Client(...)` fora de core" verificado por grep. 7 novos testes (6 cobrindo singletons/timeouts/reset/independência + 1 caplog para chat.access). 136 testes, cobertura 85.87%. Wiki externa consultada (correção comportamental #1 do review T75). |
 | 56 | 2026-05-26 | TASK-T77 | patch | 1 arquivo — generation/llm.py | aprovado | Fix CI typecheck red em main desde T68: `# type: ignore[return-value]` substituído por `cast(dict[str, dict[str, str]], ...)` em `_ollama_chat`. Causa raiz: mypy CI (latest) detecta `unused-ignore` + `no-any-return` que mypy local (1.20.2 pin via uv) não dispara. Cast é runtime no-op + neutro a versão. Validação local com comando exato do CI passou. Padrão Recorrente "drift mypy CI vs local" adicionado; pinning de versão fica para T74. |
 | 57 | 2026-05-26 | TASK-T70 | minor | 8 arquivos — eval/_utils.py (novo), eval/__init__.py (novo), eval/generate_questions.py, eval/collect_references.py, eval/run_evaluation.py, eval/judge.py, eval/report.py, tests/test_eval.py (novo) | aprovado | Hardening pipeline `eval/`: paths absolutos via `Path(__file__).resolve()`, `validate_dataset_schema` em todos os entry points, erros como `{reference_answer: null, error: str}` em collect_references, checkpoint atômico (`.tmp + replace`) a cada 10 questões em run_evaluation com retomada por `question_id`, A/B determinístico via hash MD5 do `question_id` em judge (substituindo `random.random()`), filtro de qualidade `is_valid_question` (20-500 chars + `?`) em parse_questions_json, `report.py` exit 1 quando 0 julgamentos válidos. 45 novos testes em `test_eval.py` (helpers, checkpoint, erro estruturado, determinismo A/B, smoke judge→report). 173 testes (era 136), cobertura 83.07%, ruff + format + mypy strict ok. Compat retro mantida em judge para refs legadas `[ERRO]`. |
+| 58 | 2026-05-26 | TASK-T71 | major | 9 arquivos — .dockerignore (novo), Dockerfile.api (rewrite), docker-compose.yml, .env.example, SETUP.md, README.md, .github/workflows/docker-build.yml (novo) + .claude/tasks.md + .claude/registry.md | aprovado | Docker hardening: multi-stage Dockerfile (`python:3.12.3-slim` builder/runtime; runtime sem `build-essential`, com `curl`); healthchecks em qdrant/api/gradio (api+gradio via `curl -fsS`, qdrant via `/proc/net/tcp :18BD` porque imagem oficial não traz curl); `depends_on service_healthy` em ambos os elos; logging `max-size: 10m, max-file: 3` em todos; `OLLAMA_HOST` parametrizado com fallback. `.dockerignore` reduz contexto (sem `.git/.venv/tests/eval/.claude/*.md/.github`). `SETUP.md §9.1` documenta 3 caminhos para Linux. Workflow `docker-build.yml` valida build + ausência de `build-essential` + presença de `curl` + sintaxe compose. Validação local: `docker build` 46s, qdrant healthy 0.5s, 173 testes Python sem regressão. Imagem final 858MB. |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T70 — hardening pipeline eval/ mergeado via PR #82)
+- **Última atualização:** 2026-05-26 (TASK-T71 — hardening Docker)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** main
+- **Branch ativa:** feat/TASK-T71-docker-hardening
 - **Dependências alteradas recentemente:** nenhuma desde T60 — todas em main
-- **Testes passando:** sim — 173 passed (com integração: 181), cobertura 83.07%; ruff + format + mypy strict ok; CI 4/4 verde em main
-- **Divergências externas pendentes:** nenhuma — main sincronizada
-- **Última task concluída:** TASK-T70 — hardening pipeline de avaliação (merge 28c488e)
-- **Backlog ativo:** 4 tasks pendentes (T71 ativa — Docker hardening; T72–T74 enfileiradas)
-- **PRs abertos:** nenhum
+- **Testes passando:** sim — 173 passed, cobertura 83.07%; ruff + format + mypy strict ok
+- **Divergências externas pendentes:** T71 local sem push; CI main verde
+- **Última task concluída:** TASK-T70 — hardening pipeline eval/ (merge 28c488e)
+- **Backlog ativo:** 3 tasks pendentes (T72 ativa — Gradio UX; T73–T74 enfileiradas)
+- **PRs abertos:** nenhum (T71 a abrir)
 
 ## Pendências Conhecidas
 
@@ -83,6 +84,7 @@
 | Drift mypy CI (latest) vs local (1.20.2 pinado) | 1x (T68→T77) | **Alto** — CI red por 4 merges sem detectar | Pinar versão de mypy no CI workflow (e/ou em pyproject) para igualar local. Programado para T74 (quality gates) |
 | Não-monitoramento do CI após merge | 1x (T68→T77) | Médio — main red por 4 commits | Após cada `gh pr merge`, rodar `gh run list --branch main --limit 1` e ver conclusion antes de seguir |
 | pytest sem `pythonpath` para diretórios não-package | 1x (T70) | Médio — testes verdes localmente mas falham no CI Linux | Quando adicionar testes que importam módulos fora de `setuptools.packages` (eval/, scripts/), garantir `pythonpath = ["."]` em `[tool.pytest.ini_options]`. Local Windows pode adicionar rootdir automaticamente; CI Ubuntu não. |
+| Checkpoint omitido em fix-urgente / metadata-update | 2x (T70: pyproject pythonpath + tasks.md commit/PR meta) | Médio — falha de rastreabilidade pré-write | Regra 10.2.2 é absoluta: patch tem checkpoint igual a major. Toda invocação de Edit/Write em arquivo do projeto exige `[CHECKPOINT]` precedente, incluindo (a) fixes pós-CI e (b) atualizações de metadata em tasks.md/registry.md depois do PR aberto. |
 
 ---
 

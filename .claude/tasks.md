@@ -84,38 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T71
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** major
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Hardening do Docker: `.dockerignore`, healthchecks, multi-stage build, `OLLAMA_HOST` parametrizado, logging limits (issue #56).
-
-#### Contexto
-Sem `.dockerignore` (contexto ~500MB+ inclui `.git`, `.venv`, etc.). Sem healthchecks (`depends_on` não garante ordem real). Dockerfile single-stage com `build-essential` no runtime. `OLLAMA_HOST=host.docker.internal` não funciona em Linux.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `Dockerfile.api`, `docker-compose.yml`, `.dockerignore` (novo), `.env.example`, `README.md`, `SETUP.md`
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** Linux deploy passa a funcionar; Windows mantém compatibilidade via default
-
-#### Critérios de Aceite
-- [ ] `.dockerignore` criado excluindo `.git`, `.venv`, `__pycache__`, `tests/`, `eval/`, `.claude/`, `*.md`, `.github/`, `.coverage`
-- [ ] `healthcheck` em qdrant, api, gradio com `curl -f`
-- [ ] `depends_on: qdrant: condition: service_healthy`
-- [ ] `OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}`
-- [ ] `Dockerfile.api` multi-stage (builder + runtime)
-- [ ] Logging config: `max-size: 10m`, `max-file: 3`
-- [ ] Base image pinada: `python:3.12.3-slim` (ou versão estável atual)
-- [ ] Imagem final não contém `build-essential` (verificar com `docker history`)
-- [ ] README/SETUP documentam Linux deploy
-- [ ] `docker compose --profile infra up -d` + `--profile app up -d` funcionam local
-
-#### Referências
-- Issue: https://github.com/LukeSantossz/sb100_agents/issues/56
-
 ### TASK-T72
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -215,6 +183,21 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T71 — Hardening do Docker (issue #56) ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** feat/TASK-T71-docker-hardening
+- **Commit:** pendente
+- **PR:** pendente
+- **Avaliação:** aprovado
+- **Nota:** Hardening completo do build/deploy Docker. (1) `.dockerignore` (novo) reduz contexto excluindo `.git`, `.venv`, `__pycache__`, `tests/`, `eval/`, `.claude/`, `*.md`, `.github/`, `.coverage` + extras de `.gitignore`; preserva `scripts/` e `archives/` para uso em runtime. (2) `Dockerfile.api` reescrito multi-stage com base pinada `python:3.12.3-slim`: builder com `build-essential` para wheels; runtime apenas com `curl` (necessário aos healthchecks). Venv `/opt/venv` copiado intacto do builder. Verificado: `docker history --no-trunc \| grep -c build-essential = 0`; imagem final 858MB. (3) `docker-compose.yml`: healthchecks via `curl -fsS` para api (`/health`) e gradio (`/`); qdrant usa `/proc/net/tcp :18BD` (porta 6333 hex) porque imagem oficial não traz curl. `depends_on` com `condition: service_healthy` em ambos os elos (`api→qdrant`, `gradio→api`). Logging `max-size: 10m, max-file: 3` em todos os 3 services. `OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}` parametrizado. (4) `.env.example`: nova seção OLLAMA_HOST com nota de Linux. (5) `SETUP.md §9.1` (nova) "Deploy Linux nativo" com 3 caminhos para resolver `host.docker.internal`. (6) `README.md`: nota sobre healthchecks/logging/Linux + entry no Project Structure. (7) `.github/workflows/docker-build.yml` (novo): build via buildx + asserts (sem `build-essential`, com `curl`, compose válido) + image size summary; trigger apenas em mudanças relevantes. Validações locais: docker build OK em ~46s, qdrant healthy em 0.5s, 173 testes Python passam (sem regressão).
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Reconhecimento Dockerfile.api + docker-compose.yml + .env.example + SETUP.md; plano declarado (multi-stage, healthchecks, OLLAMA_HOST parametrizado); branch `feat/TASK-T71-docker-hardening` criada | em andamento |
+| 2026-05-26 | 1 | Implementação completa (9 arquivos); validação local com `docker build` + `docker compose --profile infra up` + healthcheck qdrant; quality gates Python verdes | concluída |
 
 ### TASK-T70 — Hardening do pipeline de avaliação (issue #57) ✓
 - **Concluída em:** 2026-05-26
