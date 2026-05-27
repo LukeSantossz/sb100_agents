@@ -9,41 +9,26 @@ Inclui mitigações contra prompt injection (TASK-T61):
 
 import logging
 import re
-import threading
 import time
 
 import ollama
-from ollama import Client as OllamaClient
 
 from core.config import settings
+from core.ollama_clients import get_chat_client
 from core.schemas import ExpertiseLevel, UserProfile
 
 logger = logging.getLogger(__name__)
-
-_ollama_client: OllamaClient | None = None
-_ollama_client_lock = threading.Lock()
-
-
-def _get_ollama_client() -> OllamaClient:
-    """Singleton thread-safe do Ollama Client com timeout configurado.
-
-    O cliente reusa a conexão HTTP entre chamadas e aplica
-    ``settings.ollama_timeout`` (default 120s) — sem isso, o handler bloqueia
-    indefinidamente se o servidor Ollama estiver indisponível.
-    """
-    global _ollama_client
-    if _ollama_client is None:
-        with _ollama_client_lock:
-            if _ollama_client is None:
-                _ollama_client = OllamaClient(timeout=settings.ollama_timeout)
-    return _ollama_client
 
 
 def _ollama_chat(
     model: str, messages: list[dict[str, str]], options: dict[str, int]
 ) -> dict[str, dict[str, str]]:
-    """Wrapper testável para ``ollama.Client.chat`` com timeout aplicado."""
-    return _get_ollama_client().chat(  # type: ignore[return-value]
+    """Wrapper testável para ``ollama.Client.chat`` com timeout aplicado.
+
+    O cliente compartilhado vem de :func:`core.ollama_clients.get_chat_client`,
+    que aplica ``settings.ollama_timeout`` e reusa a conexão HTTP.
+    """
+    return get_chat_client().chat(  # type: ignore[return-value]
         model=model, messages=messages, options=options
     )
 
