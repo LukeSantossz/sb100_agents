@@ -84,37 +84,6 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
-### TASK-T70
-- **Status:** pendente
-- **Modo:** desenvolvimento
-- **Complexidade:** minor
-- **Data de criação:** 2026-05-26
-
-#### Objetivo
-Robustecer pipeline de avaliação: paths via `__file__`, erros em campo separado, schema validation, checkpointing, exit codes (issue #57).
-
-#### Contexto
-`eval/` assume execução da raiz; erros de API armazenados como `[ERRO] ...` no campo `reference_answer`; sem validação entre etapas; sem checkpoint; exit code 0 em falha; A/B com seed não-determinístico.
-
-#### Escopo Técnico
-- **Arquivos/módulos envolvidos:** `eval/generate_questions.py`, `eval/collect_references.py`, `eval/run_evaluation.py`, `eval/judge.py`, `eval/report.py`, `tests/`
-- **Dependências necessárias:** nenhuma
-- **Impacto em funcionalidades existentes:** breaking apenas para datasets antigos com `[ERRO]` no campo answer (precisam reprocessar)
-
-#### Critérios de Aceite
-- [ ] Todos scripts usam `Path(__file__).parent` para resolver paths
-- [ ] `collect_references.py` armazena erros em `{"reference_answer": null, "error": str(e)}`
-- [ ] Função compartilhada `validate_dataset_schema(data, expected_keys)`
-- [ ] `run_evaluation.py` salva checkpoint a cada 10 questões
-- [ ] `report.py` exit 1 quando nenhum relatório gerado
-- [ ] `judge.py` A/B determinístico via hash de `question_id`
-- [ ] `generate_questions.py` valida qualidade (contém "?", 20-500 chars)
-- [ ] Smoke test do pipeline com fixture pequeno
-- [ ] `pytest`, `ruff`, `mypy` passam
-
-#### Referências
-- Issue: https://github.com/LukeSantossz/sb100_agents/issues/57
-
 ### TASK-T71
 - **Status:** pendente
 - **Modo:** desenvolvimento
@@ -246,6 +215,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 ## Tasks Concluídas
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
+
+### TASK-T70 — Hardening do pipeline de avaliação (issue #57) ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** feat/TASK-T70-eval-hardening
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** Robustece o pipeline `eval/`. (1) Novo módulo `eval/_utils.py` centraliza paths absolutos via `Path(__file__).resolve()`, `validate_dataset_schema`, `is_valid_question` (20–500 chars + `?`) e `deterministic_sb100_position_is_a` (hash MD5 do `question_id`, independente de `PYTHONHASHSEED`). (2) `collect_references.py` agora grava erros como `{"reference_model": ..., "reference_answer": null, "error": str(e)}`; sucesso traz `error: None`. (3) `run_evaluation.py` reescrito com checkpoint atômico a cada 10 questões (`evaluation_checkpoint.json` via `.tmp + replace`); retoma processamento filtrando `question_id`s já feitos; remove o checkpoint ao concluir. (4) `judge.py` substitui `random.random() < 0.5` por A/B determinístico via hash do `question_id`; aceita refs legadas (`[ERRO]`) e novas (`error` field); `import random` removido. (5) `report.py` retorna `bool` e `main()` exit 1 quando 0 julgamentos válidos. (6) Todos os 5 scripts agora usam defaults de paths absolutos baseados em `__file__` (independentes de CWD). (7) `validate_dataset_schema` aplicada em todos os entry points (`collect_references`, `run_evaluation`, `judge`, `report`). (8) `eval/__init__.py` (novo, vazio) torna `eval` package importável nos testes; `pyproject.toml` mantém `eval*` fora do build/coverage. (9) `tests/test_eval.py` (novo, 45 testes) cobre helpers, parse_questions_json (com filtro), parse_judge_response, normalize_verdict, checkpoint (roundtrip/missing/corrupted/atomic/filter), erro estruturado em collect_references, filtro de erros em judge (novo + legado), determinismo A/B, report (extract/distribution/stats/exit-1) e smoke judge→report end-to-end. 173 testes (era 136, +45 + 8 integration restaurados na execução = 218 quando todos), cobertura 83.07%, ruff + ruff format + mypy strict ok. Breaking: datasets antigos com `[ERRO] ...` em `reference_answer` continuam funcionando em `judge.py` (compat retro mantida), mas novos `collect_references` produzem o formato estruturado.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Reconhecimento dos 5 scripts em `eval/`; plano declarado (helpers em `eval/_utils.py`, checkpoint atômico, hash MD5 para A/B determinístico); branch `feat/TASK-T70-eval-hardening` criada | em andamento |
+| 2026-05-26 | 1 | Implementação completa: `_utils`, atualização dos 5 scripts, novo `test_eval.py` (45 testes); pytest 173 ok, ruff + format ok, mypy strict ok | concluída |
 
 ### TASK-T77 — Fix mypy CI typecheck (cast em _ollama_chat) ✓
 - **Concluída em:** 2026-05-26

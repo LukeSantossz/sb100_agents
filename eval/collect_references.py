@@ -15,15 +15,24 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Carrega variaveis de ambiente do .env
-load_dotenv(Path(__file__).parent.parent / ".env")
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import argparse
 import json
 import os
+import sys
 from datetime import UTC, datetime
-from pathlib import Path
 
 from tqdm import tqdm
+
+# Permite `from eval._utils import ...` em execucao standalone
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from eval._utils import (
+    DEFAULT_QUESTIONS_PATH,
+    DEFAULT_REFERENCES_PATH,
+    validate_dataset_schema,
+)
 
 # Providers disponiveis: groq, ollama, openrouter
 DEFAULT_PROVIDER = "groq"
@@ -111,8 +120,8 @@ def get_reference_openrouter(
 
 
 def collect_references(
-    questions_path: str = "eval/dataset/questions.json",
-    output_path: str = "eval/dataset/reference_answers.json",
+    questions_path: str = str(DEFAULT_QUESTIONS_PATH),
+    output_path: str = str(DEFAULT_REFERENCES_PATH),
     provider: str = DEFAULT_PROVIDER,
     models: list[str] | None = None,
 ) -> dict:
@@ -142,6 +151,8 @@ def collect_references(
     with open(questions_path, encoding="utf-8") as f:
         dataset = json.load(f)
 
+    validate_dataset_schema(dataset, ["metadata", "questions"])
+
     questions = dataset["questions"]
     print(f"Carregadas {len(questions)} perguntas de {questions_path}")
     print(f"Modelos de referencia: {models}")
@@ -165,14 +176,16 @@ def collect_references(
                     {
                         "reference_model": model,
                         "reference_answer": answer,
+                        "error": None,
                     }
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - propaga via campo `error`
                 print(f"\nErro com modelo {model}: {e}")
                 question_obj["reference_answers"].append(
                     {
                         "reference_model": model,
-                        "reference_answer": f"[ERRO] {str(e)}",
+                        "reference_answer": None,
+                        "error": str(e),
                     }
                 )
 
@@ -203,13 +216,13 @@ def main():
     )
     parser.add_argument(
         "--input",
-        default="eval/dataset/questions.json",
-        help="Caminho do dataset de perguntas (padrao: eval/dataset/questions.json)",
+        default=str(DEFAULT_QUESTIONS_PATH),
+        help=f"Caminho do dataset de perguntas (padrao: {DEFAULT_QUESTIONS_PATH})",
     )
     parser.add_argument(
         "--output",
-        default="eval/dataset/reference_answers.json",
-        help="Caminho do arquivo de saida (padrao: eval/dataset/reference_answers.json)",
+        default=str(DEFAULT_REFERENCES_PATH),
+        help=f"Caminho do arquivo de saida (padrao: {DEFAULT_REFERENCES_PATH})",
     )
     parser.add_argument(
         "--provider",

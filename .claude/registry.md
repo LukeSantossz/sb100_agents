@@ -38,20 +38,21 @@
 | 54 | 2026-05-26 | TASK-T75 | minor | 4 arquivos — .claude/registry-archive.md (novo), .claude/registry.md, retrieval/ollama_embeddings.py, api/routes/chat.py | aprovado | Correções pós-review T60-T69: arquivamento regra 08.5 (entradas #1-#38 → archive; 15 ativas restantes); ollama_embeddings com `Client(timeout=5.0)` + retries reduzidos para 4 (worst-case ~25s, era indeterminado); logger.info `chat.access` + warnings nos paths 503. Padrões Recorrentes ampliados com push sem autorização, arquivamento esquecido e checklist agêntico ausente. 129 testes, cobertura 83.23%. |
 | 55 | 2026-05-26 | TASK-T76 | minor | 7 arquivos — core/ollama_clients.py (novo), core/config.py, generation/llm.py, verification/entropy.py, retrieval/ollama_embeddings.py, tests/test_ollama_clients.py (novo), tests/test_verification.py, tests/test_integration.py | aprovado | Consolida 3 padrões de cliente Ollama em módulo único `core/ollama_clients.py` (singletons thread-safe). `settings.ollama_embed_timeout` substitui hardcode. Critério "nenhum `ollama.Client(...)` fora de core" verificado por grep. 7 novos testes (6 cobrindo singletons/timeouts/reset/independência + 1 caplog para chat.access). 136 testes, cobertura 85.87%. Wiki externa consultada (correção comportamental #1 do review T75). |
 | 56 | 2026-05-26 | TASK-T77 | patch | 1 arquivo — generation/llm.py | aprovado | Fix CI typecheck red em main desde T68: `# type: ignore[return-value]` substituído por `cast(dict[str, dict[str, str]], ...)` em `_ollama_chat`. Causa raiz: mypy CI (latest) detecta `unused-ignore` + `no-any-return` que mypy local (1.20.2 pin via uv) não dispara. Cast é runtime no-op + neutro a versão. Validação local com comando exato do CI passou. Padrão Recorrente "drift mypy CI vs local" adicionado; pinning de versão fica para T74. |
+| 57 | 2026-05-26 | TASK-T70 | minor | 8 arquivos — eval/_utils.py (novo), eval/__init__.py (novo), eval/generate_questions.py, eval/collect_references.py, eval/run_evaluation.py, eval/judge.py, eval/report.py, tests/test_eval.py (novo) | aprovado | Hardening pipeline `eval/`: paths absolutos via `Path(__file__).resolve()`, `validate_dataset_schema` em todos os entry points, erros como `{reference_answer: null, error: str}` em collect_references, checkpoint atômico (`.tmp + replace`) a cada 10 questões em run_evaluation com retomada por `question_id`, A/B determinístico via hash MD5 do `question_id` em judge (substituindo `random.random()`), filtro de qualidade `is_valid_question` (20-500 chars + `?`) em parse_questions_json, `report.py` exit 1 quando 0 julgamentos válidos. 45 novos testes em `test_eval.py` (helpers, checkpoint, erro estruturado, determinismo A/B, smoke judge→report). 173 testes (era 136), cobertura 83.07%, ruff + format + mypy strict ok. Compat retro mantida em judge para refs legadas `[ERRO]`. |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T77 — fix mypy CI cast em _ollama_chat)
+- **Última atualização:** 2026-05-26 (TASK-T70 — hardening pipeline eval/)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** fix/TASK-T77-mypy-strict-ci-cast
+- **Branch ativa:** feat/TASK-T70-eval-hardening
 - **Dependências alteradas recentemente:** nenhuma desde T60 — todas em main
-- **Testes passando:** sim — 136 passed, cobertura 85.89%; ruff + format + mypy local (CI command) ok
-- **Divergências externas pendentes:** PRs #74-#80 mergeadas em main; T77 local; CI typecheck em main red há 4 commits (T68→T76), corrigido por T77
-- **Última task concluída:** TASK-T77 — fix mypy CI typecheck via cast
-- **Backlog ativo:** 5 tasks pendentes (T70 ativa — hardening eval pipeline; T71–T74 enfileiradas)
-- **PRs abertos:** nenhum; PR T77 a abrir após push (com autorização)
+- **Testes passando:** sim — 173 passed (com integração: 181), cobertura 83.07%; ruff + format + mypy strict ok
+- **Divergências externas pendentes:** T77 já em main (#81); T70 local sem push
+- **Última task concluída:** TASK-T70 — hardening pipeline de avaliação
+- **Backlog ativo:** 4 tasks pendentes (T71 ativa — Docker hardening; T72–T74 enfileiradas)
+- **PRs abertos:** nenhum; PR T70 a abrir após autorização do desenvolvedor
 
 ## Pendências Conhecidas
 
