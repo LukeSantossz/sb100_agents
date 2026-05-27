@@ -147,6 +147,11 @@ Windows users: replace `.venv/bin/python` with `.venv\Scripts\python.exe`, or us
 
 Full Docker deployment: `docker compose --profile infra --profile app up -d`
 
+The compose stack uses a **multi-stage `Dockerfile.api`** (no `build-essential`
+in the final image), **healthchecks** that gate `depends_on` ordering, and
+**log rotation** (`max-size: 10m`, `max-file: 3`). On **Linux** the `OLLAMA_HOST`
+override is required — see [`SETUP.md` §9.1](./SETUP.md#91-deploy-em-linux-nativo).
+
 See [`SETUP.md`](./SETUP.md) for remote Qdrant configuration.
 
 ### Verify
@@ -219,7 +224,9 @@ sb100_agents/
 │   ├── tasks.md                    # Task registry
 │   └── hooks/                      # Git hooks (commit-msg, pre-commit, etc.)
 ├── .github/workflows/              # CI + Claude Code automation
-├── docker-compose.yml              # Qdrant (infra) + API+Gradio (app)
+├── .dockerignore                   # Shrinks build context (drops .git, tests/, eval/, .claude/, etc.)
+├── Dockerfile.api                  # Multi-stage build (builder + runtime)
+├── docker-compose.yml              # Qdrant (infra) + API+Gradio (app) with healthchecks
 └── pyproject.toml
 ```
 

@@ -269,6 +269,47 @@ Acesse:
 - Gradio: http://localhost:7860
 - Qdrant Dashboard: http://localhost:6333/dashboard
 
+> O compose usa **multi-stage build** (Dockerfile.api) — a imagem final não
+> contém `build-essential`. **Healthchecks** garantem ordem real de startup:
+> `api` só inicia depois que `qdrant` está saudável; `gradio` só inicia depois
+> que `api` está saudável. **Logging** com `max-size: 10m` e `max-file: 3`
+> evita estouro de disco em runs longos.
+
+---
+
+## 9.1 Deploy em Linux nativo
+
+Em Linux nativo (sem Docker Desktop), `host.docker.internal` **não resolve por
+padrão**. Como o Ollama roda fora do Docker (no host), há três caminhos:
+
+**(a) Override via `OLLAMA_HOST` no `.env`** — gateway `docker0`:
+```env
+OLLAMA_HOST=http://172.17.0.1:11434
+```
+
+**(b) Inline na invocação do compose:**
+```bash
+OLLAMA_HOST=http://172.17.0.1:11434 \
+  docker compose --profile infra --profile app up -d
+```
+
+**(c) Mapear `host.docker.internal` para o host-gateway** — em `docker-compose.yml`
+adicionar (não está habilitado por padrão para preservar compat com Docker Desktop):
+```yaml
+api:
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+```
+
+Verifique conectividade do container:
+```bash
+docker compose exec api curl -fsS "$OLLAMA_HOST/api/tags"
+```
+
+> **Diagnóstico**: para confirmar o IP do gateway docker no host Linux, use
+> `ip route | grep docker0` (terceira coluna). Em hosts com firewall (ufw),
+> garanta que a porta `11434` está liberada para a rede `docker0`.
+
 ---
 
 ## 10. URLs dos Serviços
