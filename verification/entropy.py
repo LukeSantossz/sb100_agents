@@ -17,9 +17,8 @@ import logging
 import math
 from typing import Any, cast
 
-import ollama
-
 from core.config import settings
+from core.ollama_clients import get_chat_client
 from retrieval.ollama_embeddings import embed_text
 
 logger = logging.getLogger(__name__)
@@ -63,11 +62,10 @@ def _generate_one_groq(question: str, context: str, model: str) -> str:
 def _generate_one_ollama(question: str, context: str, model: str) -> str:
     # ollama-py retorna ChatResponse; cast para dict[str, Any] mantém o acesso
     # seguro via ``.get`` (que continua válido em runtime para ChatResponse).
-    # Client com timeout explícito evita hang indefinido se o servidor Ollama estiver indisponível.
-    client = ollama.Client(timeout=settings.ollama_timeout)
+    # Cliente compartilhado (singleton com timeout — ver core/ollama_clients).
     resp = cast(
         dict[str, Any],
-        client.chat(
+        get_chat_client().chat(
             model=model,
             messages=_build_messages(question, context),
             options={

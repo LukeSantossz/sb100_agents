@@ -265,3 +265,30 @@ def test_nominal_flow_no_500_errors(
         response = client.post("/chat", json=payload)
         assert response.status_code != 500, f"HTTP 500 em payload: {payload}"
         assert response.status_code == 200
+
+
+def test_chat_access_log_emits_username_and_session_id(
+    client,
+    mock_embedding,
+    mock_context,
+    mock_verification_disabled,
+    mock_generate_by_expertise,
+    caplog: pytest.LogCaptureFixture,
+):
+    """TASK-T76: handler de /chat emite log estruturado com username + session_id."""
+    payload = {
+        "session_id": "log-session-42",
+        "question": "ping",
+        "profile": {"name": "TestUser", "expertise": "beginner"},
+    }
+
+    with caplog.at_level("INFO", logger="api.routes.chat"):
+        response = client.post("/chat", json=payload)
+
+    assert response.status_code == 200
+    access_records = [r for r in caplog.records if "chat.access" in r.message]
+    assert len(access_records) >= 1
+    # Verifica fields estruturados (do `extra=` kwarg do logger.info)
+    record = access_records[0]
+    assert getattr(record, "username", None) == "testuser"
+    assert getattr(record, "session_id", None) == "log-session-42"

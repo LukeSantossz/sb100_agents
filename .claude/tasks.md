@@ -247,6 +247,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T76 — Consolidação de clientes Ollama + cobertura dos gaps T75 ✓
+- **Concluída em:** 2026-05-26
+- **Branch:** refactor/TASK-T76-ollama-client-consolidation
+- **Commit:** pendente
+- **Avaliação:** aprovado
+- **Nota:** Endereça os 3 itens de débito técnico do review pós-T75. (1) `core/ollama_clients.py` (novo) com `get_chat_client()` e `get_embed_client()` thread-safe (DCL); helper `reset_clients()` para testes. (2) `settings.ollama_embed_timeout: float = Field(default=5.0, ge=1.0, le=120.0)` substitui o hardcode `_EMBED_HTTP_TIMEOUT`. (3) Consumers refatorados: `generation/llm.py` (remove singleton local), `verification/entropy.py` (não-singleton vira singleton compartilhado), `retrieval/ollama_embeddings.py` (singleton local removido). 6 novos testes em `tests/test_ollama_clients.py` (singleton chat, singleton embed, timeouts, reset, independência); patch ajustado em `tests/test_verification.py` (passa a mockar `get_chat_client`); 1 teste de `caplog` em `tests/test_integration.py` validando emissão de `chat.access` com username + session_id. Critério "nenhum `ollama.Client(...)` fora de `core/ollama_clients.py`" verificado por grep. 136 testes (era 129; +7), cobertura 85.87% (era 83.23%; +2.64 pp). Wiki externa consultada (correção comportamental #1 do review T75): `ollama.md` cobre setup mas sem pattern de connection pool catalogado, decisão arquitetural própria.
+
+#### Log de Andamento
+
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-05-26 | 1 | Wiki externa consultada (ollama.md, tema-deploy-llm.md); reconhecimento dos 3 sites de cliente; T76 registrada com critérios verificáveis | em andamento |
+| 2026-05-26 | 1 | Implementação por etapas (core module, settings, 3 consumers, 7 testes); 8/8 critérios cumpridos no auto-review | concluída |
+
 ### TASK-T75 — Correções pós-review (arquivamento, ollama timeout, /chat logging) ✓
 - **Concluída em:** 2026-05-26
 - **Branch:** chore/TASK-T75-post-review-fixes

@@ -36,20 +36,21 @@
 | 52 | 2026-05-26 | TASK-T68 | minor | 5 arquivos — core/config.py, generation/llm.py, verification/entropy.py, tests/test_llm.py, tests/test_verification.py | aprovado | Ollama Client com timeout (`ollama_timeout` settings, default 120s, bounds 1-600); wrapper `_ollama_chat` testável; error handling em `generate` (RequestError/ResponseError/TimeoutError/ConnectionError); singleton thread-safe `_ollama_client`. Cache local de embeddings em `_cluster_responses` reduz embed calls de O(N²) para O(N único). Tests refatorados (7 mocks atualizados + 2 timeouts + 1 cache). 126 testes, cobertura 84.80%. |
 | 53 | 2026-05-26 | TASK-T69 | major | 3 arquivos — tests/test_vector_store.py, tests/test_embedder.py, tests/test_integration.py | aprovado | Robustez de testes: `ScoredPoint` real (não MagicMock) em test_vector_store; 3 edge cases em test_embedder (string vazia/longa/Unicode); autouse fixture `_clear_sessions_cache` em test_integration evita leak entre testes. Coverage critério ≥50% alcançado: **84.80%**. Critérios de verification e Ollama already cobertos por T64+T68. 129 testes, cobertura 84.80%. |
 | 54 | 2026-05-26 | TASK-T75 | minor | 4 arquivos — .claude/registry-archive.md (novo), .claude/registry.md, retrieval/ollama_embeddings.py, api/routes/chat.py | aprovado | Correções pós-review T60-T69: arquivamento regra 08.5 (entradas #1-#38 → archive; 15 ativas restantes); ollama_embeddings com `Client(timeout=5.0)` + retries reduzidos para 4 (worst-case ~25s, era indeterminado); logger.info `chat.access` + warnings nos paths 503. Padrões Recorrentes ampliados com push sem autorização, arquivamento esquecido e checklist agêntico ausente. 129 testes, cobertura 83.23%. |
+| 55 | 2026-05-26 | TASK-T76 | minor | 7 arquivos — core/ollama_clients.py (novo), core/config.py, generation/llm.py, verification/entropy.py, retrieval/ollama_embeddings.py, tests/test_ollama_clients.py (novo), tests/test_verification.py, tests/test_integration.py | aprovado | Consolida 3 padrões de cliente Ollama em módulo único `core/ollama_clients.py` (singletons thread-safe). `settings.ollama_embed_timeout` substitui hardcode. Critério "nenhum `ollama.Client(...)` fora de core" verificado por grep. 7 novos testes (6 cobrindo singletons/timeouts/reset/independência + 1 caplog para chat.access). 136 testes, cobertura 85.87%. Wiki externa consultada (correção comportamental #1 do review T75). |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-26 (TASK-T75 — correções pós-review)
+- **Última atualização:** 2026-05-26 (TASK-T76 — consolidação de clientes Ollama)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** chore/TASK-T75-post-review-fixes
+- **Branch ativa:** refactor/TASK-T76-ollama-client-consolidation
 - **Dependências alteradas recentemente:** nenhuma desde T60 — todas em main
-- **Testes passando:** sim — 129 passed, cobertura 83.23%; ruff + format + mypy strict em todos críticos ok
-- **Divergências externas pendentes:** PRs #74-#78 mergeadas em main; T75 local
-- **Última task concluída:** TASK-T75 — arquivamento de registry, timeout reduzido em ollama_embeddings, logging de acesso em /chat
+- **Testes passando:** sim — 136 passed, cobertura 85.87%; ruff + format + mypy strict em todos críticos ok
+- **Divergências externas pendentes:** PRs #74-#79 mergeadas em main; T76 local
+- **Última task concluída:** TASK-T76 — `core/ollama_clients.py` centralizado, 3 consumers consolidados, 7 testes
 - **Backlog ativo:** 5 tasks pendentes (T70 ativa — hardening eval pipeline; T71–T74 enfileiradas)
-- **PRs abertos:** nenhum; PR T75 a abrir após push
+- **PRs abertos:** nenhum; PR T76 a abrir após push (com autorização)
 
 ## Pendências Conhecidas
 

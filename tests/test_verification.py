@@ -131,12 +131,16 @@ def test_generate_samples_propagates_when_all_fail() -> None:
 
 
 def _patch_ollama_client(response: dict[str, Any]) -> Any:
-    """Patcha ``ollama.Client`` para retornar um mock cujo ``chat`` devolve ``response``."""
+    """Patcha ``get_chat_client`` para retornar um mock cujo ``chat`` devolve ``response``.
+
+    Após TASK-T76, ``_generate_one_ollama`` consome o singleton centralizado em
+    :mod:`core.ollama_clients`; o mock vai direto na função de acesso.
+    """
     from unittest.mock import MagicMock
 
     fake = MagicMock()
     fake.chat.return_value = response
-    return patch.object(entropy_module.ollama, "Client", return_value=fake)
+    return patch.object(entropy_module, "get_chat_client", return_value=fake)
 
 
 def test_generate_one_ollama_handles_missing_message_key() -> None:
