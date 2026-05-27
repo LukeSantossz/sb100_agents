@@ -16,10 +16,21 @@ import argparse
 import csv
 import json
 import random
+import sys
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from statistics import mean, median
+
+# Permite `from eval._utils import ...` em execucao standalone
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from eval._utils import (
+    DEFAULT_HUMAN_SAMPLE_PATH,
+    DEFAULT_JUDGED_RESULTS_PATH,
+    DEFAULT_REPORT_PATH,
+    validate_dataset_schema,
+)
 
 
 def load_judged_results(input_path: str) -> dict:
@@ -253,11 +264,11 @@ def export_human_sample(
 
 
 def generate_report(
-    input_path: str = "eval/results/judged_results.json",
-    report_path: str = "eval/results/report.md",
-    sample_path: str = "eval/results/human_sample.csv",
+    input_path: str = str(DEFAULT_JUDGED_RESULTS_PATH),
+    report_path: str = str(DEFAULT_REPORT_PATH),
+    sample_path: str = str(DEFAULT_HUMAN_SAMPLE_PATH),
     sample_size: int = 30,
-) -> None:
+) -> bool:
     """
     Gera relatorio completo da avaliacao.
 
@@ -266,9 +277,13 @@ def generate_report(
         report_path: Caminho do relatorio MD
         sample_path: Caminho do CSV de amostra humana
         sample_size: Tamanho da amostra humana
+
+    Returns:
+        True se o relatorio foi gerado; False se nao havia julgamentos validos.
     """
     # Carrega dados
     dataset = load_judged_results(input_path)
+    validate_dataset_schema(dataset, ["results"])
     results = dataset.get("results", [])
     metadata = dataset.get("metadata", {})
 
@@ -280,7 +295,7 @@ def generate_report(
 
     if not judgments:
         print("Nenhum julgamento encontrado. Verifique o arquivo de entrada.")
-        return
+        return False
 
     # Gera estatisticas
     score_distribution = generate_score_distribution(judgments)
@@ -304,23 +319,25 @@ def generate_report(
     sample = export_human_sample(judgments, sample_path, sample_size)
     print(f"Amostra humana ({len(sample)} itens) salva em: {sample_path}")
 
+    return True
+
 
 def main():
     parser = argparse.ArgumentParser(description="Gera relatorio sumario da avaliacao")
     parser.add_argument(
         "--input",
-        default="eval/results/judged_results.json",
-        help="Caminho do dataset julgado (padrao: eval/results/judged_results.json)",
+        default=str(DEFAULT_JUDGED_RESULTS_PATH),
+        help=f"Caminho do dataset julgado (padrao: {DEFAULT_JUDGED_RESULTS_PATH})",
     )
     parser.add_argument(
         "--report",
-        default="eval/results/report.md",
-        help="Caminho do relatorio (padrao: eval/results/report.md)",
+        default=str(DEFAULT_REPORT_PATH),
+        help=f"Caminho do relatorio (padrao: {DEFAULT_REPORT_PATH})",
     )
     parser.add_argument(
         "--sample",
-        default="eval/results/human_sample.csv",
-        help="Caminho do CSV de amostra humana (padrao: eval/results/human_sample.csv)",
+        default=str(DEFAULT_HUMAN_SAMPLE_PATH),
+        help=f"Caminho do CSV de amostra humana (padrao: {DEFAULT_HUMAN_SAMPLE_PATH})",
     )
     parser.add_argument(
         "--sample-size",
@@ -337,15 +354,15 @@ def main():
         print("Execute primeiro: python eval/judge.py")
         return 1
 
-    # Gera relatorio
-    generate_report(
+    # Gera relatorio; exit 1 quando nenhum julgamento valido
+    ok = generate_report(
         input_path=args.input,
         report_path=args.report,
         sample_path=args.sample,
         sample_size=args.sample_size,
     )
 
-    return 0
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

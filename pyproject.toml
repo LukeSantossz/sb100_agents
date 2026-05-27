@@ -97,6 +97,8 @@ ignore_errors = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+# Adds project root to sys.path so non-package directories (e.g. eval/) are importable in tests
+pythonpath = ["."]
 addopts = [
     "-v",
     "--cov=api",
