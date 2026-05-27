@@ -14,17 +14,22 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Carrega variaveis de ambiente do .env
-load_dotenv(Path(__file__).parent.parent / ".env")
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import argparse
 import json
 import os
 import re
+import sys
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
 
 import fitz  # PyMuPDF
+
+# Permite `from eval._utils import ...` em execucao standalone
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from eval._utils import DEFAULT_QUESTIONS_PATH, is_valid_question
 
 # Providers disponiveis: groq, ollama, openrouter
 DEFAULT_PROVIDER = "groq"
@@ -175,30 +180,35 @@ def generate_questions_openrouter(
 
 
 def parse_questions_json(content: str) -> list[str]:
-    """Extrai lista de perguntas do JSON retornado pelo LLM."""
+    """Extrai lista de perguntas do JSON retornado pelo LLM.
+
+    Aplica filtro de qualidade `is_valid_question` (contem '?', 20-500 chars)
+    para descartar lixo do LLM (linhas vazias, fragmentos, prefacios).
+    """
+    candidates: list[str] = []
+
     # Tenta extrair JSON array do conteudo
     json_match = re.search(r"\[.*\]", content, re.DOTALL)
     if json_match:
         try:
-            questions = json.loads(json_match.group())
-            if isinstance(questions, list):
-                return [q for q in questions if isinstance(q, str) and q.strip()]
+            parsed = json.loads(json_match.group())
+            if isinstance(parsed, list):
+                candidates = [q for q in parsed if isinstance(q, str) and q.strip()]
         except json.JSONDecodeError:
             pass
 
-    # Fallback: extrai linhas que parecem perguntas
-    lines = content.split("\n")
-    questions = []
-    for line in lines:
-        line = line.strip()
-        # Remove prefixos numerados
-        line = re.sub(r"^[\d]+[.\-\)]\s*", "", line)
-        line = re.sub(r'^["\']\s*', "", line)
-        line = re.sub(r'\s*["\']$', "", line)
-        if line and "?" in line:
-            questions.append(line)
+    if not candidates:
+        # Fallback: extrai linhas que parecem perguntas
+        for raw_line in content.split("\n"):
+            line = raw_line.strip()
+            # Remove prefixos numerados
+            line = re.sub(r"^[\d]+[.\-\)]\s*", "", line)
+            line = re.sub(r'^["\']\s*', "", line)
+            line = re.sub(r'\s*["\']$', "", line)
+            if line and "?" in line:
+                candidates.append(line)
 
-    return questions
+    return [q.strip() for q in candidates if is_valid_question(q)]
 
 
 def collect_files(path: str) -> list[str]:
@@ -331,8 +341,8 @@ def main():
     )
     parser.add_argument(
         "--output",
-        default="eval/dataset/questions.json",
-        help="Caminho do arquivo de saida (padrao: eval/dataset/questions.json)",
+        default=str(DEFAULT_QUESTIONS_PATH),
+        help=f"Caminho do arquivo de saida (padrao: {DEFAULT_QUESTIONS_PATH})",
     )
 
     args = parser.parse_args()

@@ -5,6 +5,10 @@ Itera sobre o dataset de perguntas, executa POST /chat para cada uma
 com session_id unico (impede contaminacao de historico), e salva as
 respostas do SB100 no dataset de resultados.
 
+Suporta checkpointing: a cada `CHECKPOINT_EVERY` resultados, persiste
+estado parcial em `evaluation_checkpoint.json`. Se interrompido, a
+proxima execucao retoma apenas das perguntas pendentes.
+
 Uso:
     python eval/run_evaluation.py
     python eval/run_evaluation.py --api-url http://localhost:8000 --concurrent 5
@@ -13,6 +17,7 @@ Uso:
 import argparse
 import asyncio
 import json
+import sys
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,11 +25,22 @@ from pathlib import Path
 import httpx
 from tqdm import tqdm
 
+# Permite `from eval._utils import ...` em execucao standalone
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from eval._utils import (
+    DEFAULT_CHECKPOINT_PATH,
+    DEFAULT_EVAL_RESULTS_PATH,
+    DEFAULT_REFERENCES_PATH,
+    validate_dataset_schema,
+)
+
 # Configuracoes padrao
 DEFAULT_API_URL = "http://localhost:8000"
 DEFAULT_PROFILE = {"name": "eval", "expertise": "intermediate"}
 DEFAULT_CONCURRENT = 1  # Requests simultaneos (1 = sequencial)
 DEFAULT_TIMEOUT = 300.0  # Timeout por request em segundos (5 min para Ollama local)
+CHECKPOINT_EVERY = 10  # Persiste estado parcial a cada N resultados
 
 
 async def call_chat_api(
@@ -81,26 +97,79 @@ async def call_chat_api(
         }
 
 
+def load_checkpoint(checkpoint_path: Path) -> list[dict]:
+    """Carrega resultados parciais de um checkpoint, se existir.
+
+    Retorna lista vazia se o checkpoint nao existir ou estiver corrompido.
+    """
+    if not checkpoint_path.exists():
+        return []
+    try:
+        with open(checkpoint_path, encoding="utf-8") as f:
+            data = json.load(f)
+        results = data.get("results", [])
+        if isinstance(results, list):
+            return [r for r in results if isinstance(r, dict) and "question_id" in r]
+        return []
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Aviso: checkpoint corrompido ({e}); ignorando")
+        return []
+
+
+def save_checkpoint(checkpoint_path: Path, results: list[dict]) -> None:
+    """Persiste resultados parciais em arquivo atomico.
+
+    Escreve em `.tmp` e renomeia, evitando corrupcao se for interrompido
+    durante a escrita.
+    """
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = checkpoint_path.with_suffix(checkpoint_path.suffix + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"results": results}, f, ensure_ascii=False, indent=2)
+    tmp.replace(checkpoint_path)
+
+
 async def run_evaluation_async(
     questions: list[dict],
     api_url: str = DEFAULT_API_URL,
     concurrent: int = DEFAULT_CONCURRENT,
+    checkpoint_path: Path = DEFAULT_CHECKPOINT_PATH,
+    checkpoint_every: int = CHECKPOINT_EVERY,
 ) -> list[dict]:
     """
-    Executa avaliacao de todas as perguntas de forma assincrona.
+    Executa avaliacao de todas as perguntas de forma assincrona, com
+    persistencia incremental de progresso via checkpoint.
 
     Args:
         questions: Lista de objetos question do dataset
         api_url: URL base da API
         concurrent: Numero de requests simultaneos
+        checkpoint_path: Arquivo para gravar progresso parcial
+        checkpoint_every: Intervalo (em resultados completos) para flush
 
     Returns:
-        Lista de resultados
+        Lista de resultados (existentes do checkpoint + novos)
     """
-    results = []
+    existing = load_checkpoint(checkpoint_path)
+    completed_ids = {r["question_id"] for r in existing}
+    pending = [q for q in questions if q["question_id"] not in completed_ids]
+
+    if existing:
+        print(
+            f"Checkpoint encontrado em {checkpoint_path}: "
+            f"{len(existing)} resultados ja processados; "
+            f"retomando {len(pending)} pendentes"
+        )
+
+    results: list[dict] = list(existing)
+
+    if not pending:
+        print("Nenhuma pergunta pendente.")
+        return results
+
     semaphore = asyncio.Semaphore(concurrent)
 
-    async def process_question(question_obj: dict) -> dict:
+    async def process_question(question_obj: dict, client: httpx.AsyncClient) -> dict:
         async with semaphore:
             result = await call_chat_api(
                 client,
@@ -125,10 +194,11 @@ async def run_evaluation_async(
             print(f"API disponivel: {api_url}")
         except Exception as e:
             print(f"Erro: API nao disponivel em {api_url}: {e}")
-            return []
+            return results
 
         # Processa perguntas com barra de progresso
-        tasks = [process_question(q) for q in questions]
+        tasks = [process_question(q, client) for q in pending]
+        new_since_checkpoint = 0
 
         for task in tqdm(
             asyncio.as_completed(tasks),
@@ -137,6 +207,11 @@ async def run_evaluation_async(
         ):
             result = await task
             results.append(result)
+            new_since_checkpoint += 1
+
+            if new_since_checkpoint >= checkpoint_every:
+                save_checkpoint(checkpoint_path, results)
+                new_since_checkpoint = 0
 
     # Reordena por question_id para manter ordem original
     results.sort(key=lambda x: x["question_id"])
@@ -145,10 +220,11 @@ async def run_evaluation_async(
 
 
 def run_evaluation(
-    input_path: str = "eval/dataset/reference_answers.json",
-    output_path: str = "eval/results/evaluation_results.json",
+    input_path: str = str(DEFAULT_REFERENCES_PATH),
+    output_path: str = str(DEFAULT_EVAL_RESULTS_PATH),
     api_url: str = DEFAULT_API_URL,
     concurrent: int = DEFAULT_CONCURRENT,
+    checkpoint_path: str | None = None,
 ) -> dict:
     """
     Executa avaliacao completa do SB100.
@@ -158,21 +234,27 @@ def run_evaluation(
         output_path: Caminho do arquivo de saida
         api_url: URL base da API
         concurrent: Numero de requests simultaneos
+        checkpoint_path: Caminho do checkpoint (padrao: DEFAULT_CHECKPOINT_PATH)
 
     Returns:
         Dataset de resultados
     """
+    checkpoint = Path(checkpoint_path) if checkpoint_path else DEFAULT_CHECKPOINT_PATH
+
     # Carrega dataset
     with open(input_path, encoding="utf-8") as f:
         dataset = json.load(f)
+
+    validate_dataset_schema(dataset, ["metadata", "questions"])
 
     questions = dataset["questions"]
     print(f"Carregadas {len(questions)} perguntas de {input_path}")
     print(f"API URL: {api_url}")
     print(f"Requests simultaneos: {concurrent}")
+    print(f"Checkpoint: {checkpoint} (a cada {CHECKPOINT_EVERY} resultados)")
 
     # Executa avaliacao
-    results = asyncio.run(run_evaluation_async(questions, api_url, concurrent))
+    results = asyncio.run(run_evaluation_async(questions, api_url, concurrent, checkpoint))
 
     if not results:
         print("Nenhum resultado obtido. Verifique se a API esta disponivel.")
@@ -203,6 +285,10 @@ def run_evaluation(
     with open(output, "w", encoding="utf-8") as f:
         json.dump(results_dataset, f, ensure_ascii=False, indent=2)
 
+    # Limpa checkpoint ao concluir com sucesso
+    if checkpoint.exists():
+        checkpoint.unlink()
+
     print(f"\nResultados salvos em: {output}")
     print(f"Requests bem-sucedidos: {successful}/{len(results)}")
     if failed > 0:
@@ -211,19 +297,19 @@ def run_evaluation(
     return results_dataset
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Executa avaliacao do SB100 contra o dataset de perguntas"
     )
     parser.add_argument(
         "--input",
-        default="eval/dataset/reference_answers.json",
-        help="Caminho do dataset com referencias (padrao: eval/dataset/reference_answers.json)",
+        default=str(DEFAULT_REFERENCES_PATH),
+        help=f"Caminho do dataset com referencias (padrao: {DEFAULT_REFERENCES_PATH})",
     )
     parser.add_argument(
         "--output",
-        default="eval/results/evaluation_results.json",
-        help="Caminho do arquivo de saida (padrao: eval/results/evaluation_results.json)",
+        default=str(DEFAULT_EVAL_RESULTS_PATH),
+        help=f"Caminho do arquivo de saida (padrao: {DEFAULT_EVAL_RESULTS_PATH})",
     )
     parser.add_argument(
         "--api-url",
@@ -235,6 +321,11 @@ def main():
         type=int,
         default=DEFAULT_CONCURRENT,
         help=f"Requests simultaneos (padrao: {DEFAULT_CONCURRENT})",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        default=str(DEFAULT_CHECKPOINT_PATH),
+        help=f"Arquivo de checkpoint (padrao: {DEFAULT_CHECKPOINT_PATH})",
     )
 
     args = parser.parse_args()
@@ -253,6 +344,7 @@ def main():
         output_path=args.output,
         api_url=args.api_url,
         concurrent=args.concurrent,
+        checkpoint_path=args.checkpoint,
     )
 
     return 0 if result else 1

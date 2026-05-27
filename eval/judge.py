@@ -14,17 +14,26 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Carrega variaveis de ambiente do .env
-load_dotenv(Path(__file__).parent.parent / ".env")
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import argparse
 import json
 import os
-import random
 import re
+import sys
 from datetime import UTC, datetime
-from pathlib import Path
 
 from tqdm import tqdm
+
+# Permite `from eval._utils import ...` em execucao standalone
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from eval._utils import (
+    DEFAULT_EVAL_RESULTS_PATH,
+    DEFAULT_JUDGED_RESULTS_PATH,
+    deterministic_sb100_position_is_a,
+    validate_dataset_schema,
+)
 
 # Provider padrao
 DEFAULT_PROVIDER = "groq"
@@ -198,8 +207,8 @@ def normalize_verdict(verdict: str, sb100_was_a: bool) -> str:
 
 
 def run_judge(
-    input_path: str = "eval/results/evaluation_results.json",
-    output_path: str = "eval/results/judged_results.json",
+    input_path: str = str(DEFAULT_EVAL_RESULTS_PATH),
+    output_path: str = str(DEFAULT_JUDGED_RESULTS_PATH),
     provider: str = DEFAULT_PROVIDER,
     model: str | None = None,
 ) -> dict:
@@ -229,17 +238,19 @@ def run_judge(
     with open(input_path, encoding="utf-8") as f:
         dataset = json.load(f)
 
+    validate_dataset_schema(dataset, ["metadata", "results"])
+
     results = dataset["results"]
     print(f"Carregados {len(results)} resultados de {input_path}")
     print(f"Modelo juiz: {model} ({provider})")
 
     # Processa cada resultado
     judged_results = []
-    random.seed(42)  # Reproducibilidade
 
     for result in tqdm(results, desc="Julgando respostas"):
         sb100_answer = result.get("sb100_answer", "")
         reference_answers = result.get("reference_answers", [])
+        question_id = result.get("question_id", "")
 
         if not result.get("sb100_success", True):
             # Pula resultados com erro
@@ -255,13 +266,21 @@ def run_judge(
 
         for ref in reference_answers:
             ref_model = ref.get("reference_model", "unknown")
-            ref_answer = ref.get("reference_answer", "")
+            ref_answer = ref.get("reference_answer")
+            ref_error = ref.get("error")
 
-            if not ref_answer or ref_answer.startswith("[ERRO]"):
+            # Ignora referencias com erro estruturado (novo formato),
+            # ausentes ou no formato legado "[ERRO] ..."
+            if (
+                ref_error is not None
+                or not ref_answer
+                or (isinstance(ref_answer, str) and ref_answer.startswith("[ERRO]"))
+            ):
                 continue
 
-            # Alterna ordem para evitar vies de posicao (50% cada)
-            sb100_is_a = random.random() < 0.5
+            # A/B deterministico via hash(question_id) — evita vies sem
+            # depender de random.seed/PYTHONHASHSEED
+            sb100_is_a = deterministic_sb100_position_is_a(question_id)
 
             if sb100_is_a:
                 answer_a, answer_b = sb100_answer, ref_answer
@@ -356,13 +375,13 @@ def main():
     parser = argparse.ArgumentParser(description="Executa julgamento automatico das respostas")
     parser.add_argument(
         "--input",
-        default="eval/results/evaluation_results.json",
-        help="Caminho dos resultados da avaliacao (padrao: eval/results/evaluation_results.json)",
+        default=str(DEFAULT_EVAL_RESULTS_PATH),
+        help=f"Caminho dos resultados da avaliacao (padrao: {DEFAULT_EVAL_RESULTS_PATH})",
     )
     parser.add_argument(
         "--output",
-        default="eval/results/judged_results.json",
-        help="Caminho do arquivo de saida (padrao: eval/results/judged_results.json)",
+        default=str(DEFAULT_JUDGED_RESULTS_PATH),
+        help=f"Caminho do arquivo de saida (padrao: {DEFAULT_JUDGED_RESULTS_PATH})",
     )
     parser.add_argument(
         "--provider",
