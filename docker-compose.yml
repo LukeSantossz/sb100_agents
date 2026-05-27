@@ -1,8 +1,8 @@
 services:
   # ============================================================================
-  # Profile: infra - Serviços de infraestrutura (Qdrant)
+  # Profile: infra - Servicos de infraestrutura (Qdrant)
   # Uso: docker compose --profile infra up -d
-  # Nota: Ollama roda localmente (não via Docker). Veja README.md / SETUP.md.
+  # Nota: Ollama roda localmente (nao via Docker). Veja README.md / SETUP.md.
   # ============================================================================
 
   qdrant:
@@ -17,10 +17,24 @@ services:
     restart: unless-stopped
     networks:
       - smartb100_net
+    healthcheck:
+      # Qdrant expoe a versao em / com status 200 quando saudavel.
+      # Imagem oficial nao traz curl; usamos /proc/net/tcp como liveness barato.
+      test: ["CMD-SHELL", "grep -q ':18BD' /proc/net/tcp || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ============================================================================
-  # Profile: app - Serviços de aplicação (API + Gradio UI)
+  # Profile: app - Servicos de aplicacao (API + Gradio UI)
   # Uso: docker compose --profile infra --profile app up -d
+  # OLLAMA_HOST override: Linux nativo usa http://172.17.0.1:11434 ou host-net.
   # ============================================================================
 
   api:
@@ -35,14 +49,26 @@ services:
       - QDRANT_URL=http://qdrant:6333
       - CHAT_MODEL=llama3.2:3b
       - EMBED_MODEL=nomic-embed-text
-      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
     volumes:
       - ./smartb100_v2.db:/app/smartb100_v2.db
     restart: unless-stopped
     depends_on:
-      - qdrant
+      qdrant:
+        condition: service_healthy
     networks:
       - smartb100_net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   gradio:
     build:
@@ -57,9 +83,21 @@ services:
     command: ["python", "ui/chat_ui.py", "--api-url", "http://api:8000", "--port", "7860"]
     restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - smartb100_net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:7860/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   smartb100_net:

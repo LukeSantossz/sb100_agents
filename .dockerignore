@@ -1,0 +1,79 @@
+# ============================================================================
+# .dockerignore - Reduz contexto de build da Docker.
+# Mantém scripts/ e archives/ disponíveis para indexação ad-hoc no container.
+# ============================================================================
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+Lib/
+Include/
+pyvenv.cfg
+.python-version
+
+# Python bytecode and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Tests and coverage
+tests/
+.pytest_cache/
+.coverage
+coverage.xml
+
+# Eval pipeline (não usado em runtime do container)
+eval/
+
+# Project meta (não precisa em runtime)
+.claude/
+
+# Documentation (não precisa em runtime)
+*.md
+docs/
+
+# CI/CD
+.github/
+
+# Environment files (passados via -e ou env_file no compose)
+.env
+.env.local
+
+# Local databases (montados via volume)
+smartb100_v2.db
+smartb100.db
+
+# Qdrant local storage (montado via volume)
+qdrant_storage/
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*.temp
+*.log
+
+# Docker artifacts (evita recursão)
+Dockerfile*
+.dockerignore
+docker-compose*.yml
