@@ -350,10 +350,6 @@ sb100_agents/
 - **Breaking auth change** — users created before the bcrypt + JWT gate (SHA-256 hashes) must be re-registered.
 - **Verification adds latency** — entropy sampling generates multiple candidate answers. It is opt-in via `VERIFICATION_ENABLED` and falls back to a neutral score on failure rather than blocking the answer.
 
-## Automated Issue Implementation
-
-Issues labeled `claude-auto` are automatically implemented by Claude Code via GitHub Actions. Mention `@claude` in any issue or PR comment for interactive assistance. Setup: add the `ANTHROPIC_API_KEY` secret and create the `claude-auto` label.
-
 ## Contributing
 
 See [`CONTRIBUTING.md`](./CONTRIBUTING.md). Quick summary: fork, branch (`type/TASK-NNN-description`), tests, Conventional Commits, PR.

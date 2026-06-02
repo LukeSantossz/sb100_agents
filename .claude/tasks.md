@@ -154,6 +154,13 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T80 — Remover seção Automated Issue Implementation do README ✓
+- **Concluída em:** 2026-06-02
+- **Branch:** main (commit direto autorizado — patch de documentação)
+- **Commit:** pendente (esta sessão)
+- **Avaliação:** aprovado
+- **Nota:** Removida a seção "## Automated Issue Implementation" (claude-auto / @claude) do `README.md` a pedido do usuário — automação não será usada no projeto. Fluxo `Known Issues & Limitations` → `Contributing` preservado. Escopo exclusivamente `README.md`; workflows em `.github/workflows/` intocados. Avaliação patch (4.1 conformidade + 4.3 impacto resumido) aprovada.
+
 ### TASK-T79 — Reescrita do README conforme readme_model.md ✓
 - **Concluída em:** 2026-06-02
 - **Branch:** main (commit direto autorizado pelo usuário — sem branch dedicada)
