@@ -154,6 +154,20 @@ A verificacao atual mostrou que `ruff check .` passa, mas `mypy retrieval/ gener
 
 > Tasks finalizadas. Movidas para cá após conclusão e atualização do Registro de Projeto (`registry.md`). Nunca remova entradas — o histórico é cumulativo.
 
+### TASK-T79 — Reescrita do README conforme readme_model.md ✓
+- **Concluída em:** 2026-06-02
+- **Branch:** sugerida `docs/TASK-T79-readme-portfolio-model` (commit/push pendentes — developer)
+- **Commit:** pendente (esta sessão)
+- **PR:** pendente (aguarda autorização do usuário)
+- **Avaliação:** aprovado
+- **Nota:** README reescrito alinhado ao template de portfólio `readme_model.md`. Ordem canônica aplicada: What It Does → What It Is → Tech Stack → Architecture → Engineering Decisions → Getting Started → API Reference → Project Structure → Project Status → Known Issues & Limitations → Contributing → License. (1) Novas seções: `What It Does` (bullets de capacidade), `What It Is` (classifica o artefato: REST API + Gradio UI opcional), `Tech Stack` (tabela camada→tecnologia), `Project Status` (Done/Pending checklist — Roadmap antigo absorvido em Pending), `Known Issues & Limitations` (obrigatória no modelo: latência CPU, SQLite single-writer, bind-mount Windows, gate de coverage, breaking auth, latência de verificação). (2) `Engineering Decisions` migrada de 2→3 colunas, adicionando "Alternative considered" para 8 decisões. (3) Badges: removido coverage 25% (amarelo = fraqueza, proibido pelo modelo) e Gradio/Status; finais = Python, FastAPI, CI, License (ordem do modelo: linguagem→framework→CI→license). (4) Conteúdo técnico forte preservado verbatim: Architectural Style + 3 diagramas Mermaid (logical flowchart, sequence, deployment topology). (5) Sem dados inventados — 205 testes/~83% cobertura, CHAT_TIMEOUT 600s, rate-limits 5/15min e 3/h, modelos e portas conferidos contra registry/CLAUDE.md. (6) Comentários HTML e placeholders do template não vazaram. Escopo exclusivamente `README.md`; nenhum código/config/teste alterado, logo sem reexecução de suite. Avaliação pós-implementação (4.1 conformidade / 4.2 qualidade / 4.3 impacto / 4.4 testes N/A-documentação / 4.5) aprovada.
+
+#### Log de Andamento
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-06-02 | 1 | Reconhecimento (README.md + readme_model.md); registry/quick-ref/tasks lidos; modo Desenvolvimento declarado; TASK-T79 registrada | em andamento |
+| 2026-06-02 | 1 | README reescrito (12 seções na ordem canônica, 8 decisões em 3 colunas, badges saneados, diagramas preservados); avaliação pós-implementação aprovada; registry atualizado (#63 + Estado da Codebase) | concluída |
+
 ### TASK-T78 — Cleanup de bookkeeping pós-T72 ✓
 - **Concluída em:** 2026-05-27
 - **Branch:** chore/TASK-T78-cleanup-bookkeeping

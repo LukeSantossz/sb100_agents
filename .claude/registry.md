@@ -44,19 +44,20 @@
 | 60 | 2026-05-27 | (sem task) | patch | 2 arquivos — .claude/registry.md, .claude/tasks.md (PR #86) | aprovado — **fora de fluxo** | Auditoria pós-T72: registry resync (Estado da Codebase, branches stale podadas, issues #56-58 fechadas). Branch `chore/post-T72-audit-registry-sync` (formato fora do padrão `type/TASK-NNN-descricao-curta`). Sem TASK-NNN — violação trava §00. Documentado retroativamente em TASK-T78. |
 | 61 | 2026-05-27 | (sem task) | patch | 1 arquivo — README.md (PR #87) | aprovado — **fora de fluxo** | Adição da subseção "Architectural Style" + diagrama de deployment topology no README. Branch `docs/readme-architectural-style` (formato fora do padrão). Sem TASK-NNN — violação trava §00. Documentado retroativamente em TASK-T78. |
 | 62 | 2026-05-27 | TASK-T78 | minor | 2 arquivos — .claude/tasks.md, .claude/registry.md | aprovado | Cleanup de bookkeeping pós-T72: preenchidos `Commit` + `PR` reais em T69-T72/T75-T77 (Tasks Concluídas); PRs #86 e #87 registrados como exceções no Histórico (#60/#61); Estado da Codebase ressincronizado para HEAD `17abb16`; contagem do Padrão Recorrente "Push/PR sem autorização" incrementada com 2 novas ocorrências; 2 refs remotas stale podadas via `git fetch --prune` (branches já tinham sido deletadas no servidor pelos merges; só refs locais sobreviveram). Sem alteração de código de produção. |
+| 63 | 2026-06-02 | TASK-T79 | minor | 1 arquivo — README.md (+ .claude/tasks.md, .claude/registry.md bookkeeping) | aprovado | Reescrita do README alinhada ao template de portfólio `readme_model.md`. Ordem canônica aplicada (What It Does → What It Is → Tech Stack → Architecture → Engineering Decisions → Getting Started → API Reference → Project Structure → Project Status → Known Issues → Contributing → License). Novas seções: What It Does, What It Is, Tech Stack (tabela camada→tech), Project Status (Done/Pending), Known Issues & Limitations (obrigatória no modelo). Engineering Decisions migrada de 2→3 colunas (coluna "Alternative considered"). Badge de coverage (25% amarelo) removido — modelo exige badges só de saúde; badges finais: Python, FastAPI, CI, License. Roadmap absorvido em Project Status/Pending. Architectural Style + 3 diagramas Mermaid preservados verbatim. Sem dados inventados (números conferidos contra registry: 205 testes/~83%, CHAT_TIMEOUT 600s, rate-limits). Sem impacto em runtime/build/testes. Commit/push pendentes (developer — ponto de transferência regra 06). |
 
 ## Estado da Codebase
 
 > Atualizado a cada implementação ou verificação pós-pull. Reflete o snapshot mais recente do projeto.
 
-- **Última atualização:** 2026-05-27 (TASK-T78: cleanup de bookkeeping pós-T72)
+- **Última atualização:** 2026-06-02 (TASK-T79: reescrita do README conforme readme_model.md)
 - **Último responsável:** Assistente (sessão local)
-- **Branch ativa:** chore/TASK-T78-cleanup-bookkeeping (commit) → main após merge
+- **Branch ativa:** sugerida `docs/TASK-T79-readme-portfolio-model` (commit/push pendentes — developer)
 - **Dependências alteradas recentemente:** nenhuma desde T60 — todas em main
-- **Testes passando:** sim — 205 passed, cobertura 83.10%; ruff + format + mypy strict ok; CI verde em main (último run `26488485790` success em 2026-05-27)
-- **Divergências externas pendentes:** nenhuma — main sincronizada (HEAD `17abb16`, PR #87)
-- **Última task concluída:** TASK-T78 — cleanup bookkeeping (em andamento, commit pendente nesta sessão)
-- **Backlog ativo:** 2 tasks pendentes (T73 ativa — Langfuse tracing major; T74 enfileirada — quality gates major)
+- **Testes passando:** sim — 205 passed, cobertura 83.10%; ruff + format + mypy strict ok (T79 não altera código — sem reexecução necessária; última base verde em main HEAD `b81fe9c`)
+- **Divergências externas pendentes:** nenhuma — main sincronizada (HEAD `b81fe9c`)
+- **Última task concluída:** TASK-T79 — reescrita README (commit/push pendentes nesta sessão)
+- **Backlog ativo:** 2 tasks pendentes (T73 — Langfuse tracing major; T74 — quality gates major)
 - **PRs abertos:** nenhum
 - **Issues GitHub abertas:** 1 (#45 Langfuse — corresponde a T73)
 
