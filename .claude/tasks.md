@@ -84,6 +84,35 @@ A complexidade determina o nível de cerimônia na avaliação pós-implementaç
 > Tasks em andamento ou pendentes de implementação. O agente só pode trabalhar em tasks listadas aqui.
 > **Regra de ordenação:** A primeira task listada é a task ativa. O agente trabalha nela até conclusão, descarte ou bloqueio explícito pelo usuário. Para mudar a prioridade, o usuário reordena as tasks nesta seção.
 
+### TASK-T81
+- **Status:** em andamento
+- **Modo:** desenvolvimento
+- **Complexidade:** major
+- **Data de criação:** 2026-06-10
+
+#### Objetivo
+Remover completamente o framework de desenvolvimento `.claude/` do projeto (desvinculação total) e limpar resíduos, preparando o repositório para o ciclo de implementações orientado às issues GitHub.
+
+#### Contexto
+Decisão do usuário (2026-06-10): o fluxo de trabalho passa a ser orientado às issues abertas pela auditoria (#89–#132, além da #45). O framework (regras, tasks, registry, hooks, guides, templates) deixa de governar o repositório. Reconhecimento prévio confirmou acoplamento de runtime zero — o framework é camada de processo pura (markdown + hooks bash nunca instalados neste clone).
+
+#### Escopo Técnico
+- **Arquivos/módulos envolvidos:** `.claude/**` (29 tracked + untracked), `README.md`, `CONTRIBUTING.md`, `.gitignore`, `pyproject.toml`, `profiling/` (placeholder vazio), artefatos raiz (`AUDIT-2026-06-10.*`, `coverage.xml`)
+- **Dependências necessárias:** nenhuma (framework não possui dependências no gerenciador de pacotes)
+- **Impacto em funcionalidades existentes:** nenhum em runtime; convenções de contribuição simplificadas no CONTRIBUTING.md
+
+#### Critérios de Aceite
+- [ ] `.claude/` removida (tracked + untracked) e adicionada ao `.gitignore` (artefatos locais futuros não rastreados)
+- [ ] Backlog preservado: TASK-T74 externalizada como issue GitHub antes da exclusão deste arquivo (T73 já é a issue #45)
+- [ ] Zero referências ao framework fora dos guards de higiene (`.gitignore`/`.dockerignore`)
+- [ ] `profiling/` removido junto com suas 4 referências no `pyproject.toml` e menções no README
+- [ ] `pytest`, `ruff` e `mypy` verdes pós-remoção
+
+#### Log de Andamento
+| Data | Sessão | Ação Realizada | Status ao Final |
+|------|--------|----------------|-----------------|
+| 2026-06-10 | 1 | Reconhecimento executado (inventário .claude, grep de referências, ruff, varredura de código morto — acoplamento runtime zero); plano apresentado e aprovado pelo usuário (remover untracked, sem CLAUDE.md raiz, profiling incluído); T81 registrada | em andamento |
+
 ### TASK-T73
 - **Status:** pendente
 - **Modo:** desenvolvimento
