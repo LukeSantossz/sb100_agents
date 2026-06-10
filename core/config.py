@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     Carrega valores de variáveis de ambiente com fallback para defaults.
     O arquivo .env na raiz do projeto é lido automaticamente.
 
-    Bounds aplicados (regra 04.2 / TASK-T62):
+    Bounds aplicados (TASK-T62):
         - ``top_k``: 1..100
         - ``buffer_maxlen``: 1..100
         - ``llm_max_tokens``: 1..4096

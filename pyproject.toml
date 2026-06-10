@@ -36,7 +36,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["api*", "core*", "database*", "generation*", "memory*", "profiling*", "retrieval*", "verification*", "ui*"]
+include = ["api*", "core*", "database*", "generation*", "memory*", "retrieval*", "verification*", "ui*"]
 exclude = ["tests*", "eval*", "scripts*"]
 
 [tool.ruff]
@@ -81,7 +81,6 @@ module = [
     "retrieval.*",
     "generation.*",
     "memory.*",
-    "profiling.*",
     "verification.*",
 ]
 strict = true
@@ -106,7 +105,6 @@ addopts = [
     "--cov=retrieval",
     "--cov=generation",
     "--cov=memory",
-    "--cov=profiling",
     "--cov=verification",
     "--cov-report=term-missing",
     "--cov-report=xml",
@@ -118,7 +116,7 @@ addopts = [
 # ============================================================================
 [tool.coverage.run]
 branch = true
-source = ["api", "core", "retrieval", "generation", "memory", "profiling", "verification"]
+source = ["api", "core", "retrieval", "generation", "memory", "verification"]
 omit = ["tests/*", "eval/*", "scripts/*"]
 
 [tool.coverage.report]
