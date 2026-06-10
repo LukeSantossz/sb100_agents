@@ -44,7 +44,7 @@ SmartB100 is a **REST API** (FastAPI) with an optional **Gradio web UI** that co
 
 SmartB100 is a **modular monolith with composed deployment**:
 
-- **One application process.** `api/main.py` loads every domain module (`api/routes/*`, `core/*`, `retrieval/*`, `memory/*`, `generation/*`, `verification/*`, `profiling/*`, `database/*`) into a single FastAPI runtime. Inter-module communication is **function calls inside the same Python interpreter** — no RPC, no message broker, no queue.
+- **One application process.** `api/main.py` loads every domain module (`api/routes/*`, `core/*`, `retrieval/*`, `memory/*`, `generation/*`, `verification/*`, `database/*`) into a single FastAPI runtime. Inter-module communication is **function calls inside the same Python interpreter** — no RPC, no message broker, no queue.
 - **Eight internal layers, one binary.** The folder boundary is a convention for testability and review; it is **not** a network boundary.
 - **External processes are limited to genuine third-party services.** No domain code lives outside the API process.
 
@@ -301,7 +301,6 @@ sb100_agents/
 ├── retrieval/                      # Embeddings + Qdrant vector search
 ├── generation/                     # LLM response generation
 ├── memory/                         # Conversation buffer (FIFO)
-├── profiling/                      # User expertise adaptation
 ├── verification/                   # Semantic entropy + verification gate
 ├── database/                       # SQLite + PDF semantic chunking
 ├── eval/                           # 5-step evaluation pipeline
