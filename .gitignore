@@ -41,8 +41,8 @@ Thumbs.db
 *.temp
 *.log
 
-# AI - track .claude/ workflow files, ignore local settings
-.claude/settings.local.json
+# AI - local agent artifacts (never tracked)
+.claude/
 
 # Miscellaneous
 coverage.xml

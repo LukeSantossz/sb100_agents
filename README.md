@@ -307,11 +307,6 @@ sb100_agents/
 ├── eval/                           # 5-step evaluation pipeline
 ├── ui/                             # Gradio chat interface
 ├── tests/                          # Unit + integration tests
-├── .claude/                        # Agent workflow enforcement
-│   ├── rules/                      # Directive files (00-12)
-│   ├── registry.md                 # Project state & history
-│   ├── tasks.md                    # Task registry
-│   └── hooks/                      # Git hooks (commit-msg, pre-commit, etc.)
 ├── .github/workflows/              # CI + Claude Code automation
 ├── Dockerfile.api                  # Multi-stage build (builder + runtime)
 ├── docker-compose.yml              # Qdrant (infra) + API+Gradio (app) with healthchecks

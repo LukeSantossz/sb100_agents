@@ -22,25 +22,24 @@ docker compose --profile infra up -d
 
 ### Handling secrets
 
-- **Never commit `.env`**, `.env.local`, or any file containing real API keys or credentials. These files are in `.gitignore` and a pre-commit hook blocks `.env` from being staged.
+- **Never commit `.env`**, `.env.local`, or any file containing real API keys or credentials. These files are in `.gitignore`.
 - Copy `.env.example` to `.env` and fill in your own keys. The example file contains only safe placeholders.
 - If you accidentally expose a secret in a commit, **revoke the affected keys immediately** in their respective service dashboards (Groq, OpenRouter, etc.) and notify the maintainers.
 - For CI/CD pipelines, use [GitHub Secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions) — never hardcode credentials in workflow files.
 
 ### 3. Create a branch
 
-This project follows the `type/TASK-NNN-short-description` convention:
+This project follows the `type/short-description` convention:
 
 ```bash
-git checkout -b feat/TASK-NNN-my-feature
+git checkout -b feat/my-feature
 ```
 
 Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `build`, `ci`, `revert`
 
 ### 4. Make your changes
 
-- Follow the project code conventions (see `.claude/rules/05-convencoes.md`)
-- Naming follows the VAR Method (suffixes: Data, Info, Manager, Handler, Service, Repository...)
+- Follow the existing code style (`ruff` enforces lint and formatting)
 - Keep changes surgical — touch only what is necessary
 
 ### 5. Run tests
@@ -67,7 +66,6 @@ git commit -m "feat(auth): add password reset endpoint"
 
 ### 7. Open a Pull Request
 
-- Fill in the PR template (`.claude/pr-template.md`)
 - Describe what was done and how to test
 - Make sure CI passes
 
@@ -76,16 +74,13 @@ git commit -m "feat(auth): add password reset endpoint"
 | Item | Rule |
 |------|------|
 | Commits | `type(scope): subject` — no body, no co-authored-by |
-| Branches | `type/TASK-NNN-short-description` |
-| Naming | VAR Method |
+| Branches | `type/short-description` |
 | Tests | Required for new features and bug fixes |
 | Lint | `ruff check .` must pass with no errors |
 
-For full details, see the files in `.claude/rules/`.
-
 ## Reporting bugs
 
-Open an [issue](https://github.com/LukeSantossz/sb100_agents/issues) following the template in `.claude/issue-template.md`.
+Open an [issue](https://github.com/LukeSantossz/sb100_agents/issues) with a clear description, steps to reproduce, and expected vs actual behavior.
 
 ## Code of Conduct
 
