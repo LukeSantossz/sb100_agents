@@ -1,8 +1,8 @@
-"""Dependências compartilhadas das rotas FastAPI.
+"""Shared dependencies for the FastAPI routes.
 
-Concentra autenticação JWT consumida pelas rotas protegidas. O esquema OAuth2 é
-exposto via :data:`oauth2_scheme` e a validação completa (token + usuário ativo
-no banco) é executada por :func:`verify_token`.
+Centralizes the JWT authentication used by protected routes. The OAuth2 scheme
+is exposed via :data:`oauth2_scheme` and the full validation (token + active
+user in the database) is performed by :func:`verify_token`.
 """
 
 import logging
@@ -31,18 +31,18 @@ def verify_token(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> User:
-    """Valida JWT bearer e retorna o usuário correspondente.
+    """Validate the bearer JWT and return the matching user.
 
     Args:
-        token: Token JWT extraído do header ``Authorization: Bearer``.
-        db: Sessão SQLAlchemy injetada pelo FastAPI.
+        token: JWT extracted from the ``Authorization: Bearer`` header.
+        db: SQLAlchemy session injected by FastAPI.
 
     Returns:
-        Instância de :class:`User` correspondente ao ``sub`` do token.
+        :class:`User` instance matching the token's ``sub`` claim.
 
     Raises:
-        HTTPException: 401 se o token for inválido, expirado, sem ``sub``,
-            ou se o usuário referenciado não existir mais no banco.
+        HTTPException: 401 if the token is invalid, expired, missing ``sub``,
+            or if the referenced user no longer exists in the database.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

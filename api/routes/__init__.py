@@ -1,10 +1,10 @@
-"""Routers da API SmartB100.
+"""SmartB100 API routers.
 
-Agrupa os routers FastAPI para cada domínio funcional:
+Groups the FastAPI routers by functional domain:
 
-- **auth**: Registro e autenticação de usuários (JWT).
-- **chat**: Endpoint principal de conversação com RAG.
-- **health**: Health check para monitoramento e load balancers.
+- **auth**: User registration and authentication (JWT).
+- **chat**: Main conversation endpoint with RAG.
+- **health**: Health check for monitoring and load balancers.
 """
 
 from api.routes import auth, chat, health
