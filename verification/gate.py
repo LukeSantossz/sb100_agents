@@ -15,7 +15,7 @@ from verification.entropy import compute_entropy_score
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 2
-FALLBACK_MESSAGE = "Não sei informar com segurança sobre este tópico."
+FALLBACK_MESSAGE = "I cannot answer this topic with confidence."
 NEUTRAL_SCORE = 0.5
 
 
