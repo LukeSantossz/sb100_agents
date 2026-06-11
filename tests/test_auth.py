@@ -1,11 +1,11 @@
-"""Testes da pipeline de autenticação (TASK-T60).
+"""Authentication pipeline tests.
 
-Cobre:
-    - Hashing bcrypt (formato, salt aleatório, verify timing-safe).
-    - Validação de :class:`UserCreate` (regex, comprimentos).
-    - Endpoints ``/auth/register`` e ``/auth/token``.
-    - Gate JWT no endpoint ``/chat`` (ausente, inválido, expirado, usuário inexistente).
-    - Rate-limit do slowapi em registro e login.
+Covers:
+    - Bcrypt hashing (format, random salt, timing-safe verify).
+    - :class:`UserCreate` validation (regex, lengths).
+    - ``/auth/register`` and ``/auth/token`` endpoints.
+    - JWT gate on the ``/chat`` endpoint (missing, invalid, expired, unknown user).
+    - slowapi rate-limit on register and login.
 """
 
 from collections.abc import Generator
@@ -36,11 +36,11 @@ from database.models import User
 
 @pytest.fixture
 def db_session() -> Generator[Session, None, None]:
-    """Banco SQLite in-memory isolado por teste."""
+    """In-memory SQLite database isolated per test."""
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,  # SQLite :memory: precisa de pool único por engine
+        poolclass=StaticPool,  # SQLite :memory: needs a single pool per engine
     )
     Base.metadata.create_all(bind=engine)
     testing_session = sessionmaker(bind=engine)
@@ -54,7 +54,7 @@ def db_session() -> Generator[Session, None, None]:
 
 @pytest.fixture
 def client(db_session: Session) -> Generator[TestClient, None, None]:
-    """TestClient com ``get_db`` redirecionado para o session in-memory."""
+    """TestClient with ``get_db`` redirected to the in-memory session."""
 
     def _override_get_db() -> Generator[Session, None, None]:
         yield db_session
@@ -68,7 +68,7 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limit() -> Generator[None, None, None]:
-    """Garante que o storage do slowapi começa limpo a cada teste."""
+    """Ensure the slowapi storage starts clean for each test."""
     limiter.reset()
     yield
     limiter.reset()
@@ -265,7 +265,7 @@ def test_chat_rejects_token_for_missing_user(client: TestClient) -> None:
 
 
 def test_rate_limit_register_blocks_after_threshold(client: TestClient) -> None:
-    """3 registros/hora; o 4º deve receber 429."""
+    """3 registrations/hour; the 4th must get 429."""
     for index in range(3):
         resp = client.post(
             "/auth/register",
@@ -280,7 +280,7 @@ def test_rate_limit_register_blocks_after_threshold(client: TestClient) -> None:
 
 
 def test_rate_limit_token_blocks_after_threshold(client: TestClient) -> None:
-    """5 tentativas/15min; a 6ª deve receber 429."""
+    """5 attempts/15min; the 6th must get 429."""
     client.post(
         "/auth/register",
         json={"username": "rl_login", "password": "long-enough-pw"},

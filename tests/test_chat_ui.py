@@ -1,7 +1,7 @@
-"""Testes para a Gradio UI (TASK-T72).
+"""Tests for the Gradio UI.
 
-Cobre helpers puros — classificação de score, mensagens user-facing e o
-retry com backoff. Não levanta o servidor Gradio (`gr.Blocks.launch`).
+Covers pure helpers — score classification, user-facing messages, and the
+retry with backoff. Does not start the Gradio server (`gr.Blocks.launch`).
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from ui.chat_ui import (
 )
 
 # ============================================================================
-# _classify_score — bandas alinhadas ao threshold
+# _classify_score — bands aligned with the threshold
 # ============================================================================
 
 
@@ -42,19 +42,19 @@ class TestClassifyScore:
 
     def test_boundary_low_high(self) -> None:
         # threshold=0.5: low_band=0.3, high_band=0.6
-        # Exatamente 0.3 cai em mid (>=); 0.6 cai em high (>=)
+        # Exactly 0.3 falls in mid (>=); 0.6 falls in high (>=)
         assert _classify_score(0.30, 0.5)[1] == "#eab308"
         assert _classify_score(0.60, 0.5)[1] == "#ef4444"
         assert _classify_score(0.2999, 0.5)[1] == "#22c55e"
 
     def test_alignment_with_threshold(self) -> None:
-        # Threshold custom 0.8 → bandas 0.48 / 0.96
+        # Custom threshold 0.8 → bands 0.48 / 0.96
         assert _classify_score(0.4, 0.8)[1] == "#22c55e"  # < 0.48
         assert _classify_score(0.7, 0.8)[1] == "#eab308"  # 0.48-0.96
         assert _classify_score(0.97, 0.8)[1] == "#ef4444"  # >= 0.96
 
     def test_threshold_zero_collapses_to_red(self) -> None:
-        # Edge: threshold=0 ⇒ todas as bandas em 0 ⇒ qualquer score positivo é vermelho
+        # Edge: threshold=0 ⇒ all bands at 0 ⇒ any positive score is red
         assert _classify_score(0.01, 0.0)[1] == "#ef4444"
 
     def test_score_formatted_two_decimals(self) -> None:
@@ -63,7 +63,7 @@ class TestClassifyScore:
 
 
 # ============================================================================
-# _user_facing_http_error — sem leak de URL
+# _user_facing_http_error — no URL leak
 # ============================================================================
 
 
@@ -92,12 +92,12 @@ class TestUserFacingHttpError:
 
     def test_5xx_fallback(self) -> None:
         msg = _user_facing_http_error(500)
-        # Mensagem genérica sem expor status
+        # Generic message without exposing the status
         assert msg
 
 
 # ============================================================================
-# _is_transient_error — política de retry
+# _is_transient_error — retry policy
 # ============================================================================
 
 
@@ -126,12 +126,12 @@ class TestIsTransientError:
         assert _is_transient_error(exc) is False
 
     def test_generic_request_error_not_transient(self) -> None:
-        # ConnectError sem ser timeout não deve causar retry
+        # A ConnectError that is not a timeout must not trigger retry
         assert _is_transient_error(httpx.ConnectError("refused")) is False
 
 
 # ============================================================================
-# send_with_retry — backoff e propagação
+# send_with_retry — backoff and propagation
 # ============================================================================
 
 
@@ -164,7 +164,7 @@ class TestSendWithRetry:
         session.send_message.side_effect = httpx.TimeoutException("slow")
         with patch("ui.chat_ui.time.sleep"), pytest.raises(httpx.TimeoutException):
             send_with_retry(session, "q?", "u", "expert", attempts=2)
-        # 1 + 2 retries = 3 tentativas
+        # 1 + 2 retries = 3 attempts
         assert session.send_message.call_count == 3
 
     def test_non_transient_does_not_retry(self, session: Mock) -> None:
@@ -192,7 +192,7 @@ class TestSendWithRetry:
         assert [c.args[0] for c in mock_sleep.call_args_list] == [1.0, 2.0, 4.0]
 
     def test_connection_error_not_retried(self, session: Mock) -> None:
-        # ConnectError não é transitório por política — falha imediato
+        # ConnectError is not transient by policy — fails immediately
         session.send_message.side_effect = httpx.ConnectError("refused")
         with (
             patch("ui.chat_ui.time.sleep") as mock_sleep,

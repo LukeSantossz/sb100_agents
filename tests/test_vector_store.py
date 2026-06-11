@@ -1,8 +1,7 @@
-"""Testes do retrieval/vector_store (TASK-T66 — singleton + dim validation + warnings).
+"""Tests for retrieval/vector_store (singleton + dim validation + warnings).
 
-TASK-T69 endurece os mocks usando ``ScoredPoint`` real do ``qdrant_client.models``
-em vez de ``MagicMock`` genérico — assim eventuais mudanças de contrato no SDK
-são capturadas pelos testes.
+Mocks use a real ``ScoredPoint`` from ``qdrant_client.models`` instead of a
+generic ``MagicMock`` — so contract changes in the SDK are caught by the tests.
 """
 
 from collections.abc import Generator
@@ -18,14 +17,14 @@ from retrieval.vector_store import search_context
 
 @pytest.fixture(autouse=True)
 def _reset_singleton() -> Generator[None, None, None]:
-    """Reseta o singleton entre testes para isolar mocks de ``QdrantClient``."""
+    """Resets the singleton between tests to isolate ``QdrantClient`` mocks."""
     vs_module._qdrant_client = None
     yield
     vs_module._qdrant_client = None
 
 
 def _make_point(text: str | None = "chunk", *, id_: int = 1, score: float = 0.9) -> ScoredPoint:
-    """Constrói um ``ScoredPoint`` real para uso nos mocks (TASK-T69)."""
+    """Builds a real ``ScoredPoint`` for use in mocks."""
     payload: dict[str, str] = {} if text is None else {"text": text}
     return ScoredPoint(id=id_, version=0, score=score, payload=payload)
 
@@ -84,5 +83,5 @@ def test_singleton_reuses_client_across_calls() -> None:
         for _ in range(5):
             search_context([0.1] * 768)
 
-        # Apenas 1 instanciação apesar de 5 chamadas
+        # Only 1 instantiation despite 5 calls
         mock_cls.assert_called_once_with(url=settings.qdrant_url, api_key=settings.qdrant_api_key)

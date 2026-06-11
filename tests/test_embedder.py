@@ -26,7 +26,7 @@ class TestGenerateEmbedding(unittest.TestCase):
 
     @patch("retrieval.embedder.embed_text")
     def test_empty_string_is_forwarded(self, mock_embed):
-        """TASK-T69: string vazia é forwarded ao embed_text (truncagem trata)."""
+        """Empty string is forwarded to embed_text (truncation handles it)."""
         mock_embed.return_value = [0.0] * 768
         out = generate_embedding("")
         self.assertEqual(len(out), 768)
@@ -34,19 +34,19 @@ class TestGenerateEmbedding(unittest.TestCase):
 
     @patch("retrieval.embedder.embed_text")
     def test_long_string_is_forwarded(self, mock_embed):
-        """TASK-T69: string longa (10k chars) é forwarded; embed_text trunca em 8192."""
+        """Long string (10k chars) is forwarded; embed_text truncates at 8192."""
         mock_embed.return_value = [0.5] * 768
         long_text = "a" * 10_000
         out = generate_embedding(long_text)
         self.assertEqual(len(out), 768)
-        # embed_text recebe o texto bruto; a truncagem é feita lá.
+        # embed_text receives the raw text; truncation happens there.
         mock_embed.assert_called_once_with(settings.embed_model, long_text)
 
     @patch("retrieval.embedder.embed_text")
     def test_unicode_string_is_forwarded(self, mock_embed):
-        """TASK-T69: strings com acentos/CJK/emojis passam inalteradas até o embed_text."""
+        """Strings with accents/CJK/emojis pass through unchanged to embed_text."""
         mock_embed.return_value = [0.1] * 768
-        unicode_text = "Como cultivar soja na região Centro-Oeste? 🌱 农业"
+        unicode_text = "Crème brûlée with açaí après la récolte? 🌱 农业"
         out = generate_embedding(unicode_text)
         self.assertEqual(len(out), 768)
         mock_embed.assert_called_once_with(settings.embed_model, unicode_text)

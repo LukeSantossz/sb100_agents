@@ -1,8 +1,8 @@
-"""Configuração compartilhada da suíte de testes.
+"""Shared test suite configuration.
 
-Define variáveis de ambiente exigidas antes do import de ``core.config`` (que
-valida ``JWT_SECRET_KEY`` no startup). ``setdefault`` preserva valores fornecidos
-externamente (ex.: CI), aplicando o valor de teste apenas quando ausente.
+Sets required environment variables before ``core.config`` is imported (it
+validates ``JWT_SECRET_KEY`` at startup). ``setdefault`` preserves externally
+provided values (e.g. CI), applying the test value only when absent.
 """
 
 import os

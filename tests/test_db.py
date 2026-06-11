@@ -1,10 +1,10 @@
-"""Testes de integridade do schema SQLAlchemy (TASK-T63).
+"""SQLAlchemy schema integrity tests.
 
-Cobre:
-    - ``nullable=False`` em campos obrigatórios (User, Conversation, Message).
-    - ``ondelete="CASCADE"`` em FKs (requer PRAGMA foreign_keys=ON em SQLite).
-    - ``DateTime(timezone=True)`` em ``created_at``.
-    - ``get_db()`` faz rollback em exceção antes de fechar.
+Covers:
+    - ``nullable=False`` on required fields (User, Conversation, Message).
+    - ``ondelete="CASCADE"`` on FKs (requires PRAGMA foreign_keys=ON in SQLite).
+    - ``DateTime(timezone=True)`` on ``created_at``.
+    - ``get_db()`` rolls back on exception before closing.
 """
 
 import contextlib
@@ -24,7 +24,7 @@ from database.models import Conversation, Message, User
 
 @pytest.fixture
 def db_session() -> Generator[Session, None, None]:
-    """SQLite in-memory com FKs ativadas (via listener global em ``database.db``)."""
+    """In-memory SQLite with FKs enabled (via the global listener in ``database.db``)."""
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -133,7 +133,7 @@ def test_delete_conversation_cascades_messages(db_session: Session) -> None:
 
     assert db_session.query(Conversation).count() == 0
     assert db_session.query(Message).count() == 0
-    # User permanece
+    # User remains
     assert db_session.query(User).count() == 1
 
 
@@ -148,10 +148,10 @@ def test_created_at_is_timezone_aware(db_session: Session) -> None:
 
     created = user.created_at
     assert isinstance(created, datetime)
-    # SQLite armazena DateTime sem tz por default; SQLAlchemy preserva tz quando o valor
-    # entra timezone-aware. O default callback ``_utc_now`` retorna ``datetime.now(UTC)``.
-    # Em SQLite o tz pode ser stripado na leitura — então testamos o valor produzido
-    # pelo callback diretamente.
+    # SQLite stores DateTime without tz by default; SQLAlchemy preserves tz when the
+    # value comes in timezone-aware. The default callback ``_utc_now`` returns
+    # ``datetime.now(UTC)``. In SQLite the tz may be stripped on read — so we test
+    # the value produced by the callback directly.
     from database.models import _utc_now
 
     assert _utc_now().tzinfo is UTC
@@ -163,15 +163,15 @@ def test_created_at_is_timezone_aware(db_session: Session) -> None:
 def test_get_db_rolls_back_on_exception() -> None:
     mock_session = MagicMock(spec=Session)
 
-    # Patch SessionLocal para retornar nosso mock
+    # Patch SessionLocal to return our mock
     from database import db as db_module
 
     original = db_module.SessionLocal
     db_module.SessionLocal = MagicMock(return_value=mock_session)  # type: ignore[assignment]
     try:
         gen = get_db()
-        next(gen)  # entra no with body
-        # Simula exceção dentro do bloco do consumer
+        next(gen)  # enter the with body
+        # Simulate an exception inside the consumer block
         with contextlib.suppress(RuntimeError):
             gen.throw(RuntimeError("boom"))
         mock_session.rollback.assert_called_once()
@@ -189,7 +189,7 @@ def test_get_db_closes_on_success() -> None:
     try:
         gen = get_db()
         next(gen)
-        # Encerra normalmente
+        # Finish normally
         with pytest.raises(StopIteration):
             next(gen)
         mock_session.close.assert_called_once()

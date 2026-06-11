@@ -1,6 +1,6 @@
-"""Testes das validações do Pydantic Settings (TASK-T62).
+"""Pydantic Settings validation tests.
 
-Cobre os bounds aplicados a `Settings` e o enum `VerificationProvider`.
+Covers the bounds applied to `Settings` and the `VerificationProvider` enum.
 """
 
 import pytest
@@ -10,7 +10,7 @@ from core.config import Settings, VerificationProvider
 
 
 def _kwargs(**overrides: object) -> dict[str, object]:
-    """Defaults mínimos para instanciar Settings sob teste (JWT válido + overrides)."""
+    """Minimal defaults to instantiate Settings under test (valid JWT + overrides)."""
     base: dict[str, object] = {
         "jwt_secret_key": "test-jwt-secret-key-for-tests-only-32-chars-minimum",
     }
@@ -106,18 +106,18 @@ def test_verification_provider_rejects_typo() -> None:
 
 
 def test_verification_provider_str_comparison_works() -> None:
-    """StrEnum garante igualdade com a string subjacente — `provider == 'groq'`."""
+    """StrEnum guarantees equality with the underlying string — `provider == 'groq'`."""
     assert VerificationProvider.groq == "groq"
     assert VerificationProvider.ollama == "ollama"
 
 
-# ----------------------------- API keys opcionais -----------------------------
+# ----------------------------- optional API keys -----------------------------
 
 
 def test_api_keys_default_to_none() -> None:
     s = Settings(**_kwargs())
-    # Quando .env não define, defaults devem ser None.
-    # (.env do projeto pode estar populando — esse teste sob CI onde .env não existe.)
+    # When .env does not set them, defaults must be None.
+    # (The project's .env may populate them — this test targets CI where .env is absent.)
     assert s.groq_api_key in (None, "") or isinstance(s.groq_api_key, str)
     assert s.openrouter_api_key in (None, "") or isinstance(s.openrouter_api_key, str)
 
@@ -128,7 +128,7 @@ def test_api_keys_accept_none_explicit() -> None:
     assert s.openrouter_api_key is None
 
 
-# ----------------------------- jwt_secret_key (já cobrindo regressão T60) -----------------------------
+# ----------------------------- jwt_secret_key -----------------------------
 
 
 def test_jwt_secret_key_rejects_short() -> None:

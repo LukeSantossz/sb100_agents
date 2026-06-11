@@ -1,6 +1,6 @@
-"""Testes do core.ollama_clients (TASK-T76).
+"""Tests for core.ollama_clients.
 
-Cobre singletons thread-safe, propagação de timeout das Settings e reset.
+Covers thread-safe singletons, Settings timeout propagation and reset.
 """
 
 from collections.abc import Generator
@@ -14,7 +14,7 @@ from core.config import settings
 
 @pytest.fixture(autouse=True)
 def _reset_singletons() -> Generator[None, None, None]:
-    """Garante estado limpo antes e depois de cada teste."""
+    """Ensure a clean state before and after each test."""
     ollama_clients.reset_clients()
     yield
     ollama_clients.reset_clients()
@@ -70,19 +70,19 @@ def test_reset_clients_forces_reinstantiation() -> None:
 
         ollama_clients.get_chat_client()
         ollama_clients.get_embed_client()
-        # 2 chamadas (chat + embed) já feitas
+        # 2 calls (chat + embed) already made
         assert mock_cls.call_count == 2
 
         ollama_clients.reset_clients()
 
         ollama_clients.get_chat_client()
-        # Após reset, chat foi instanciado novamente → +1
+        # After reset, chat was instantiated again → +1
         assert mock_cls.call_count == 3
 
 
 def test_chat_and_embed_clients_are_independent() -> None:
     with patch("core.ollama_clients.OllamaClient") as mock_cls:
-        # Cada chamada à classe retorna um objeto diferente
+        # Each call to the class returns a different object
         instances = [object(), object()]
         mock_cls.side_effect = instances
 
@@ -90,7 +90,7 @@ def test_chat_and_embed_clients_are_independent() -> None:
         embed_inst = ollama_clients.get_embed_client()
 
         assert chat_inst is not embed_inst
-        # Chamadas distintas para chat e embed, cada uma com seu timeout
+        # Distinct calls for chat and embed, each with its own timeout
         assert mock_cls.call_count == 2
         chat_call_kwargs = mock_cls.call_args_list[0].kwargs
         embed_call_kwargs = mock_cls.call_args_list[1].kwargs

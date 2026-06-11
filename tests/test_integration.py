@@ -1,4 +1,4 @@
-"""Testes de integração end-to-end do pipeline RAG."""
+"""End-to-end integration tests for the RAG pipeline."""
 
 from collections.abc import Generator
 from datetime import UTC, datetime
@@ -15,7 +15,7 @@ from database.models import User
 
 
 def _override_verify_token() -> User:
-    """Stub do gate JWT para integração — devolve usuário fixo sem hit no DB."""
+    """JWT gate stub for integration — returns a fixed user without hitting the DB."""
     return User(
         id=1,
         username="testuser",
@@ -26,7 +26,7 @@ def _override_verify_token() -> User:
 
 @pytest.fixture(autouse=True)
 def _clear_sessions_cache() -> Generator[None, None, None]:
-    """TASK-T69: garante que ``_sessions`` começa vazio em cada teste para evitar leak."""
+    """Ensure ``_sessions`` starts empty in each test to avoid leaks."""
     _sessions.clear()
     yield
     _sessions.clear()
@@ -34,7 +34,7 @@ def _clear_sessions_cache() -> Generator[None, None, None]:
 
 @pytest.fixture
 def client():
-    """TestClient do FastAPI com gate JWT mockado por dependency override."""
+    """FastAPI TestClient with the JWT gate mocked via dependency override."""
     app.dependency_overrides[verify_token] = _override_verify_token
     try:
         yield TestClient(app)
@@ -44,7 +44,7 @@ def client():
 
 @pytest.fixture
 def mock_embedding():
-    """Mock de generate_embedding retornando vetor sintético."""
+    """Mock of generate_embedding returning a synthetic vector."""
     with patch("api.routes.chat.generate_embedding") as mock:
         mock.return_value = [0.1] * 768
         yield mock
@@ -52,18 +52,18 @@ def mock_embedding():
 
 @pytest.fixture
 def mock_context():
-    """Mock de search_context retornando chunks fixos."""
+    """Mock of search_context returning fixed chunks."""
     with patch("api.routes.chat.search_context") as mock:
         mock.return_value = [
-            "Chunk 1: Informação sobre calagem e correção de acidez do solo.",
-            "Chunk 2: A aplicação de calcário deve ser feita 60-90 dias antes do plantio.",
+            "Chunk 1: Information about liming and soil acidity correction.",
+            "Chunk 2: Lime must be applied 60-90 days before planting.",
         ]
         yield mock
 
 
 @pytest.fixture
 def mock_verification_disabled():
-    """Mock que desabilita verificação de alucinação."""
+    """Mock that disables hallucination verification."""
     with patch("api.routes.chat.settings") as mock_settings:
         mock_settings.verification_enabled = False
         mock_settings.buffer_maxlen = 10
@@ -72,15 +72,15 @@ def mock_verification_disabled():
 
 @pytest.fixture
 def mock_generate_by_expertise():
-    """Mock de generate que retorna respostas distintas por expertise."""
+    """Mock of generate that returns distinct answers per expertise."""
 
     def _generate(question, context, history, profile):
         responses = {
-            ExpertiseLevel.beginner: "Resposta simples para iniciante sobre calagem.",
-            ExpertiseLevel.intermediate: "Resposta técnica intermediária: calcário dolomítico, PRNT 85%.",
-            ExpertiseLevel.expert: "Resposta avançada: CTC, V%, saturação de bases, dosagem 2t/ha.",
+            ExpertiseLevel.beginner: "Simple answer for a beginner about liming.",
+            ExpertiseLevel.intermediate: "Technical intermediate answer: dolomitic lime, PRNT 85%.",
+            ExpertiseLevel.expert: "Advanced answer: CEC, V%, base saturation, 2t/ha dosage.",
         }
-        return responses.get(profile.expertise, "Resposta padrão")
+        return responses.get(profile.expertise, "Default answer")
 
     with patch("api.routes.chat.generate") as mock:
         mock.side_effect = _generate
@@ -90,9 +90,9 @@ def mock_generate_by_expertise():
 @pytest.mark.parametrize(
     "expertise,expected_keyword",
     [
-        (ExpertiseLevel.beginner, "simples"),
-        (ExpertiseLevel.intermediate, "técnica"),
-        (ExpertiseLevel.expert, "avançada"),
+        (ExpertiseLevel.beginner, "simple"),
+        (ExpertiseLevel.intermediate, "technical"),
+        (ExpertiseLevel.expert, "advanced"),
     ],
 )
 def test_expertise_levels_produce_distinct_responses(
@@ -104,10 +104,10 @@ def test_expertise_levels_produce_distinct_responses(
     expertise,
     expected_keyword,
 ):
-    """3 perfis de expertise produzem respostas visivelmente distintas."""
+    """3 expertise profiles produce visibly distinct answers."""
     payload = {
         "session_id": f"test-expertise-{expertise.value}",
-        "question": "Como corrigir acidez do solo?",
+        "question": "How to correct soil acidity?",
         "profile": {
             "name": "TestUser",
             "expertise": expertise.value,
@@ -124,12 +124,12 @@ def test_expertise_levels_produce_distinct_responses(
 
 @pytest.fixture
 def mock_generate_captures_history():
-    """Mock de generate que captura e valida histórico."""
+    """Mock of generate that captures and validates the history."""
     captured_histories = []
 
     def _generate(question, context, history, profile):
         captured_histories.append(list(history))
-        return f"Resposta para: {question}"
+        return f"Answer to: {question}"
 
     with patch("api.routes.chat.generate") as mock:
         mock.side_effect = _generate
@@ -144,12 +144,12 @@ def test_multiturn_session_maintains_context(
     mock_verification_disabled,
     mock_generate_captures_history,
 ):
-    """Sessão com 3 turnos consecutivos mantém contexto ao longo dos turnos."""
+    """A session with 3 consecutive turns keeps context across turns."""
     session_id = "test-multiturn-session"
     questions = [
-        "Qual o pH ideal do solo?",
-        "E como faço a correção?",
-        "Quanto tempo antes do plantio?",
+        "What is the ideal soil pH?",
+        "And how do I correct it?",
+        "How long before planting?",
     ]
 
     for question in questions:
@@ -163,31 +163,31 @@ def test_multiturn_session_maintains_context(
 
         assert response.status_code == 200
 
-    # Verificar histórico crescente
+    # Check the growing history
     histories = mock_generate_captures_history.captured_histories
 
-    # Turno 1: histórico vazio
+    # Turn 1: empty history
     assert len(histories[0]) == 0
 
-    # Turno 2: histórico com 2 mensagens (user + assistant do turno 1)
+    # Turn 2: history with 2 messages (user + assistant from turn 1)
     assert len(histories[1]) == 2
     assert histories[1][0]["role"] == "user"
     assert histories[1][1]["role"] == "assistant"
 
-    # Turno 3: histórico com 4 mensagens (turnos 1 e 2)
+    # Turn 3: history with 4 messages (turns 1 and 2)
     assert len(histories[2]) == 4
 
 
 @pytest.fixture
 def mock_verification_enabled():
-    """Mock que habilita verificação com score fixo."""
+    """Mock that enables verification with a fixed score."""
     with patch("api.routes.chat.settings") as mock_settings:
         mock_settings.verification_enabled = True
         mock_settings.buffer_maxlen = 10
 
         with patch("api.routes.chat.verify_and_generate") as mock_verify:
             mock_verify.return_value = ChatResponse(
-                answer="Resposta verificada",
+                answer="Verified answer",
                 hallucination_score=0.25,
             )
             yield mock_verify
@@ -199,10 +199,10 @@ def test_hallucination_score_present_and_valid(
     mock_context,
     mock_verification_enabled,
 ):
-    """hallucination_score presente e entre 0.0 e 1.0 em todas as respostas."""
+    """hallucination_score is present and between 0.0 and 1.0 in every answer."""
     payload = {
         "session_id": "test-score",
-        "question": "Como corrigir acidez do solo?",
+        "question": "How to correct soil acidity?",
         "profile": {"name": "TestUser", "expertise": "beginner"},
     }
 
@@ -221,10 +221,10 @@ def test_hallucination_score_zero_when_verification_disabled(
     mock_verification_disabled,
     mock_generate_by_expertise,
 ):
-    """hallucination_score é 0.0 quando verificação está desabilitada."""
+    """hallucination_score is 0.0 when verification is disabled."""
     payload = {
         "session_id": "test-score-disabled",
-        "question": "Como corrigir acidez do solo?",
+        "question": "How to correct soil acidity?",
         "profile": {"name": "TestUser", "expertise": "beginner"},
     }
 
@@ -242,28 +242,28 @@ def test_nominal_flow_no_500_errors(
     mock_verification_disabled,
     mock_generate_by_expertise,
 ):
-    """Fluxo nominal completo não produz HTTP 500."""
+    """The full nominal flow does not produce HTTP 500."""
     payloads = [
         {
             "session_id": "nominal-1",
-            "question": "Qual o pH ideal?",
+            "question": "What is the ideal pH?",
             "profile": {"name": "User1", "expertise": "beginner"},
         },
         {
             "session_id": "nominal-1",
-            "question": "Como aplicar calcário?",
+            "question": "How to apply lime?",
             "profile": {"name": "User1", "expertise": "beginner"},
         },
         {
             "session_id": "nominal-2",
-            "question": "Dosagem de calcário?",
+            "question": "Lime dosage?",
             "profile": {"name": "User2", "expertise": "expert"},
         },
     ]
 
     for payload in payloads:
         response = client.post("/chat", json=payload)
-        assert response.status_code != 500, f"HTTP 500 em payload: {payload}"
+        assert response.status_code != 500, f"HTTP 500 for payload: {payload}"
         assert response.status_code == 200
 
 
@@ -275,7 +275,7 @@ def test_chat_access_log_emits_username_and_session_id(
     mock_generate_by_expertise,
     caplog: pytest.LogCaptureFixture,
 ):
-    """TASK-T76: handler de /chat emite log estruturado com username + session_id."""
+    """The /chat handler emits a structured log with username + session_id."""
     payload = {
         "session_id": "log-session-42",
         "question": "ping",
@@ -288,7 +288,7 @@ def test_chat_access_log_emits_username_and_session_id(
     assert response.status_code == 200
     access_records = [r for r in caplog.records if "chat.access" in r.message]
     assert len(access_records) >= 1
-    # Verifica fields estruturados (do `extra=` kwarg do logger.info)
+    # Check structured fields (from the logger.info `extra=` kwarg)
     record = access_records[0]
     assert getattr(record, "username", None) == "testuser"
     assert getattr(record, "session_id", None) == "log-session-42"
