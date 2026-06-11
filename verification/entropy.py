@@ -37,11 +37,11 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 def _build_messages(question: str, context: str) -> list[dict[str, str]]:
     """Builds the message list for sampling."""
-    prompt = f"Contexto:\n{context}\n\nPergunta: {question}" if context else question
+    prompt = f"Context:\n{context}\n\nQuestion: {question}" if context else question
     return [
         {
             "role": "system",
-            "content": "Você é um assistente especializado em agronomia. Responda de forma concisa.",
+            "content": "You are an assistant specialized in agronomy. Answer concisely.",
         },
         {"role": "user", "content": prompt},
     ]
