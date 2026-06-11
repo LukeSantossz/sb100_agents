@@ -1,8 +1,8 @@
-"""Gate de verificação de alucinações com retry e fallback.
+"""Hallucination verification gate with retry and fallback.
 
-TASK-T64: se o cálculo de entropia falhar, a verificação degrada para um score
-neutro (0.5) preservando a resposta gerada — sem mascarar a falha do gerador,
-que deve propagar normalmente para o caller.
+If the entropy computation fails, verification degrades to a neutral score
+(0.5) while keeping the generated answer — without masking generator
+failures, which must propagate to the caller as usual.
 """
 
 import logging
@@ -25,15 +25,17 @@ def evaluate(
     history: list[dict[str, str]],
     profile: UserProfile,
 ) -> ChatResponse:
-    """Avalia e regenera resposta se score de entropia exceder threshold.
+    """Evaluates and regenerates the answer if the entropy score exceeds the threshold.
 
-    Lógica:
-        1. Gera resposta — se falhar, propaga (erro do gerador é caso real de 503).
-        2. Calcula score de entropia — se falhar, retorna a resposta com score
-           neutro 0.5 (a verificação é opcional; falha não derruba o pipeline).
-        3. Se score <= threshold, devolve a resposta.
-        4. Se exceder, regenera até ``MAX_RETRIES``.
-        5. Após esgotar tentativas, retorna ``FALLBACK_MESSAGE`` com último score.
+    Logic:
+        1. Generate the answer — if it fails, propagate (generator errors are
+           a real 503 case).
+        2. Compute the entropy score — if it fails, return the answer with a
+           neutral 0.5 score (verification is optional; its failure must not
+           take down the pipeline).
+        3. If score <= threshold, return the answer.
+        4. If it exceeds, regenerate up to ``MAX_RETRIES``.
+        5. After exhausting attempts, return ``FALLBACK_MESSAGE`` with the last score.
     """
     last_score = 0.0
 
