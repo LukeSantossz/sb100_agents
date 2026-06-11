@@ -1,4 +1,4 @@
-"""Módulo de geração de respostas com LLM."""
+"""LLM answer generation module."""
 
 from generation.llm import generate
 
