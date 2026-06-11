@@ -242,9 +242,7 @@ def _user_facing_http_error(status_code: int) -> str:
             "(Ollama or Qdrant). Try again in a few moments."
         )
     if status_code == 504:
-        return (
-            "The gateway timed out. The model is taking longer than expected. Try again."
-        )
+        return "The gateway timed out. The model is taking longer than expected. Try again."
     if status_code == 401:
         return "Session expired. Log in again."
     if status_code == 429:
@@ -359,8 +357,7 @@ def create_interface(api_url: str) -> gr.Blocks:
         except httpx.RequestError:
             logger.exception("chat.connection_error url=%s", api_url)
             user_msg = (
-                "Could not connect to the API. Check that the server is "
-                "running and try again."
+                "Could not connect to the API. Check that the server is running and try again."
             )
             yield _history_with_error(history, message, user_msg), _error_html(user_msg), message
 
