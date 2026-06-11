@@ -13,7 +13,6 @@ from generation.llm import (
     generate,
 )
 
-
 MIRRORING_SENTENCE = "Always respond in the same language as the user's question."
 
 
