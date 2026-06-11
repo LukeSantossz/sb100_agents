@@ -176,9 +176,9 @@ def _classify_score(score: float, threshold: float) -> tuple[str, str]:
     Bands derive from ``threshold`` (default 0.5) so future changes to
     ``HALLUCINATION_THRESHOLD`` shift all bands consistently:
 
-    - **Green** (low): score < threshold × 0.6.
-    - **Yellow** (moderate): threshold × 0.6 ≤ score < threshold × 1.2.
-    - **Red** (high): score ≥ threshold × 1.2.
+    - **Green** (low): score < threshold x 0.6.
+    - **Yellow** (moderate): threshold x 0.6 ≤ score < threshold x 1.2.
+    - **Red** (high): score ≥ threshold x 1.2.
 
     With the default threshold=0.5: green <0.3, yellow 0.3-0.6, red ≥0.6.
 
@@ -194,16 +194,16 @@ def _classify_score(score: float, threshold: float) -> tuple[str, str]:
 
     if score < low_band:
         return (
-            f"Score {score:.2f} — Baixo risco de alucinação. Resposta confiável.",
+            f"Score {score:.2f} — Low risk of hallucination. Reliable answer.",
             "#22c55e",
         )
     if score < high_band:
         return (
-            f"Score {score:.2f} — Risco moderado. Valide pontos críticos.",
+            f"Score {score:.2f} — Moderate risk. Validate critical points.",
             "#eab308",
         )
     return (
-        f"Score {score:.2f} — Alto risco de alucinação. Verificação humana recomendada.",
+        f"Score {score:.2f} — High risk of hallucination. Human verification recommended.",
         "#ef4444",
     )
 
@@ -226,7 +226,7 @@ def _processing_html() -> str:
     return (
         '<div style="padding: 8px 12px; border-radius: 6px; '
         "background: #6b72801a; border-left: 4px solid #6b7280; "
-        'color: #6b7280; font-weight: 500;">Processando — aguardando resposta da API...</div>'
+        'color: #6b7280; font-weight: 500;">Processing — waiting for the API response...</div>'
     )
 
 
@@ -238,23 +238,20 @@ def _user_facing_http_error(status_code: int) -> str:
     """
     if status_code == 503:
         return (
-            "Serviço temporariamente indisponível. O backend pode estar iniciando "
-            "(Ollama ou Qdrant). Tente novamente em alguns instantes."
+            "Service temporarily unavailable. The backend may be starting "
+            "(Ollama or Qdrant). Try again in a few moments."
         )
     if status_code == 504:
         return (
-            "Gateway atingiu o tempo limite. O modelo está demorando mais do que "
-            "o esperado. Tente novamente."
+            "The gateway timed out. The model is taking longer than expected. Try again."
         )
     if status_code == 401:
-        return "Sessão expirou. Faça login novamente."
+        return "Session expired. Log in again."
     if status_code == 429:
-        return "Limite de requisições excedido. Aguarde alguns segundos."
+        return "Request limit exceeded. Wait a few seconds."
     if 400 <= status_code < 500:
-        return (
-            f"Sua requisição foi rejeitada (código {status_code}). Revise os dados e tente de novo."
-        )
-    return "O servidor encontrou um problema. Tente novamente em instantes."
+        return f"Your request was rejected (code {status_code}). Review the data and try again."
+    return "The server ran into a problem. Try again shortly."
 
 
 def _error_html(user_msg: str) -> str:
@@ -321,7 +318,7 @@ def create_interface(api_url: str) -> gr.Blocks:
             yield history, "", message
             return
 
-        user_name = name.strip() or "Usuário"
+        user_name = name.strip() or "User"
         user_expertise = expertise or "intermediate"
 
         # Yield #1: immediate placeholder so the user sees activity
@@ -354,16 +351,16 @@ def create_interface(api_url: str) -> gr.Blocks:
         except httpx.TimeoutException:
             logger.exception("chat.timeout url=%s", api_url)
             user_msg = (
-                "Tempo esgotado aguardando a API. Em ambientes CPU-only o Ollama "
-                "pode levar vários minutos por resposta. Tente novamente em instantes."
+                "Timed out waiting for the API. In CPU-only environments Ollama "
+                "can take several minutes per answer. Try again shortly."
             )
             yield _history_with_error(history, message, user_msg), _error_html(user_msg), message
 
         except httpx.RequestError:
             logger.exception("chat.connection_error url=%s", api_url)
             user_msg = (
-                "Não foi possível conectar à API. Verifique se o servidor está "
-                "rodando e tente novamente."
+                "Could not connect to the API. Check that the server is "
+                "running and try again."
             )
             yield _history_with_error(history, message, user_msg), _error_html(user_msg), message
 
@@ -385,65 +382,65 @@ def create_interface(api_url: str) -> gr.Blocks:
         return f"Session ID: {session.session_id[:8]}..."
 
     with gr.Blocks(
-        title="SmartB100 - Assistente Agrícola",
+        title="SmartB100 - Agricultural Assistant",
     ) as interface:
         gr.Markdown(
             """
-            # SmartB100 - Assistente Agrícola Inteligente
+            # SmartB100 - Intelligent Agricultural Assistant
 
-            Faça perguntas sobre práticas agrícolas, manejo de culturas e recomendações técnicas.
-            O sistema utiliza RAG (Retrieval-Augmented Generation) para buscar informações
-            relevantes em documentos técnicos indexados.
+            Ask questions about agricultural practices, crop management, and technical
+            recommendations. The system uses RAG (Retrieval-Augmented Generation) to
+            search for relevant information in indexed technical documents.
             """
         )
 
         with gr.Row():
             with gr.Column(scale=1):
-                gr.Markdown("### Configuração do Perfil")
+                gr.Markdown("### Profile Settings")
                 name_input = gr.Textbox(
-                    label="Nome",
-                    placeholder="Seu nome",
-                    value="Produtor",
+                    label="Name",
+                    placeholder="Your name",
+                    value="Farmer",
                 )
                 expertise_input = gr.Dropdown(
-                    label="Nível de Expertise",
+                    label="Expertise Level",
                     choices=[
-                        ("Iniciante", "beginner"),
-                        ("Intermediário", "intermediate"),
-                        ("Especialista", "expert"),
+                        ("Beginner", "beginner"),
+                        ("Intermediate", "intermediate"),
+                        ("Expert", "expert"),
                     ],
                     value="intermediate",
                 )
 
-                gr.Markdown("### Sessão")
+                gr.Markdown("### Session")
                 session_info = gr.Textbox(
-                    label="Sessão Atual",
+                    label="Current Session",
                     value=get_session_info(),
                     interactive=False,
                 )
-                reset_btn = gr.Button("Nova Sessão", variant="secondary")
+                reset_btn = gr.Button("New Session", variant="secondary")
 
-                gr.Markdown("### Verificação")
+                gr.Markdown("### Verification")
                 # `label` via Markdown — gr.HTML does not support `label=` like
                 # Textbox, so the title is kept above the badge.
-                gr.Markdown("**Última Verificação**")
+                gr.Markdown("**Last Verification**")
                 # gr.HTML accepts colored markup; replaces the plain textbox to
                 # allow visual feedback aligned with hallucination_threshold.
                 score_display = gr.HTML(value="")
 
             with gr.Column(scale=3):
                 chatbot = gr.Chatbot(
-                    label="Conversa",
+                    label="Conversation",
                     height=500,
                 )
                 msg_input = gr.Textbox(
-                    label="Sua Pergunta",
-                    placeholder="Digite sua pergunta sobre agricultura...",
+                    label="Your Question",
+                    placeholder="Type your question about agriculture...",
                     lines=2,
                 )
                 with gr.Row():
-                    submit_btn = gr.Button("Enviar", variant="primary")
-                    clear_btn = gr.Button("Limpar Chat")
+                    submit_btn = gr.Button("Send", variant="primary")
+                    clear_btn = gr.Button("Clear Chat")
 
         # `respond` returns 3 outputs: (history, score_html, input_value).
         # On success the input becomes ""; on error it keeps the original text
@@ -481,23 +478,23 @@ def main() -> None:
     )
 
     parser = argparse.ArgumentParser(
-        description="Interface Gradio para SmartB100",
+        description="Gradio interface for SmartB100",
     )
     parser.add_argument(
         "--api-url",
         default=DEFAULT_API_URL,
-        help=f"URL da API SmartB100 (default: {DEFAULT_API_URL})",
+        help=f"SmartB100 API URL (default: {DEFAULT_API_URL})",
     )
     parser.add_argument(
         "--port",
         type=int,
         default=DEFAULT_PORT,
-        help=f"Porta do servidor Gradio (default: {DEFAULT_PORT})",
+        help=f"Gradio server port (default: {DEFAULT_PORT})",
     )
     parser.add_argument(
         "--share",
         action="store_true",
-        help="Criar link público temporário",
+        help="Create a temporary public link",
     )
 
     args = parser.parse_args()
