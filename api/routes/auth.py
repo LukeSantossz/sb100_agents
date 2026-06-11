@@ -1,15 +1,15 @@
-"""Rotas de autenticação e registro de usuários.
+"""User authentication and registration routes.
 
-Implementa autenticação baseada em JWT com endpoints para:
+Implements JWT-based authentication with endpoints for:
 
-- **POST /auth/register**: Criação de novo usuário (rate-limit: 3/hora por IP).
-- **POST /auth/token**: Login e geração de token JWT (rate-limit: 5/15min por IP).
+- **POST /auth/register**: Create a new user (rate-limit: 3/hour per IP).
+- **POST /auth/token**: Log in and issue a JWT (rate-limit: 5/15min per IP).
 
-Segurança:
-    - Senhas hasheadas com bcrypt via passlib (verificação timing-safe).
-    - Tokens JWT expiram em 7 dias por padrão.
-    - Username validado por regex ``^[a-zA-Z0-9_-]+$`` (máx. 50 chars).
-    - Password mínimo de 8 caracteres.
+Security:
+    - Passwords hashed with bcrypt via passlib (timing-safe verification).
+    - JWTs expire in 7 days by default.
+    - Username validated by regex ``^[a-zA-Z0-9_-]+$`` (max 50 chars).
+    - Password must be at least 8 characters.
 """
 
 import logging
@@ -31,7 +31,7 @@ from database.models import User
 
 logger = logging.getLogger(__name__)
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 dias
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 _USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -40,28 +40,28 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def get_password_hash(password: str) -> str:
-    """Gera hash bcrypt da senha (com salt aleatório embutido).
+    """Hash the password with bcrypt (random salt embedded).
 
     Args:
-        password: Senha em texto plano.
+        password: Plain-text password.
 
     Returns:
-        Hash bcrypt no formato ``$2b$...``.
+        Bcrypt hash in the ``$2b$...`` format.
     """
     hashed: str = pwd_context.hash(password)
     return hashed
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifica senha de forma timing-safe contra o hash bcrypt armazenado.
+    """Verify a password against the stored bcrypt hash (timing-safe).
 
     Args:
-        plain_password: Senha em texto plano fornecida pelo usuário.
-        hashed_password: Hash bcrypt armazenado no banco.
+        plain_password: Plain-text password supplied by the user.
+        hashed_password: Bcrypt hash stored in the database.
 
     Returns:
-        True se a senha corresponder, False em qualquer outro caso (incluindo
-        hash inválido/corrompido — degrada para falha de autenticação).
+        True if the password matches, False in any other case (including an
+        invalid/corrupted hash — degrades to an authentication failure).
     """
     try:
         return bool(pwd_context.verify(plain_password, hashed_password))
@@ -70,14 +70,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
-    """Cria token JWT assinado com tempo de expiração.
+    """Create a signed JWT with an expiration time.
 
     Args:
-        data: Payload do token (ex: ``{"sub": "username"}``).
-        expires_delta: Tempo até expiração. Default: 15 minutos.
+        data: Token payload (e.g. ``{"sub": "username"}``).
+        expires_delta: Time until expiration. Default: 15 minutes.
 
     Returns:
-        Token JWT codificado como string.
+        Encoded JWT as a string.
     """
     to_encode = data.copy()
     if expires_delta:
@@ -89,7 +89,7 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = 
 
 
 class UserCreate(BaseModel):
-    """Schema para criação de novo usuário."""
+    """Schema for creating a new user."""
 
     username: str = Field(..., min_length=1, max_length=50)
     password: str = Field(..., min_length=8, max_length=128)
@@ -103,7 +103,7 @@ class UserCreate(BaseModel):
 
 
 class Token(BaseModel):
-    """Schema de resposta contendo token JWT."""
+    """Response schema containing the JWT."""
 
     access_token: str
     token_type: str
@@ -116,19 +116,19 @@ def register(
     user_data: UserCreate,
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    """Registra um novo usuário no sistema.
+    """Register a new user in the system.
 
     Args:
-        request: Requisição HTTP (necessário para slowapi rate-limit).
-        user_data: Dados do usuário (username e password validados).
-        db: Sessão do banco de dados injetada.
+        request: HTTP request (required by the slowapi rate-limit).
+        user_data: User data (validated username and password).
+        db: Injected database session.
 
     Returns:
-        Mensagem de sucesso com o username criado.
+        Success message with the created username.
 
     Raises:
-        HTTPException(400): Se o username já estiver em uso.
-        HTTPException(429): Se o rate-limit (3/hora por IP) for atingido.
+        HTTPException(400): If the username is already taken.
+        HTTPException(429): If the rate-limit (3/hour per IP) is hit.
     """
     existing = db.query(User).filter(User.username == user_data.username).first()
     if existing:
@@ -159,21 +159,21 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    """Autentica usuário e retorna token JWT.
+    """Authenticate the user and return a JWT.
 
-    Endpoint compatível com OAuth2 password flow para uso com Swagger UI.
+    Endpoint compatible with the OAuth2 password flow for use with Swagger UI.
 
     Args:
-        request: Requisição HTTP (necessário para slowapi rate-limit).
-        form_data: Formulário OAuth2 com username e password.
-        db: Sessão do banco de dados injetada.
+        request: HTTP request (required by the slowapi rate-limit).
+        form_data: OAuth2 form with username and password.
+        db: Injected database session.
 
     Returns:
-        Token JWT e tipo (``bearer``).
+        JWT and token type (``bearer``).
 
     Raises:
-        HTTPException(401): Se credenciais forem inválidas.
-        HTTPException(429): Se o rate-limit (5/15min por IP) for atingido.
+        HTTPException(401): If the credentials are invalid.
+        HTTPException(429): If the rate-limit (5/15min per IP) is hit.
     """
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, str(user.hashed_password)):

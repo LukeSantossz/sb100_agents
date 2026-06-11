@@ -1,15 +1,15 @@
-"""Modelos SQLAlchemy do SmartB100.
+"""SmartB100 SQLAlchemy models.
 
-Reforço de integridade aplicado em TASK-T63:
+Integrity constraints applied:
 
-- ``nullable=False`` em campos obrigatórios.
-- ``index=True`` em foreign keys.
-- ``ondelete="CASCADE"`` em FKs para limpar dependentes ao remover o pai.
-- ``Boolean`` em ``is_hallucinated`` (antes ``Integer`` representando 0/1).
-- ``DateTime(timezone=True)`` em ``created_at`` para preservar tz.
+- ``nullable=False`` on required fields.
+- ``index=True`` on foreign keys.
+- ``ondelete="CASCADE"`` on FKs to remove dependents when the parent is deleted.
+- ``Boolean`` on ``is_hallucinated`` (previously ``Integer`` representing 0/1).
+- ``DateTime(timezone=True)`` on ``created_at`` to preserve tz.
 
-CASCADE só funciona em SQLite quando o PRAGMA ``foreign_keys=ON`` está ativo;
-isso é garantido em ``database/db.py`` via listener de conexão.
+CASCADE only works in SQLite when the ``foreign_keys=ON`` PRAGMA is active;
+this is ensured in ``database/db.py`` via a connection listener.
 """
 
 from datetime import UTC, datetime

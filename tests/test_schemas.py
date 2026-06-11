@@ -1,4 +1,4 @@
-"""Testes dos schemas Pydantic do contrato público (TASK-T61 + TASK-T62)."""
+"""Tests for the public-contract Pydantic schemas."""
 
 import pytest
 from pydantic import ValidationError
@@ -28,13 +28,13 @@ def test_chat_request_accepts_question_at_upper_boundary() -> None:
 def test_chat_request_accepts_typical_question() -> None:
     req = ChatRequest(
         session_id="s1",
-        question="Como cultivar soja no cerrado?",
+        question="How to grow soybeans in the Cerrado?",
         profile=_profile(),
     )
-    assert req.question == "Como cultivar soja no cerrado?"
+    assert req.question == "How to grow soybeans in the Cerrado?"
 
 
-# ----------------------------- T62: bounds adicionais ---------------------------
+# ----------------------------- additional bounds ---------------------------
 
 
 def test_chat_request_rejects_empty_session_id() -> None:

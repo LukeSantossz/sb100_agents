@@ -1,7 +1,7 @@
-"""Testes do módulo verification/ (TASK-T64).
+"""Tests for the verification/ module.
 
-Cobre estabilidade numérica (epsilon na cosseno) e error handling no dispatch
-de samples, no acesso a respostas de provider e no gate.
+Covers numerical stability (epsilon in cosine) and error handling in sample
+dispatch, provider response access, and the gate.
 """
 
 from typing import Any
@@ -25,7 +25,7 @@ def _profile() -> UserProfile:
     return UserProfile(name="tester", expertise=ExpertiseLevel.beginner)
 
 
-# ----------------------------- epsilon na cosseno -----------------------------
+# ----------------------------- epsilon in cosine -----------------------------
 
 
 def test_compute_similarity_handles_zero_vector() -> None:
@@ -42,7 +42,7 @@ def test_compute_similarity_returns_unit_for_identical_vectors() -> None:
 
 
 def test_cluster_responses_caches_embeddings_per_unique_text() -> None:
-    """TASK-T68: cache local evita re-embedding do mesmo texto durante o clustering."""
+    """Local cache avoids re-embedding the same text during clustering."""
     call_count = {"n": 0}
     embeddings = {
         "A": [1.0, 0.0],
@@ -57,9 +57,9 @@ def test_cluster_responses_caches_embeddings_per_unique_text() -> None:
     with patch.object(entropy_module, "embed_text", side_effect=fake_embed):
         clusters = _cluster_responses(["A", "B", "C"], threshold=0.99)
 
-    # 3 textos únicos → no máximo 3 chamadas a embed_text (cache evita repetição)
+    # 3 unique texts → at most 3 embed_text calls (cache avoids repeats)
     assert call_count["n"] == 3
-    assert len(clusters) == 3  # A, B, C distintos com threshold alto
+    assert len(clusters) == 3  # A, B, C distinct with a high threshold
 
 
 # ----------------------------- missing API key warns -----------------------------
@@ -131,10 +131,10 @@ def test_generate_samples_propagates_when_all_fail() -> None:
 
 
 def _patch_ollama_client(response: dict[str, Any]) -> Any:
-    """Patcha ``get_chat_client`` para retornar um mock cujo ``chat`` devolve ``response``.
+    """Patches ``get_chat_client`` to return a mock whose ``chat`` yields ``response``.
 
-    Após TASK-T76, ``_generate_one_ollama`` consome o singleton centralizado em
-    :mod:`core.ollama_clients`; o mock vai direto na função de acesso.
+    ``_generate_one_ollama`` consumes the singleton centralized in
+    :mod:`core.ollama_clients`; the mock targets the accessor function directly.
     """
     from unittest.mock import MagicMock
 
@@ -144,7 +144,7 @@ def _patch_ollama_client(response: dict[str, Any]) -> Any:
 
 
 def test_generate_one_ollama_handles_missing_message_key() -> None:
-    bad_response: dict[str, Any] = {}  # sem chave "message"
+    bad_response: dict[str, Any] = {}  # no "message" key
     with _patch_ollama_client(bad_response):
         out = _generate_one_ollama("q", "c", "m")
     assert out == ""
@@ -169,7 +169,7 @@ def test_generate_one_ollama_returns_content() -> None:
 
 def test_gate_returns_neutral_score_when_entropy_raises() -> None:
     with (
-        patch.object(gate_module, "generate", return_value="resposta"),
+        patch.object(gate_module, "generate", return_value="answer"),
         patch.object(
             gate_module, "compute_entropy_score", side_effect=RuntimeError("entropy down")
         ),
@@ -177,24 +177,24 @@ def test_gate_returns_neutral_score_when_entropy_raises() -> None:
         result = gate_module.evaluate(question="q", context="c", history=[], profile=_profile())
 
     assert isinstance(result, ChatResponse)
-    assert result.answer == "resposta"
+    assert result.answer == "answer"
     assert result.hallucination_score == 0.5
 
 
 def test_gate_returns_clean_answer_when_score_under_threshold() -> None:
     with (
-        patch.object(gate_module, "generate", return_value="resposta ok"),
+        patch.object(gate_module, "generate", return_value="good answer"),
         patch.object(gate_module, "compute_entropy_score", return_value=0.1),
         patch.object(gate_module.settings, "hallucination_threshold", 0.5),
     ):
         result = gate_module.evaluate(question="q", context="c", history=[], profile=_profile())
-    assert result.answer == "resposta ok"
+    assert result.answer == "good answer"
     assert result.hallucination_score == 0.1
 
 
 def test_gate_returns_fallback_message_when_all_retries_exceed_threshold() -> None:
     with (
-        patch.object(gate_module, "generate", return_value="resposta alta entropia"),
+        patch.object(gate_module, "generate", return_value="high entropy answer"),
         patch.object(gate_module, "compute_entropy_score", return_value=0.9),
         patch.object(gate_module.settings, "hallucination_threshold", 0.5),
     ):

@@ -1,15 +1,15 @@
 """
-Executa avaliacao do SB100 contra o dataset de perguntas.
+Run the SB100 evaluation against the question dataset.
 
-Itera sobre o dataset de perguntas, executa POST /chat para cada uma
-com session_id unico (impede contaminacao de historico), e salva as
-respostas do SB100 no dataset de resultados.
+Iterates over the question dataset, calls POST /chat for each question
+with a unique session_id (prevents history contamination), and saves
+the SB100 answers to the results dataset.
 
-Suporta checkpointing: a cada `CHECKPOINT_EVERY` resultados, persiste
-estado parcial em `evaluation_checkpoint.json`. Se interrompido, a
-proxima execucao retoma apenas das perguntas pendentes.
+Supports checkpointing: every `CHECKPOINT_EVERY` results, partial state
+is persisted to `evaluation_checkpoint.json`. If interrupted, the next
+run resumes only the pending questions.
 
-Uso:
+Usage:
     python eval/run_evaluation.py
     python eval/run_evaluation.py --api-url http://localhost:8000 --concurrent 5
 """
@@ -25,7 +25,7 @@ from pathlib import Path
 import httpx
 from tqdm import tqdm
 
-# Permite `from eval._utils import ...` em execucao standalone
+# Allow `from eval._utils import ...` when run standalone
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval._utils import (
@@ -35,12 +35,12 @@ from eval._utils import (
     validate_dataset_schema,
 )
 
-# Configuracoes padrao
+# Default settings
 DEFAULT_API_URL = "http://localhost:8000"
 DEFAULT_PROFILE = {"name": "eval", "expertise": "intermediate"}
-DEFAULT_CONCURRENT = 1  # Requests simultaneos (1 = sequencial)
-DEFAULT_TIMEOUT = 300.0  # Timeout por request em segundos (5 min para Ollama local)
-CHECKPOINT_EVERY = 10  # Persiste estado parcial a cada N resultados
+DEFAULT_CONCURRENT = 1  # Concurrent requests (1 = sequential)
+DEFAULT_TIMEOUT = 300.0  # Per-request timeout in seconds (5 min for local Ollama)
+CHECKPOINT_EVERY = 10  # Persist partial state every N results
 
 
 async def call_chat_api(
@@ -49,17 +49,17 @@ async def call_chat_api(
     api_url: str = DEFAULT_API_URL,
 ) -> dict:
     """
-    Executa uma chamada ao endpoint POST /chat.
+    Make a single call to the POST /chat endpoint.
 
     Args:
-        client: Cliente HTTP async
-        question: Texto da pergunta
-        api_url: URL base da API
+        client: Async HTTP client
+        question: Question text
+        api_url: API base URL
 
     Returns:
-        Resposta da API ou dict com erro
+        API response or an error dict
     """
-    session_id = str(uuid.uuid4())  # Sessao unica por pergunta
+    session_id = str(uuid.uuid4())  # Unique session per question
 
     payload = {
         "session_id": session_id,
@@ -91,16 +91,16 @@ async def call_chat_api(
     except Exception as e:
         return {
             "success": False,
-            "answer": f"[ERRO] {str(e)}",
+            "answer": f"[ERROR] {str(e)}",
             "hallucination_score": None,
             "session_id": session_id,
         }
 
 
 def load_checkpoint(checkpoint_path: Path) -> list[dict]:
-    """Carrega resultados parciais de um checkpoint, se existir.
+    """Load partial results from a checkpoint, if it exists.
 
-    Retorna lista vazia se o checkpoint nao existir ou estiver corrompido.
+    Returns an empty list if the checkpoint is missing or corrupted.
     """
     if not checkpoint_path.exists():
         return []
@@ -112,15 +112,15 @@ def load_checkpoint(checkpoint_path: Path) -> list[dict]:
             return [r for r in results if isinstance(r, dict) and "question_id" in r]
         return []
     except (OSError, json.JSONDecodeError) as e:
-        print(f"Aviso: checkpoint corrompido ({e}); ignorando")
+        print(f"Warning: corrupted checkpoint ({e}); ignoring")
         return []
 
 
 def save_checkpoint(checkpoint_path: Path, results: list[dict]) -> None:
-    """Persiste resultados parciais em arquivo atomico.
+    """Persist partial results atomically.
 
-    Escreve em `.tmp` e renomeia, evitando corrupcao se for interrompido
-    durante a escrita.
+    Writes to `.tmp` and renames, preventing corruption if interrupted
+    mid-write.
     """
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = checkpoint_path.with_suffix(checkpoint_path.suffix + ".tmp")
@@ -137,18 +137,18 @@ async def run_evaluation_async(
     checkpoint_every: int = CHECKPOINT_EVERY,
 ) -> list[dict]:
     """
-    Executa avaliacao de todas as perguntas de forma assincrona, com
-    persistencia incremental de progresso via checkpoint.
+    Evaluate every question asynchronously, persisting progress
+    incrementally via checkpoint.
 
     Args:
-        questions: Lista de objetos question do dataset
-        api_url: URL base da API
-        concurrent: Numero de requests simultaneos
-        checkpoint_path: Arquivo para gravar progresso parcial
-        checkpoint_every: Intervalo (em resultados completos) para flush
+        questions: List of question objects from the dataset
+        api_url: API base URL
+        concurrent: Number of concurrent requests
+        checkpoint_path: File for writing partial progress
+        checkpoint_every: Flush interval (in completed results)
 
     Returns:
-        Lista de resultados (existentes do checkpoint + novos)
+        List of results (existing from checkpoint + new)
     """
     existing = load_checkpoint(checkpoint_path)
     completed_ids = {r["question_id"] for r in existing}
@@ -156,15 +156,15 @@ async def run_evaluation_async(
 
     if existing:
         print(
-            f"Checkpoint encontrado em {checkpoint_path}: "
-            f"{len(existing)} resultados ja processados; "
-            f"retomando {len(pending)} pendentes"
+            f"Checkpoint found at {checkpoint_path}: "
+            f"{len(existing)} results already processed; "
+            f"resuming {len(pending)} pending"
         )
 
     results: list[dict] = list(existing)
 
     if not pending:
-        print("Nenhuma pergunta pendente.")
+        print("No pending questions.")
         return results
 
     semaphore = asyncio.Semaphore(concurrent)
@@ -187,23 +187,23 @@ async def run_evaluation_async(
             }
 
     async with httpx.AsyncClient() as client:
-        # Verifica se API esta disponivel
+        # Check that the API is available
         try:
             health = await client.get(f"{api_url}/health", timeout=5.0)
             health.raise_for_status()
-            print(f"API disponivel: {api_url}")
+            print(f"API available: {api_url}")
         except Exception as e:
-            print(f"Erro: API nao disponivel em {api_url}: {e}")
+            print(f"Error: API not available at {api_url}: {e}")
             return results
 
-        # Processa perguntas com barra de progresso
+        # Process questions with a progress bar
         tasks = [process_question(q, client) for q in pending]
         new_since_checkpoint = 0
 
         for task in tqdm(
             asyncio.as_completed(tasks),
             total=len(tasks),
-            desc="Executando avaliacao",
+            desc="Running evaluation",
         ):
             result = await task
             results.append(result)
@@ -213,7 +213,7 @@ async def run_evaluation_async(
                 save_checkpoint(checkpoint_path, results)
                 new_since_checkpoint = 0
 
-    # Reordena por question_id para manter ordem original
+    # Sort by question_id to keep the original order
     results.sort(key=lambda x: x["question_id"])
 
     return results
@@ -227,44 +227,44 @@ def run_evaluation(
     checkpoint_path: str | None = None,
 ) -> dict:
     """
-    Executa avaliacao completa do SB100.
+    Run the full SB100 evaluation.
 
     Args:
-        input_path: Caminho do dataset com perguntas e referencias
-        output_path: Caminho do arquivo de saida
-        api_url: URL base da API
-        concurrent: Numero de requests simultaneos
-        checkpoint_path: Caminho do checkpoint (padrao: DEFAULT_CHECKPOINT_PATH)
+        input_path: Path to the dataset with questions and references
+        output_path: Path to the output file
+        api_url: API base URL
+        concurrent: Number of concurrent requests
+        checkpoint_path: Checkpoint path (default: DEFAULT_CHECKPOINT_PATH)
 
     Returns:
-        Dataset de resultados
+        Results dataset
     """
     checkpoint = Path(checkpoint_path) if checkpoint_path else DEFAULT_CHECKPOINT_PATH
 
-    # Carrega dataset
+    # Load dataset
     with open(input_path, encoding="utf-8") as f:
         dataset = json.load(f)
 
     validate_dataset_schema(dataset, ["metadata", "questions"])
 
     questions = dataset["questions"]
-    print(f"Carregadas {len(questions)} perguntas de {input_path}")
+    print(f"Loaded {len(questions)} questions from {input_path}")
     print(f"API URL: {api_url}")
-    print(f"Requests simultaneos: {concurrent}")
-    print(f"Checkpoint: {checkpoint} (a cada {CHECKPOINT_EVERY} resultados)")
+    print(f"Concurrent requests: {concurrent}")
+    print(f"Checkpoint: {checkpoint} (every {CHECKPOINT_EVERY} results)")
 
-    # Executa avaliacao
+    # Run evaluation
     results = asyncio.run(run_evaluation_async(questions, api_url, concurrent, checkpoint))
 
     if not results:
-        print("Nenhum resultado obtido. Verifique se a API esta disponivel.")
+        print("No results obtained. Check that the API is available.")
         return {}
 
-    # Estatisticas
+    # Statistics
     successful = sum(1 for r in results if r["sb100_success"])
     failed = len(results) - successful
 
-    # Monta dataset de resultados
+    # Build results dataset
     results_dataset = {
         "metadata": {
             **dataset.get("metadata", {}),
@@ -278,67 +278,67 @@ def run_evaluation(
         "results": results,
     }
 
-    # Salva resultados
+    # Save results
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output, "w", encoding="utf-8") as f:
         json.dump(results_dataset, f, ensure_ascii=False, indent=2)
 
-    # Limpa checkpoint ao concluir com sucesso
+    # Remove checkpoint on successful completion
     if checkpoint.exists():
         checkpoint.unlink()
 
-    print(f"\nResultados salvos em: {output}")
-    print(f"Requests bem-sucedidos: {successful}/{len(results)}")
+    print(f"\nResults saved to: {output}")
+    print(f"Successful requests: {successful}/{len(results)}")
     if failed > 0:
-        print(f"Requests com erro: {failed}")
+        print(f"Failed requests: {failed}")
 
     return results_dataset
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Executa avaliacao do SB100 contra o dataset de perguntas"
+        description="Run the SB100 evaluation against the question dataset"
     )
     parser.add_argument(
         "--input",
         default=str(DEFAULT_REFERENCES_PATH),
-        help=f"Caminho do dataset com referencias (padrao: {DEFAULT_REFERENCES_PATH})",
+        help=f"Path to the dataset with references (default: {DEFAULT_REFERENCES_PATH})",
     )
     parser.add_argument(
         "--output",
         default=str(DEFAULT_EVAL_RESULTS_PATH),
-        help=f"Caminho do arquivo de saida (padrao: {DEFAULT_EVAL_RESULTS_PATH})",
+        help=f"Path to the output file (default: {DEFAULT_EVAL_RESULTS_PATH})",
     )
     parser.add_argument(
         "--api-url",
         default=DEFAULT_API_URL,
-        help=f"URL base da API (padrao: {DEFAULT_API_URL})",
+        help=f"API base URL (default: {DEFAULT_API_URL})",
     )
     parser.add_argument(
         "--concurrent",
         type=int,
         default=DEFAULT_CONCURRENT,
-        help=f"Requests simultaneos (padrao: {DEFAULT_CONCURRENT})",
+        help=f"Concurrent requests (default: {DEFAULT_CONCURRENT})",
     )
     parser.add_argument(
         "--checkpoint",
         default=str(DEFAULT_CHECKPOINT_PATH),
-        help=f"Arquivo de checkpoint (padrao: {DEFAULT_CHECKPOINT_PATH})",
+        help=f"Checkpoint file (default: {DEFAULT_CHECKPOINT_PATH})",
     )
 
     args = parser.parse_args()
 
-    # Verifica se arquivo de entrada existe
+    # Check that the input file exists
     if not Path(args.input).exists():
-        print(f"Erro: Arquivo de entrada nao encontrado: {args.input}")
-        print("Execute primeiro:")
-        print("  1. python eval/generate_questions.py <documento>")
+        print(f"Error: input file not found: {args.input}")
+        print("Run first:")
+        print("  1. python eval/generate_questions.py <document>")
         print("  2. python eval/collect_references.py")
         return 1
 
-    # Executa avaliacao
+    # Run evaluation
     result = run_evaluation(
         input_path=args.input,
         output_path=args.output,

@@ -1,10 +1,10 @@
 """
-Coleta respostas de referencia de modelos open-source.
+Collect reference answers from open-source models.
 
-Itera sobre o dataset de perguntas gerado por generate_questions.py
-e coleta respostas de ao menos dois modelos open-source.
+Iterates over the question dataset produced by generate_questions.py
+and collects answers from at least two open-source models.
 
-Uso:
+Usage:
     python eval/collect_references.py
     python eval/collect_references.py --models llama3:8b,mistral:7b --provider ollama
     python eval/collect_references.py --models llama-3.1-8b-instant,gemma2-9b-it --provider groq
@@ -14,7 +14,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Carrega variaveis de ambiente do .env
+# Load environment variables from .env
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import argparse
@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 
 from tqdm import tqdm
 
-# Permite `from eval._utils import ...` em execucao standalone
+# Allow `from eval._utils import ...` when run standalone
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval._utils import (
@@ -34,34 +34,35 @@ from eval._utils import (
     validate_dataset_schema,
 )
 
-# Providers disponiveis: groq, ollama, openrouter
+# Available providers: groq, ollama, openrouter
 DEFAULT_PROVIDER = "groq"
 
-# Modelos padrao por provider
+# Default models per provider
 DEFAULT_MODELS = {
     "groq": ["llama-3.1-8b-instant", "gemma2-9b-it"],
     "ollama": ["llama3:8b", "mistral:7b"],
     "openrouter": ["google/gemma-4-31b-it", "google/gemma-4-26b-a4b-it"],
 }
 
-# Configuracao OpenRouter
+# OpenRouter configuration
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
-# Prompt para resposta de referencia
-REFERENCE_ANSWER_PROMPT = """Voce e um assistente especializado em agronomia e agricultura brasileira.
-Responda a seguinte pergunta de forma clara, objetiva e tecnicamente precisa.
-Use seu conhecimento para fornecer a melhor resposta possivel.
+# Prompt for reference answers
+REFERENCE_ANSWER_PROMPT = """You are an assistant specialized in agronomy and Brazilian agriculture.
+Answer the following question clearly, objectively and with technical precision.
+Use your knowledge to provide the best possible answer.
+Write the answer in Portuguese (pt-BR).
 
-Pergunta: {question}
+Question: {question}
 
-Resposta:"""
+Answer:"""
 
 
 def get_reference_groq(
     question: str,
     model: str,
 ) -> str:
-    """Obtem resposta de referencia usando Groq API."""
+    """Get a reference answer using the Groq API."""
     from groq import Groq
 
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
@@ -82,7 +83,7 @@ def get_reference_ollama(
     question: str,
     model: str,
 ) -> str:
-    """Obtem resposta de referencia usando Ollama local."""
+    """Get a reference answer using local Ollama."""
     import ollama
 
     prompt = REFERENCE_ANSWER_PROMPT.format(question=question)
@@ -99,7 +100,7 @@ def get_reference_openrouter(
     question: str,
     model: str,
 ) -> str:
-    """Obtem resposta de referencia usando OpenRouter API (Gemma 4, etc)."""
+    """Get a reference answer using the OpenRouter API (Gemma 4, etc)."""
     from openai import OpenAI
 
     client = OpenAI(
@@ -126,16 +127,16 @@ def collect_references(
     models: list[str] | None = None,
 ) -> dict:
     """
-    Coleta respostas de referencia para todas as perguntas.
+    Collect reference answers for every question.
 
     Args:
-        questions_path: Caminho do dataset de perguntas
-        output_path: Caminho do arquivo de saida
-        provider: Provider LLM (groq ou ollama)
-        models: Lista de modelos a usar
+        questions_path: Path to the question dataset
+        output_path: Path to the output file
+        provider: LLM provider (groq or ollama)
+        models: List of models to use
 
     Returns:
-        Dataset com respostas de referencia
+        Dataset with reference answers
     """
     if models is None:
         models = DEFAULT_MODELS[provider]
@@ -147,23 +148,23 @@ def collect_references(
     }
     get_reference_fn = get_reference_fns[provider]
 
-    # Carrega dataset de perguntas
+    # Load question dataset
     with open(questions_path, encoding="utf-8") as f:
         dataset = json.load(f)
 
     validate_dataset_schema(dataset, ["metadata", "questions"])
 
     questions = dataset["questions"]
-    print(f"Carregadas {len(questions)} perguntas de {questions_path}")
-    print(f"Modelos de referencia: {models}")
+    print(f"Loaded {len(questions)} questions from {questions_path}")
+    print(f"Reference models: {models}")
     print(f"Provider: {provider}")
 
-    # Coleta respostas
-    for question_obj in tqdm(questions, desc="Coletando respostas"):
+    # Collect answers
+    for question_obj in tqdm(questions, desc="Collecting answers"):
         question = question_obj["question"]
 
         for model in models:
-            # Verifica se ja tem resposta deste modelo
+            # Skip if this model already has an answer
             existing = [
                 r for r in question_obj["reference_answers"] if r["reference_model"] == model
             ]
@@ -179,8 +180,8 @@ def collect_references(
                         "error": None,
                     }
                 )
-            except Exception as e:  # noqa: BLE001 - propaga via campo `error`
-                print(f"\nErro com modelo {model}: {e}")
+            except Exception as e:  # noqa: BLE001 - propagated via `error` field
+                print(f"\nError with model {model}: {e}")
                 question_obj["reference_answers"].append(
                     {
                         "reference_model": model,
@@ -189,67 +190,67 @@ def collect_references(
                     }
                 )
 
-    # Atualiza metadata
+    # Update metadata
     dataset["metadata"]["reference_models"] = models
     dataset["metadata"]["references_collected_at"] = datetime.now(UTC).isoformat()
     dataset["metadata"]["reference_provider"] = provider
 
-    # Salva dataset
+    # Save dataset
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output, "w", encoding="utf-8") as f:
         json.dump(dataset, f, ensure_ascii=False, indent=2)
 
-    print(f"\nDataset com referencias salvo em: {output}")
+    print(f"\nDataset with references saved to: {output}")
 
-    # Estatisticas
+    # Statistics
     total_refs = sum(len(q["reference_answers"]) for q in questions)
-    print(f"Total de respostas coletadas: {total_refs}")
+    print(f"Total answers collected: {total_refs}")
 
     return dataset
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Coleta respostas de referencia de modelos open-source"
+        description="Collect reference answers from open-source models"
     )
     parser.add_argument(
         "--input",
         default=str(DEFAULT_QUESTIONS_PATH),
-        help=f"Caminho do dataset de perguntas (padrao: {DEFAULT_QUESTIONS_PATH})",
+        help=f"Path to the question dataset (default: {DEFAULT_QUESTIONS_PATH})",
     )
     parser.add_argument(
         "--output",
         default=str(DEFAULT_REFERENCES_PATH),
-        help=f"Caminho do arquivo de saida (padrao: {DEFAULT_REFERENCES_PATH})",
+        help=f"Path to the output file (default: {DEFAULT_REFERENCES_PATH})",
     )
     parser.add_argument(
         "--provider",
         choices=["groq", "ollama", "openrouter"],
         default=DEFAULT_PROVIDER,
-        help=f"Provider LLM (padrao: {DEFAULT_PROVIDER})",
+        help=f"LLM provider (default: {DEFAULT_PROVIDER})",
     )
     parser.add_argument(
         "--models",
-        help="Modelos separados por virgula (padrao depende do provider)",
+        help="Comma-separated models (default depends on provider)",
     )
 
     args = parser.parse_args()
 
-    # Valida provider
+    # Validate provider
     if args.provider == "groq" and not os.environ.get("GROQ_API_KEY"):
-        print("Erro: GROQ_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
+        print("Error: GROQ_API_KEY not set. Use --provider ollama or set the variable.")
         return 1
 
     if args.provider == "openrouter" and not os.environ.get("OPENROUTER_API_KEY"):
-        print("Erro: OPENROUTER_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
+        print("Error: OPENROUTER_API_KEY not set. Use --provider ollama or set the variable.")
         return 1
 
-    # Verifica se arquivo de entrada existe
+    # Check that the input file exists
     if not Path(args.input).exists():
-        print(f"Erro: Arquivo de entrada nao encontrado: {args.input}")
-        print("Execute primeiro: python eval/generate_questions.py <documento>")
+        print(f"Error: input file not found: {args.input}")
+        print("Run first: python eval/generate_questions.py <document>")
         return 1
 
     # Parse models
@@ -257,7 +258,7 @@ def main():
     if args.models:
         models = [m.strip() for m in args.models.split(",")]
 
-    # Coleta referencias
+    # Collect references
     collect_references(
         questions_path=args.input,
         output_path=args.output,

@@ -1,13 +1,13 @@
 """
-Geracao de relatorio sumario da avaliacao.
+Evaluation summary report generation.
 
-Gera relatorio com:
-- Distribuicao de scores (tabela de frequencias)
-- Percentual de veredictos por modelo de referencia
-- Media e mediana de judge_score
-- Amostra humana (10%) exportada para CSV
+Produces a report with:
+- Score distribution (frequency table)
+- Verdict percentages per reference model
+- Mean and median of judge_score
+- Human sample (10%) exported to CSV
 
-Uso:
+Usage:
     python eval/report.py
     python eval/report.py --sample-size 30
 """
@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from statistics import mean, median
 
-# Permite `from eval._utils import ...` em execucao standalone
+# Allow `from eval._utils import ...` when run standalone
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval._utils import (
@@ -34,13 +34,13 @@ from eval._utils import (
 
 
 def load_judged_results(input_path: str) -> dict:
-    """Carrega dataset com resultados julgados."""
+    """Load the dataset with judged results."""
     with open(input_path, encoding="utf-8") as f:
         return json.load(f)
 
 
 def extract_all_judgments(results: list[dict]) -> list[dict]:
-    """Extrai todos os julgamentos validos dos resultados."""
+    """Extract every valid judgment from the results."""
     judgments = []
     for result in results:
         question = result.get("question", "")
@@ -72,28 +72,28 @@ def extract_all_judgments(results: list[dict]) -> list[dict]:
 
 
 def generate_score_distribution(judgments: list[dict]) -> dict:
-    """Gera distribuicao de scores."""
+    """Generate the score distribution."""
     scores = [j["judge_score"] for j in judgments]
 
-    # Agrupa em faixas
+    # Group into bands
     distribution = Counter()
     for score in scores:
         if score <= 2:
-            distribution["0-2 (Ruim)"] += 1
+            distribution["0-2 (Poor)"] += 1
         elif score <= 4:
-            distribution["3-4 (Fraco)"] += 1
+            distribution["3-4 (Weak)"] += 1
         elif score <= 6:
-            distribution["5-6 (Regular)"] += 1
+            distribution["5-6 (Fair)"] += 1
         elif score <= 8:
-            distribution["7-8 (Bom)"] += 1
+            distribution["7-8 (Good)"] += 1
         else:
-            distribution["9-10 (Excelente)"] += 1
+            distribution["9-10 (Excellent)"] += 1
 
     return dict(sorted(distribution.items()))
 
 
 def generate_verdict_stats(judgments: list[dict]) -> dict:
-    """Gera estatisticas de veredictos por modelo."""
+    """Generate verdict statistics per model."""
     by_model = {}
 
     for j in judgments:
@@ -104,7 +104,7 @@ def generate_verdict_stats(judgments: list[dict]) -> dict:
         by_model[model][j["judge_verdict"]] += 1
         by_model[model]["total"] += 1
 
-    # Calcula percentuais
+    # Compute percentages
     for _model, stats in by_model.items():
         total = stats["total"]
         if total > 0:
@@ -121,47 +121,47 @@ def generate_report_markdown(
     score_distribution: dict,
     verdict_stats: dict,
 ) -> str:
-    """Gera relatorio em formato Markdown."""
+    """Generate the report in Markdown format."""
     scores = [j["judge_score"] for j in judgments]
 
-    report = f"""# Relatorio de Avaliacao - SB100
+    report = f"""# Evaluation Report - SB100
 
-**Gerado em:** {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")}
+**Generated at:** {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")}
 
-## Resumo
+## Summary
 
-| Metrica | Valor |
-|---------|-------|
-| Total de perguntas | {metadata.get("total_questions", len(judgments))} |
-| Total de julgamentos | {len(judgments)} |
-| Modelo juiz | {metadata.get("judge_model", "N/A")} |
+| Metric | Value |
+|--------|-------|
+| Total questions | {metadata.get("total_questions", len(judgments))} |
+| Total judgments | {len(judgments)} |
+| Judge model | {metadata.get("judge_model", "N/A")} |
 | Provider | {metadata.get("judge_provider", "N/A")} |
 
-## Scores do SB100
+## SB100 Scores
 
-| Metrica | Valor |
-|---------|-------|
-| Media | {mean(scores):.2f} |
-| Mediana | {median(scores):.2f} |
-| Minimo | {min(scores):.1f} |
-| Maximo | {max(scores):.1f} |
+| Metric | Value |
+|--------|-------|
+| Mean | {mean(scores):.2f} |
+| Median | {median(scores):.2f} |
+| Min | {min(scores):.1f} |
+| Max | {max(scores):.1f} |
 
-### Distribuicao de Scores
+### Score Distribution
 
-| Faixa | Quantidade | Percentual |
-|-------|------------|------------|
+| Band | Count | Percentage |
+|------|-------|------------|
 """
 
     total = len(scores)
-    for faixa, count in score_distribution.items():
+    for band, count in score_distribution.items():
         pct = round(100 * count / total, 1)
-        report += f"| {faixa} | {count} | {pct}% |\n"
+        report += f"| {band} | {count} | {pct}% |\n"
 
     report += """
-## Veredictos por Modelo de Referencia
+## Verdicts per Reference Model
 
-| Modelo | Better | Equivalent | Worse | Total |
-|--------|--------|------------|-------|-------|
+| Model | Better | Equivalent | Worse | Total |
+|-------|--------|------------|-------|-------|
 """
 
     for model, stats in verdict_stats.items():
@@ -173,7 +173,7 @@ def generate_report_markdown(
             f"{stats['total']} |\n"
         )
 
-    # Totais gerais
+    # Grand totals
     total_better = sum(s["better"] for s in verdict_stats.values())
     total_equiv = sum(s["equivalent"] for s in verdict_stats.values())
     total_worse = sum(s["worse"] for s in verdict_stats.values())
@@ -181,25 +181,25 @@ def generate_report_markdown(
 
     if grand_total > 0:
         report += f"""
-### Totais Gerais
+### Grand Totals
 
-| Veredicto | Quantidade | Percentual |
-|-----------|------------|------------|
-| SB100 Melhor | {total_better} | {round(100 * total_better / grand_total, 1)}% |
-| Equivalente | {total_equiv} | {round(100 * total_equiv / grand_total, 1)}% |
-| SB100 Pior | {total_worse} | {round(100 * total_worse / grand_total, 1)}% |
+| Verdict | Count | Percentage |
+|---------|-------|------------|
+| SB100 Better | {total_better} | {round(100 * total_better / grand_total, 1)}% |
+| Equivalent | {total_equiv} | {round(100 * total_equiv / grand_total, 1)}% |
+| SB100 Worse | {total_worse} | {round(100 * total_worse / grand_total, 1)}% |
 """
 
     report += """
-## Notas
+## Notes
 
-- **Better**: SB100 teve resposta melhor que o modelo de referencia
-- **Equivalent**: Respostas de qualidade similar
-- **Worse**: Modelo de referencia teve resposta melhor
+- **Better**: SB100 answered better than the reference model
+- **Equivalent**: Answers of similar quality
+- **Worse**: The reference model answered better
 
 ---
 
-*Relatorio gerado automaticamente pelo pipeline de avaliacao SB100.*
+*Report generated automatically by the SB100 evaluation pipeline.*
 """
 
     return report
@@ -211,23 +211,23 @@ def export_human_sample(
     sample_size: int = 30,
 ) -> list[dict]:
     """
-    Exporta amostra aleatoria para validacao humana.
+    Export a random sample for human validation.
 
     Args:
-        judgments: Lista de julgamentos
-        output_path: Caminho do CSV de saida
-        sample_size: Tamanho da amostra (padrao: 30 = 10% de 300)
+        judgments: List of judgments
+        output_path: Path to the output CSV
+        sample_size: Sample size (default: 30 = 10% of 300)
 
     Returns:
-        Lista com os itens da amostra
+        List with the sampled items
     """
-    random.seed(42)  # Reproducibilidade
+    random.seed(42)  # Reproducibility
 
-    # Seleciona amostra
+    # Select sample
     sample_size = min(sample_size, len(judgments))
     sample = random.sample(judgments, sample_size)
 
-    # Exporta CSV
+    # Export CSV
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -270,38 +270,38 @@ def generate_report(
     sample_size: int = 30,
 ) -> bool:
     """
-    Gera relatorio completo da avaliacao.
+    Generate the full evaluation report.
 
     Args:
-        input_path: Caminho do dataset julgado
-        report_path: Caminho do relatorio MD
-        sample_path: Caminho do CSV de amostra humana
-        sample_size: Tamanho da amostra humana
+        input_path: Path to the judged dataset
+        report_path: Path to the MD report
+        sample_path: Path to the human-sample CSV
+        sample_size: Human sample size
 
     Returns:
-        True se o relatorio foi gerado; False se nao havia julgamentos validos.
+        True if the report was generated; False if there were no valid judgments.
     """
-    # Carrega dados
+    # Load data
     dataset = load_judged_results(input_path)
     validate_dataset_schema(dataset, ["results"])
     results = dataset.get("results", [])
     metadata = dataset.get("metadata", {})
 
-    print(f"Carregados {len(results)} resultados de {input_path}")
+    print(f"Loaded {len(results)} results from {input_path}")
 
-    # Extrai julgamentos
+    # Extract judgments
     judgments = extract_all_judgments(results)
-    print(f"Total de julgamentos validos: {len(judgments)}")
+    print(f"Total valid judgments: {len(judgments)}")
 
     if not judgments:
-        print("Nenhum julgamento encontrado. Verifique o arquivo de entrada.")
+        print("No judgments found. Check the input file.")
         return False
 
-    # Gera estatisticas
+    # Generate statistics
     score_distribution = generate_score_distribution(judgments)
     verdict_stats = generate_verdict_stats(judgments)
 
-    # Gera relatorio MD
+    # Generate MD report
     report = generate_report_markdown(
         metadata,
         judgments,
@@ -313,48 +313,48 @@ def generate_report(
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report)
 
-    print(f"Relatorio salvo em: {report_path}")
+    print(f"Report saved to: {report_path}")
 
-    # Exporta amostra humana
+    # Export human sample
     sample = export_human_sample(judgments, sample_path, sample_size)
-    print(f"Amostra humana ({len(sample)} itens) salva em: {sample_path}")
+    print(f"Human sample ({len(sample)} items) saved to: {sample_path}")
 
     return True
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Gera relatorio sumario da avaliacao")
+    parser = argparse.ArgumentParser(description="Generate the evaluation summary report")
     parser.add_argument(
         "--input",
         default=str(DEFAULT_JUDGED_RESULTS_PATH),
-        help=f"Caminho do dataset julgado (padrao: {DEFAULT_JUDGED_RESULTS_PATH})",
+        help=f"Path to the judged dataset (default: {DEFAULT_JUDGED_RESULTS_PATH})",
     )
     parser.add_argument(
         "--report",
         default=str(DEFAULT_REPORT_PATH),
-        help=f"Caminho do relatorio (padrao: {DEFAULT_REPORT_PATH})",
+        help=f"Path to the report (default: {DEFAULT_REPORT_PATH})",
     )
     parser.add_argument(
         "--sample",
         default=str(DEFAULT_HUMAN_SAMPLE_PATH),
-        help=f"Caminho do CSV de amostra humana (padrao: {DEFAULT_HUMAN_SAMPLE_PATH})",
+        help=f"Path to the human-sample CSV (default: {DEFAULT_HUMAN_SAMPLE_PATH})",
     )
     parser.add_argument(
         "--sample-size",
         type=int,
         default=30,
-        help="Tamanho da amostra humana (padrao: 30)",
+        help="Human sample size (default: 30)",
     )
 
     args = parser.parse_args()
 
-    # Verifica se arquivo de entrada existe
+    # Check that the input file exists
     if not Path(args.input).exists():
-        print(f"Erro: Arquivo de entrada nao encontrado: {args.input}")
-        print("Execute primeiro: python eval/judge.py")
+        print(f"Error: input file not found: {args.input}")
+        print("Run first: python eval/judge.py")
         return 1
 
-    # Gera relatorio; exit 1 quando nenhum julgamento valido
+    # Generate report; exit 1 when there are no valid judgments
     ok = generate_report(
         input_path=args.input,
         report_path=args.report,

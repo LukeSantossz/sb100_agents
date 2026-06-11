@@ -1,10 +1,10 @@
 """
-Gerador de perguntas a partir de documentos PDF/TXT.
+Question generator from PDF/TXT documents.
 
-Usa LLM (Groq API ou Ollama local) para extrair e formular perguntas
-de dominio agricola a partir do conteudo dos documentos.
+Uses an LLM (Groq API or local Ollama) to extract and formulate
+agriculture-domain questions from document content.
 
-Uso:
+Usage:
     python eval/generate_questions.py ./archives/boletim_sb100.pdf --num-questions 300
     python eval/generate_questions.py ./archives/ --num-questions 300 --provider ollama
 """
@@ -13,7 +13,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Carrega variaveis de ambiente do .env
+# Load environment variables from .env
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import argparse
@@ -26,43 +26,45 @@ from datetime import UTC, datetime
 
 import fitz  # PyMuPDF
 
-# Permite `from eval._utils import ...` em execucao standalone
+# Allow `from eval._utils import ...` when run standalone
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval._utils import DEFAULT_QUESTIONS_PATH, is_valid_question
 
-# Providers disponiveis: groq, ollama, openrouter
+# Available providers: groq, ollama, openrouter
 DEFAULT_PROVIDER = "groq"
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 DEFAULT_OLLAMA_MODEL = "llama3.2:3b"
 DEFAULT_OPENROUTER_MODEL = "google/gemma-4-31b-it"
 
-# Configuracao OpenRouter
+# OpenRouter configuration
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
-# Prompt para geracao de perguntas
-QUESTION_GENERATION_PROMPT = """Voce e um especialista em agronomia e agricultura brasileira.
-Com base no seguinte trecho de documento tecnico, gere {num_questions} perguntas relevantes e diversificadas.
+# Prompt for question generation
+QUESTION_GENERATION_PROMPT = """You are an expert in agronomy and Brazilian agriculture.
+Based on the following excerpt from a technical document, generate {num_questions} relevant
+and diverse questions.
 
-As perguntas devem:
-- Ser especificas e tecnicas, cobrindo diferentes aspectos do conteudo
-- Variar em complexidade (algumas para iniciantes, outras para especialistas)
-- Cobrir diferentes topicos mencionados no texto
-- Ser claras e objetivas, formuladas em portugues
+The questions must:
+- Be specific and technical, covering different aspects of the content
+- Vary in complexity (some for beginners, others for experts)
+- Cover different topics mentioned in the text
+- Be clear and objective
+- Be written in Portuguese (pt-BR)
 
-Retorne APENAS um JSON array com as perguntas, sem explicacoes adicionais.
-Formato: ["pergunta 1", "pergunta 2", ...]
+Return ONLY a JSON array with the questions, no extra explanations.
+Format: ["question 1", "question 2", ...]
 
-Trecho do documento:
+Document excerpt:
 ---
 {text_chunk}
 ---
 
-JSON array com {num_questions} perguntas:"""
+JSON array with {num_questions} questions:"""
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
-    """Extrai texto de todas as paginas do PDF."""
+    """Extract text from every page of the PDF."""
     doc = fitz.open(pdf_path)
     pages_text = []
     for page in doc:
@@ -73,24 +75,24 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
 
 def extract_text_from_txt(txt_path: str) -> str:
-    """Le conteudo de arquivo TXT."""
+    """Read the content of a TXT file."""
     with open(txt_path, encoding="utf-8") as f:
         return f.read()
 
 
 def extract_text(file_path: str) -> str:
-    """Extrai texto de arquivo PDF ou TXT."""
+    """Extract text from a PDF or TXT file."""
     path = Path(file_path)
     if path.suffix.lower() == ".pdf":
         return extract_text_from_pdf(file_path)
     elif path.suffix.lower() == ".txt":
         return extract_text_from_txt(file_path)
     else:
-        raise ValueError(f"Formato nao suportado: {path.suffix}")
+        raise ValueError(f"Unsupported format: {path.suffix}")
 
 
 def split_into_chunks(text: str, chunk_size: int = 4000, overlap: int = 500) -> list[str]:
-    """Divide texto em chunks para processar com LLM."""
+    """Split text into chunks for LLM processing."""
     chunks = []
     start = 0
     while start < len(text):
@@ -107,7 +109,7 @@ def generate_questions_groq(
     num_questions: int,
     model: str = DEFAULT_GROQ_MODEL,
 ) -> list[str]:
-    """Gera perguntas usando Groq API."""
+    """Generate questions using the Groq API."""
     from groq import Groq
 
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
@@ -133,7 +135,7 @@ def generate_questions_ollama(
     num_questions: int,
     model: str = DEFAULT_OLLAMA_MODEL,
 ) -> list[str]:
-    """Gera perguntas usando Ollama local."""
+    """Generate questions using local Ollama."""
     import ollama
 
     prompt = QUESTION_GENERATION_PROMPT.format(
@@ -155,7 +157,7 @@ def generate_questions_openrouter(
     num_questions: int,
     model: str = DEFAULT_OPENROUTER_MODEL,
 ) -> list[str]:
-    """Gera perguntas usando OpenRouter API (Gemma 4, etc)."""
+    """Generate questions using the OpenRouter API (Gemma 4, etc)."""
     from openai import OpenAI
 
     client = OpenAI(
@@ -180,14 +182,14 @@ def generate_questions_openrouter(
 
 
 def parse_questions_json(content: str) -> list[str]:
-    """Extrai lista de perguntas do JSON retornado pelo LLM.
+    """Extract the question list from the JSON returned by the LLM.
 
-    Aplica filtro de qualidade `is_valid_question` (contem '?', 20-500 chars)
-    para descartar lixo do LLM (linhas vazias, fragmentos, prefacios).
+    Applies the `is_valid_question` quality filter (contains '?', 20-500
+    chars) to discard LLM noise (empty lines, fragments, preambles).
     """
     candidates: list[str] = []
 
-    # Tenta extrair JSON array do conteudo
+    # Try to extract a JSON array from the content
     json_match = re.search(r"\[.*\]", content, re.DOTALL)
     if json_match:
         try:
@@ -198,10 +200,10 @@ def parse_questions_json(content: str) -> list[str]:
             pass
 
     if not candidates:
-        # Fallback: extrai linhas que parecem perguntas
+        # Fallback: extract lines that look like questions
         for raw_line in content.split("\n"):
             line = raw_line.strip()
-            # Remove prefixos numerados
+            # Strip numbered prefixes
             line = re.sub(r"^[\d]+[.\-\)]\s*", "", line)
             line = re.sub(r'^["\']\s*', "", line)
             line = re.sub(r'\s*["\']$', "", line)
@@ -212,7 +214,7 @@ def parse_questions_json(content: str) -> list[str]:
 
 
 def collect_files(path: str) -> list[str]:
-    """Coleta arquivos PDF/TXT de um caminho (arquivo ou diretorio)."""
+    """Collect PDF/TXT files from a path (file or directory)."""
     p = Path(path)
     if p.is_file():
         return [str(p)]
@@ -220,7 +222,7 @@ def collect_files(path: str) -> list[str]:
         files = list(p.glob("**/*.pdf")) + list(p.glob("**/*.txt"))
         return [str(f) for f in files]
     else:
-        raise ValueError(f"Caminho nao encontrado: {path}")
+        raise ValueError(f"Path not found: {path}")
 
 
 def generate_questions_from_files(
@@ -230,10 +232,10 @@ def generate_questions_from_files(
     model: str | None = None,
 ) -> dict:
     """
-    Gera perguntas a partir de uma lista de arquivos.
+    Generate questions from a list of files.
 
     Returns:
-        Dataset estruturado com metadata e questions
+        Structured dataset with metadata and questions
     """
     if model is None:
         model_defaults = {
@@ -250,38 +252,38 @@ def generate_questions_from_files(
     }
     generate_fn = generate_fns[provider]
 
-    # Extrai texto de todos os arquivos
+    # Extract text from all files
     all_text = ""
     source_files = []
     for file_path in file_paths:
-        print(f"Extraindo texto de: {file_path}")
+        print(f"Extracting text from: {file_path}")
         text = extract_text(file_path)
         all_text += f"\n\n--- {Path(file_path).name} ---\n\n{text}"
         source_files.append(Path(file_path).name)
 
-    # Divide em chunks
+    # Split into chunks
     chunks = split_into_chunks(all_text)
-    print(f"Documento dividido em {len(chunks)} chunks")
+    print(f"Document split into {len(chunks)} chunks")
 
-    # Calcula perguntas por chunk
+    # Compute questions per chunk
     questions_per_chunk = max(1, num_questions // len(chunks))
     extra_questions = num_questions % len(chunks)
 
-    # Gera perguntas
+    # Generate questions
     all_questions = []
     for i, chunk in enumerate(chunks):
         target = questions_per_chunk + (1 if i < extra_questions else 0)
-        print(f"Gerando {target} perguntas do chunk {i + 1}/{len(chunks)}...")
+        print(f"Generating {target} questions from chunk {i + 1}/{len(chunks)}...")
 
         try:
             questions = generate_fn(chunk, target, model)
             all_questions.extend(questions)
-            print(f"  -> {len(questions)} perguntas geradas")
+            print(f"  -> {len(questions)} questions generated")
         except Exception as e:
-            print(f"  -> Erro: {e}")
+            print(f"  -> Error: {e}")
             continue
 
-    # Remove duplicatas mantendo ordem
+    # Remove duplicates preserving order
     seen = set()
     unique_questions = []
     for q in all_questions:
@@ -290,10 +292,10 @@ def generate_questions_from_files(
             seen.add(q_normalized)
             unique_questions.append(q)
 
-    # Limita ao numero solicitado
+    # Cap at the requested number
     unique_questions = unique_questions[:num_questions]
 
-    # Monta dataset estruturado
+    # Build structured dataset
     dataset = {
         "metadata": {
             "source_documents": source_files,
@@ -306,7 +308,7 @@ def generate_questions_from_files(
             {
                 "question_id": str(uuid.uuid4()),
                 "question": q,
-                "reference_answers": [],  # Sera preenchido por collect_references.py
+                "reference_answers": [],  # Filled in by collect_references.py
             }
             for q in unique_questions
         ],
@@ -317,61 +319,61 @@ def generate_questions_from_files(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Gera perguntas de dominio agricola a partir de documentos"
+        description="Generate agriculture-domain questions from documents"
     )
     parser.add_argument(
         "input",
-        help="Arquivo PDF/TXT ou diretorio com documentos",
+        help="PDF/TXT file or directory with documents",
     )
     parser.add_argument(
         "--num-questions",
         type=int,
         default=300,
-        help="Numero total de perguntas a gerar (padrao: 300)",
+        help="Total number of questions to generate (default: 300)",
     )
     parser.add_argument(
         "--provider",
         choices=["groq", "ollama", "openrouter"],
         default=DEFAULT_PROVIDER,
-        help=f"Provider LLM (padrao: {DEFAULT_PROVIDER})",
+        help=f"LLM provider (default: {DEFAULT_PROVIDER})",
     )
     parser.add_argument(
         "--model",
-        help="Modelo LLM (padrao depende do provider)",
+        help="LLM model (default depends on provider)",
     )
     parser.add_argument(
         "--output",
         default=str(DEFAULT_QUESTIONS_PATH),
-        help=f"Caminho do arquivo de saida (padrao: {DEFAULT_QUESTIONS_PATH})",
+        help=f"Path to the output file (default: {DEFAULT_QUESTIONS_PATH})",
     )
 
     args = parser.parse_args()
 
-    # Valida provider
+    # Validate provider
     if args.provider == "groq" and not os.environ.get("GROQ_API_KEY"):
-        print("Erro: GROQ_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
+        print("Error: GROQ_API_KEY not set. Use --provider ollama or set the variable.")
         return 1
 
     if args.provider == "openrouter" and not os.environ.get("OPENROUTER_API_KEY"):
-        print("Erro: OPENROUTER_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
+        print("Error: OPENROUTER_API_KEY not set. Use --provider ollama or set the variable.")
         return 1
 
-    # Coleta arquivos
+    # Collect files
     try:
         files = collect_files(args.input)
     except ValueError as e:
-        print(f"Erro: {e}")
+        print(f"Error: {e}")
         return 1
 
     if not files:
-        print(f"Nenhum arquivo PDF/TXT encontrado em: {args.input}")
+        print(f"No PDF/TXT files found in: {args.input}")
         return 1
 
-    print(f"Arquivos encontrados: {len(files)}")
+    print(f"Files found: {len(files)}")
     for f in files:
         print(f"  - {f}")
 
-    # Gera perguntas
+    # Generate questions
     dataset = generate_questions_from_files(
         files,
         num_questions=args.num_questions,
@@ -379,15 +381,15 @@ def main():
         model=args.model,
     )
 
-    # Salva dataset
+    # Save dataset
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(dataset, f, ensure_ascii=False, indent=2)
 
-    print(f"\nDataset salvo em: {output_path}")
-    print(f"Total de perguntas: {dataset['metadata']['total_questions']}")
+    print(f"\nDataset saved to: {output_path}")
+    print(f"Total questions: {dataset['metadata']['total_questions']}")
 
     return 0
 

@@ -1,10 +1,10 @@
-"""Módulo API — endpoints REST do SmartB100.
+"""API module — SmartB100 REST endpoints.
 
-Este módulo expõe a API FastAPI do sistema SmartB100:
+This module exposes the SmartB100 FastAPI application:
 
-- **/chat**: Endpoint principal de conversação com RAG.
-- **/auth**: Autenticação e registro de usuários.
-- **/health**: Health check para monitoramento.
+- **/chat**: Main conversation endpoint with RAG.
+- **/auth**: User authentication and registration.
+- **/health**: Health check for monitoring.
 
-O ponto de entrada é ``api.main:app`` (instância FastAPI).
+The entry point is ``api.main:app`` (FastAPI instance).
 """

@@ -1,12 +1,12 @@
-"""Ponto de entrada da aplicação FastAPI SmartB100.
+"""Entry point of the SmartB100 FastAPI application.
 
-Este módulo configura a aplicação FastAPI com:
+This module configures the FastAPI application with:
 
-- Middleware CORS para permitir acesso da interface Gradio.
-- Routers de chat, autenticação e health check.
-- Lifespan handler para inicialização do banco de dados.
+- CORS middleware to allow access from the Gradio interface.
+- Chat, authentication and health check routers.
+- Lifespan handler for database initialization.
 
-Uso:
+Usage:
     uvicorn api.main:app --reload
 """
 
@@ -23,7 +23,7 @@ from api.dependencies import limiter
 from api.routes import auth, chat, health
 from database.db import Base, engine
 
-# Logging baseline para a aplicação (idempotente; basicConfig é no-op se já configurado).
+# Baseline logging for the application (idempotent; basicConfig is a no-op if already set).
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -39,15 +39,15 @@ ALLOWED_ORIGINS = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Gerencia o ciclo de vida da aplicação FastAPI.
+    """Manage the FastAPI application lifecycle.
 
-    Executa setup (criação de tabelas) no startup e cleanup no shutdown.
+    Runs setup (table creation) on startup and cleanup on shutdown.
 
     Args:
-        app: Instância da aplicação FastAPI.
+        app: FastAPI application instance.
 
     Yields:
-        None: Controle retorna à aplicação após o setup.
+        None: Control returns to the application after setup.
     """
     Base.metadata.create_all(bind=engine)
     yield
@@ -55,12 +55,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title="SmartB100 API",
-    description="API para o sistema SmartB100",
+    description="API for the SmartB100 system",
     lifespan=lifespan,
 )
 
 app.state.limiter = limiter
-# slowapi: handler aceita RateLimitExceeded, mas Starlette tipa o segundo arg como Exception genérico.
+# slowapi: handler takes RateLimitExceeded, but Starlette types the second arg as plain Exception.
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 app.add_middleware(

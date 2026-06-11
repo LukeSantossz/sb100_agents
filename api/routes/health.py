@@ -1,7 +1,7 @@
-"""Health check endpoint para monitoramento.
+"""Health check endpoint for monitoring.
 
-Expõe endpoint simples para verificação de disponibilidade da API.
-Usado por load balancers, Kubernetes probes e monitoramento.
+Exposes a simple endpoint to check API availability.
+Used by load balancers, Kubernetes probes and monitoring.
 """
 
 from fastapi import APIRouter
@@ -11,12 +11,12 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health")
 async def health() -> dict[str, str]:
-    """Retorna status de saúde da API.
+    """Return the API health status.
 
-    Endpoint leve para verificação de disponibilidade.
-    Não verifica dependências (Ollama, Qdrant) para evitar overhead.
+    Lightweight endpoint for availability checks.
+    Does not check dependencies (Ollama, Qdrant) to avoid overhead.
 
     Returns:
-        Dict com status "ok" indicando que a API está respondendo.
+        Dict with status "ok" indicating the API is responding.
     """
     return {"status": "ok"}

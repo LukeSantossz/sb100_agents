@@ -1,16 +1,17 @@
-"""Cálculo de entropia semântica para detecção de alucinações.
+"""Semantic entropy computation for hallucination detection.
 
-Referência: Semantic Uncertainty (Farquhar et al., 2023)
+Reference: Semantic Uncertainty (Farquhar et al., 2023)
 https://arxiv.org/abs/2302.09664
 
-TASK-T64 endurece a estabilidade numérica e o error handling:
+Numerical-stability and error-handling notes:
 
-- Epsilon ``1e-10`` substitui o teste ``> 0`` na similaridade de cosseno.
-- ``logger.warning`` quando provedor selecionado está sem API key.
-- Geração de samples tolera falhas parciais (continua) e propaga apenas se todas falharem.
-- Acesso seguro a ``resp["message"]["content"]`` via ``.get(...)``.
-- Validação do provider contra ``_sample_fns.keys()`` antes do dispatch.
-- Temperatura via ``settings.entropy_temperature`` (era constante hardcoded).
+- Epsilon ``1e-10`` replaces the ``> 0`` test in cosine similarity.
+- ``logger.warning`` when the selected provider has no API key.
+- Sample generation tolerates partial failures (continues) and propagates
+  only if all fail.
+- Safe access to ``resp["message"]["content"]`` via ``.get(...)``.
+- Provider validated against the sample-function keys before dispatch.
+- Temperature comes from ``settings.entropy_temperature``.
 """
 
 import logging
@@ -35,7 +36,7 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
 def _build_messages(question: str, context: str) -> list[dict[str, str]]:
-    """Constrói lista de mensagens para amostragem."""
+    """Builds the message list for sampling."""
     prompt = f"Contexto:\n{context}\n\nPergunta: {question}" if context else question
     return [
         {
@@ -60,9 +61,9 @@ def _generate_one_groq(question: str, context: str, model: str) -> str:
 
 
 def _generate_one_ollama(question: str, context: str, model: str) -> str:
-    # ollama-py retorna ChatResponse; cast para dict[str, Any] mantém o acesso
-    # seguro via ``.get`` (que continua válido em runtime para ChatResponse).
-    # Cliente compartilhado (singleton com timeout — ver core/ollama_clients).
+    # ollama-py returns ChatResponse; casting to dict[str, Any] keeps the safe
+    # ``.get`` access (still valid at runtime for ChatResponse).
+    # Shared client (singleton with timeout — see core/ollama_clients).
     resp = cast(
         dict[str, Any],
         get_chat_client().chat(
@@ -91,11 +92,11 @@ def _generate_one_openrouter(question: str, context: str, model: str) -> str:
 
 
 def _generate_samples(provider: str, question: str, context: str, model: str, n: int) -> list[str]:
-    """Gera ``n`` samples tolerando falhas parciais.
+    """Generates ``n`` samples, tolerating partial failures.
 
-    Se uma chamada individual levantar exceção, segue para a próxima e registra
-    o erro. Se nenhuma das ``n`` tentativas tiver sucesso, propaga a última
-    exceção para o caller (em geral o gate, que decide o fallback).
+    If an individual call raises, it logs the error and moves on to the next.
+    If none of the ``n`` attempts succeed, the last exception is propagated to
+    the caller (usually the gate, which decides the fallback).
     """
     sample_fns = {
         "groq": _generate_one_groq,
@@ -126,12 +127,12 @@ def _compute_similarity(
     text2: str,
     cache: dict[str, list[float]] | None = None,
 ) -> float:
-    """Calcula similaridade de cosseno entre dois textos via embeddings Ollama.
+    """Computes cosine similarity between two texts via Ollama embeddings.
 
-    Usa epsilon ``1e-10`` para evitar divisão por zero em vetores degenerados.
-    Aceita um dicionário ``cache`` opcional para reutilizar embeddings entre
-    chamadas (TASK-T68: clustering de N respostas faz N embed calls em vez de
-    até ``N*(N-1)`` sem cache).
+    Uses epsilon ``1e-10`` to avoid division by zero on degenerate vectors.
+    Accepts an optional ``cache`` dict to reuse embeddings across calls
+    (clustering N responses makes N embed calls instead of up to
+    ``N*(N-1)`` without the cache).
     """
 
     def _embed(text: str) -> list[float]:
@@ -156,10 +157,10 @@ def _compute_similarity(
 
 
 def _cluster_responses(responses: list[str], threshold: float = 0.85) -> list[list[str]]:
-    """Agrupa respostas por similaridade semântica usando clustering guloso.
+    """Groups responses by semantic similarity using greedy clustering.
 
-    Cache local de embeddings (``{text: vec}``) garante que cada texto único
-    seja embedded apenas uma vez, mesmo em clustering O(N²) entre samples.
+    A local embedding cache (``{text: vec}``) ensures each unique text is
+    embedded only once, even with O(N²) clustering across samples.
     """
     if not responses:
         return []
@@ -182,7 +183,7 @@ def _cluster_responses(responses: list[str], threshold: float = 0.85) -> list[li
 
 
 def _shannon_entropy(clusters: list[list[str]], total: int) -> float:
-    """Calcula entropia de Shannon normalizada sobre a distribuição de clusters."""
+    """Computes normalized Shannon entropy over the cluster distribution."""
     if total == 0 or len(clusters) == 0:
         return 0.0
 
@@ -197,20 +198,20 @@ def _shannon_entropy(clusters: list[list[str]], total: int) -> float:
 
 
 def compute_entropy_score(question: str, context: str) -> float:
-    """Calcula score de entropia semântica para detecção de alucinações.
+    """Computes the semantic entropy score for hallucination detection.
 
-    Gera múltiplas respostas para a mesma pergunta, agrupa por similaridade
-    semântica e calcula entropia de Shannon sobre a distribuição dos clusters.
-    Alta entropia indica incerteza/possível alucinação.
+    Generates multiple responses to the same question, groups them by semantic
+    similarity, and computes Shannon entropy over the cluster distribution.
+    High entropy indicates uncertainty/possible hallucination.
 
     Returns:
-        Score no intervalo [0.0, 1.0]. Retorna 0.0 quando o provider está sem
-        API key (loga warning) ou quando todas as amostras falham e o caller
-        decidir prosseguir.
+        Score in the range [0.0, 1.0]. Returns 0.0 when the provider has no
+        API key (logs a warning) or when all samples fail and the caller
+        decides to proceed.
 
     Raises:
-        KeyError: Se ``settings.verification_provider`` não estiver em
-            :data:`DEFAULT_VERIFICATION_MODELS` (não deve acontecer com o enum).
+        KeyError: If ``settings.verification_provider`` is not in
+            :data:`DEFAULT_VERIFICATION_MODELS` (should not happen with the enum).
     """
     provider = str(settings.verification_provider)
 

@@ -1,4 +1,4 @@
-"""Buffer de conversação com janela rolante FIFO."""
+"""Conversation buffer with a FIFO rolling window."""
 
 import logging
 from collections import deque
@@ -9,30 +9,30 @@ _VALID_ROLES: frozenset[str] = frozenset({"user", "assistant"})
 
 
 class ConversationBuffer:
-    """Buffer de histórico de conversa com comportamento FIFO.
+    """Conversation history buffer with FIFO behavior.
 
-    Usa deque com maxlen para descartar automaticamente os turnos
-    mais antigos quando o limite é atingido.
+    Uses a deque with maxlen to automatically discard the oldest
+    turns when the limit is reached.
     """
 
     def __init__(self, maxlen: int = 10):
-        """Inicializa o buffer com tamanho máximo.
+        """Initialize the buffer with a maximum size.
 
         Args:
-            maxlen: Número máximo de turnos no buffer.
+            maxlen: Maximum number of turns in the buffer.
         """
         self._buffer: deque[dict[str, str]] = deque(maxlen=maxlen)
 
     def add(self, role: str, content: str) -> None:
-        """Adiciona um turno ao buffer.
+        """Add a turn to the buffer.
 
         Args:
-            role: Papel do turno (``"user"`` ou ``"assistant"``).
-            content: Conteúdo da mensagem (não pode ser vazio ou só whitespace).
+            role: Turn role (``"user"`` or ``"assistant"``).
+            content: Message content (must not be empty or whitespace-only).
 
         Raises:
-            ValueError: Se ``role`` não estiver em ``{"user", "assistant"}`` ou
-                se ``content`` for vazio.
+            ValueError: If ``role`` is not in ``{"user", "assistant"}`` or
+                if ``content`` is empty.
         """
         if role not in _VALID_ROLES:
             raise ValueError(f"role must be one of {sorted(_VALID_ROLES)}; got {role!r}")
@@ -42,9 +42,9 @@ class ConversationBuffer:
         logger.debug("memory.conversation.add", extra={"role": role, "size": len(self._buffer)})
 
     def to_messages(self) -> list[dict[str, str]]:
-        """Retorna o histórico como lista de mensagens.
+        """Return the history as a list of messages.
 
         Returns:
-            Lista de dicts no formato ``[{"role": ..., "content": ...}]``.
+            List of dicts in the ``[{"role": ..., "content": ...}]`` format.
         """
         return [msg.copy() for msg in self._buffer]

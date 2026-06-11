@@ -1,10 +1,10 @@
-"""Configuração de engine e sessão SQLAlchemy para o SmartB100.
+"""SQLAlchemy engine and session configuration for SmartB100.
 
-TASK-T63 endurece a camada:
+Hardening applied to this layer:
 
-- ``connect_args["timeout"]`` evita ``OperationalError: database is locked``.
-- Listener ``PRAGMA foreign_keys=ON`` ativa CASCADE em SQLite (off por default).
-- ``get_db()`` faz rollback explícito em exceção antes de fechar a sessão.
+- ``connect_args["timeout"]`` avoids ``OperationalError: database is locked``.
+- ``PRAGMA foreign_keys=ON`` listener enables CASCADE in SQLite (off by default).
+- ``get_db()`` rolls back explicitly on exception before closing the session.
 """
 
 from collections.abc import Generator
@@ -26,7 +26,7 @@ if _db_path.exists() and _db_path.is_dir():
     raise RuntimeError(msg)
 _resolved_db = _db_path.resolve()
 DB_PATH = str(_resolved_db)
-# Barras à frente no URL evitam ambiguidade do SQLite no Windows (recomendado pelo SQLAlchemy).
+# Forward slashes in the URL avoid SQLite ambiguity on Windows (recommended by SQLAlchemy).
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{_resolved_db.as_posix()}"
 
 engine = create_engine(
@@ -38,14 +38,14 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @event.listens_for(Engine, "connect")
 def _enable_sqlite_foreign_keys(dbapi_connection: Any, connection_record: Any) -> None:
-    """Ativa PRAGMA foreign_keys em conexões SQLite para garantir CASCADE."""
-    # Apenas SQLite precisa do PRAGMA; outros dialetos não expõem ``execute`` nesse formato.
+    """Enable PRAGMA foreign_keys on SQLite connections to ensure CASCADE."""
+    # Only SQLite needs the PRAGMA; other dialects do not expose ``execute`` this way.
     try:
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
     except Exception:  # noqa: BLE001
-        # Não-SQLite ou cursor incompatível — ignora silenciosamente.
+        # Non-SQLite or incompatible cursor — ignore silently.
         return
 
 
@@ -56,9 +56,9 @@ class Base(DeclarativeBase):
 
 
 def get_db() -> Generator[Session, None, None]:
-    """Provê uma sessão de DB com rollback em exceção e cleanup garantido.
+    """Provide a DB session with rollback on exception and guaranteed cleanup.
 
-    Uso típico via dependency injection do FastAPI::
+    Typical use via FastAPI dependency injection::
 
         @router.get("/")
         def handler(db: Session = Depends(get_db)) -> ...:

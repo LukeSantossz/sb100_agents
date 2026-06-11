@@ -1,12 +1,12 @@
-"""Configurações do sistema SmartB100 via Pydantic Settings.
+"""SmartB100 system settings via Pydantic Settings.
 
-Este módulo carrega configurações de variáveis de ambiente (arquivo .env)
-e fornece defaults sensatos para desenvolvimento local.
+This module loads settings from environment variables (.env file)
+and provides sensible defaults for local development.
 
-Validações (TASK-T62) garantem bounds numéricos, enum para provider e
-API keys opcionais como ``str | None``.
+Validations enforce numeric bounds, an enum for the provider and
+optional API keys as ``str | None``.
 
-Exemplo de uso:
+Usage example:
     from core.config import settings
     print(settings.chat_model)  # "llama3.2:3b"
 """
@@ -18,7 +18,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class VerificationProvider(StrEnum):
-    """Provedores suportados para verificação de alucinação por entropia."""
+    """Supported providers for entropy-based hallucination verification."""
 
     groq = "groq"
     ollama = "ollama"
@@ -26,19 +26,19 @@ class VerificationProvider(StrEnum):
 
 
 class Settings(BaseSettings):
-    """Configurações globais do sistema SmartB100.
+    """Global SmartB100 system settings.
 
-    Carrega valores de variáveis de ambiente com fallback para defaults.
-    O arquivo .env na raiz do projeto é lido automaticamente.
+    Loads values from environment variables with fallback to defaults.
+    The .env file at the project root is read automatically.
 
-    Bounds aplicados (TASK-T62):
+    Enforced bounds:
         - ``top_k``: 1..100
         - ``buffer_maxlen``: 1..100
         - ``llm_max_tokens``: 1..4096
         - ``hallucination_threshold``: 0.0..1.0
         - ``entropy_num_samples``: >=2
         - ``verification_provider``: ``groq | ollama | openrouter``
-        - ``jwt_secret_key``: obrigatório, comprimento >= 32
+        - ``jwt_secret_key``: required, length >= 32
     """
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     @field_validator("jwt_secret_key")
     @classmethod
     def _validate_jwt_secret_key(cls, value: str) -> str:
-        """Garante que o segredo do JWT existe e tem entropia mínima."""
+        """Ensure the JWT secret exists and has minimum entropy."""
         if not value:
             raise ValueError("JWT_SECRET_KEY must be configured in .env or environment variables")
         if len(value) < 32:

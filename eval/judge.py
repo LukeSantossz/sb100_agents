@@ -1,10 +1,10 @@
 """
-Julgamento automatico por LLM.
+Automatic LLM judging.
 
-Compara respostas do SB100 com respostas de referencia usando um LLM juiz.
-O juiz fornece score numerico (0-10), justificativa e veredicto.
+Compares SB100 answers with reference answers using an LLM judge.
+The judge provides a numeric score (0-10), a justification and a verdict.
 
-Uso:
+Usage:
     python eval/judge.py
     python eval/judge.py --model llama-3.3-70b-versatile --provider groq
 """
@@ -13,7 +13,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Carrega variaveis de ambiente do .env
+# Load environment variables from .env
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import argparse
@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 
 from tqdm import tqdm
 
-# Permite `from eval._utils import ...` em execucao standalone
+# Allow `from eval._utils import ...` when run standalone
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval._utils import (
@@ -35,45 +35,46 @@ from eval._utils import (
     validate_dataset_schema,
 )
 
-# Provider padrao
+# Default provider
 DEFAULT_PROVIDER = "groq"
 
-# Modelo juiz padrao (distinto dos modelos de referencia)
+# Default judge model (distinct from the reference models)
 DEFAULT_JUDGE_MODELS = {
     "groq": "llama-3.3-70b-versatile",
     "ollama": "llama3:70b",
     "openrouter": "google/gemma-4-31b-it",
 }
 
-# Configuracao OpenRouter
+# OpenRouter configuration
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
-# Prompt do juiz - solicita score, justificativa e veredicto
-JUDGE_PROMPT_TEMPLATE = """Voce e um avaliador especializado em agronomia. Sua tarefa e comparar duas respostas para uma pergunta tecnica e determinar qual e melhor.
+# Judge prompt - requests score, justification and verdict
+JUDGE_PROMPT_TEMPLATE = """You are an evaluator specialized in agronomy. Your task is to compare
+two answers to a technical question and decide which one is better.
 
-**Pergunta:**
+**Question:**
 {question}
 
-**Resposta A:**
+**Answer A:**
 {answer_a}
 
-**Resposta B:**
+**Answer B:**
 {answer_b}
 
-**Instrucoes de avaliacao:**
-1. Avalie precisao tecnica, completude, clareza e utilidade pratica
-2. Considere se as informacoes estao corretas para o contexto agricola brasileiro
-3. Penalize respostas vagas, incorretas ou que nao respondem a pergunta
+**Evaluation instructions:**
+1. Assess technical accuracy, completeness, clarity and practical usefulness
+2. Check whether the information is correct for the Brazilian agricultural context
+3. Penalize answers that are vague, incorrect or do not address the question
 
-**Formato de resposta (JSON estrito):**
+**Response format (strict JSON):**
 {{
     "score_a": <0-10>,
     "score_b": <0-10>,
-    "justification": "<explicacao da avaliacao em 2-3 frases>",
+    "justification": "<2-3 sentence explanation, written in Portuguese (pt-BR)>",
     "verdict": "<A_better|B_better|equivalent>"
 }}
 
-Responda APENAS com o JSON, sem texto adicional."""
+Reply ONLY with the JSON, no extra text."""
 
 
 def judge_groq(
@@ -82,7 +83,7 @@ def judge_groq(
     answer_b: str,
     model: str,
 ) -> dict:
-    """Executa julgamento usando Groq API."""
+    """Run the judgment using the Groq API."""
     from groq import Groq
 
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
@@ -96,7 +97,7 @@ def judge_groq(
     response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.1,  # Baixa temperatura para consistencia
+        temperature=0.1,  # Low temperature for consistency
         max_tokens=500,
     )
 
@@ -109,7 +110,7 @@ def judge_ollama(
     answer_b: str,
     model: str,
 ) -> dict:
-    """Executa julgamento usando Ollama local."""
+    """Run the judgment using local Ollama."""
     import ollama
 
     prompt = JUDGE_PROMPT_TEMPLATE.format(
@@ -132,7 +133,7 @@ def judge_openrouter(
     answer_b: str,
     model: str,
 ) -> dict:
-    """Executa julgamento usando OpenRouter API (Gemma 4, etc)."""
+    """Run the judgment using the OpenRouter API (Gemma 4, etc)."""
     from openai import OpenAI
 
     client = OpenAI(
@@ -157,8 +158,8 @@ def judge_openrouter(
 
 
 def parse_judge_response(content: str) -> dict:
-    """Extrai campos do JSON de resposta do juiz."""
-    # Tenta extrair JSON
+    """Extract fields from the judge's JSON response."""
+    # Try to extract JSON
     json_match = re.search(r"\{.*\}", content, re.DOTALL)
     if json_match:
         try:
@@ -172,7 +173,7 @@ def parse_judge_response(content: str) -> dict:
         except (json.JSONDecodeError, ValueError):
             pass
 
-    # Fallback: valores neutros
+    # Fallback: neutral values
     return {
         "score_a": 5.0,
         "score_b": 5.0,
@@ -183,14 +184,14 @@ def parse_judge_response(content: str) -> dict:
 
 def normalize_verdict(verdict: str, sb100_was_a: bool) -> str:
     """
-    Normaliza veredicto para perspectiva do SB100.
+    Normalize the verdict to the SB100 perspective.
 
     Args:
-        verdict: Veredicto original (A_better, B_better, equivalent)
-        sb100_was_a: Se SB100 estava na posicao A
+        verdict: Original verdict (A_better, B_better, equivalent)
+        sb100_was_a: Whether SB100 was in position A
 
     Returns:
-        Veredicto normalizado (better, worse, equivalent)
+        Normalized verdict (better, worse, equivalent)
     """
     verdict = verdict.lower().strip()
 
@@ -213,16 +214,16 @@ def run_judge(
     model: str | None = None,
 ) -> dict:
     """
-    Executa julgamento de todas as comparacoes.
+    Run the judgment for every comparison.
 
     Args:
-        input_path: Caminho do dataset com resultados da avaliacao
-        output_path: Caminho do arquivo de saida
-        provider: Provider LLM (groq ou ollama)
-        model: Modelo juiz
+        input_path: Path to the dataset with evaluation results
+        output_path: Path to the output file
+        provider: LLM provider (groq or ollama)
+        model: Judge model
 
     Returns:
-        Dataset com julgamentos
+        Dataset with judgments
     """
     if model is None:
         model = DEFAULT_JUDGE_MODELS[provider]
@@ -234,26 +235,26 @@ def run_judge(
     }
     judge_fn = judge_fns[provider]
 
-    # Carrega dataset
+    # Load dataset
     with open(input_path, encoding="utf-8") as f:
         dataset = json.load(f)
 
     validate_dataset_schema(dataset, ["metadata", "results"])
 
     results = dataset["results"]
-    print(f"Carregados {len(results)} resultados de {input_path}")
-    print(f"Modelo juiz: {model} ({provider})")
+    print(f"Loaded {len(results)} results from {input_path}")
+    print(f"Judge model: {model} ({provider})")
 
-    # Processa cada resultado
+    # Process each result
     judged_results = []
 
-    for result in tqdm(results, desc="Julgando respostas"):
+    for result in tqdm(results, desc="Judging answers"):
         sb100_answer = result.get("sb100_answer", "")
         reference_answers = result.get("reference_answers", [])
         question_id = result.get("question_id", "")
 
         if not result.get("sb100_success", True):
-            # Pula resultados com erro
+            # Skip failed results
             judged_results.append(
                 {
                     **result,
@@ -269,8 +270,8 @@ def run_judge(
             ref_answer = ref.get("reference_answer")
             ref_error = ref.get("error")
 
-            # Ignora referencias com erro estruturado (novo formato),
-            # ausentes ou no formato legado "[ERRO] ..."
+            # Skip references with a structured error (new format),
+            # missing answers, or the legacy "[ERRO] ..." format
             if (
                 ref_error is not None
                 or not ref_answer
@@ -278,8 +279,8 @@ def run_judge(
             ):
                 continue
 
-            # A/B deterministico via hash(question_id) — evita vies sem
-            # depender de random.seed/PYTHONHASHSEED
+            # Deterministic A/B via hash(question_id) — avoids bias
+            # without relying on random.seed/PYTHONHASHSEED
             sb100_is_a = deterministic_sb100_position_is_a(question_id)
 
             if sb100_is_a:
@@ -295,7 +296,7 @@ def run_judge(
                     model,
                 )
 
-                # Normaliza scores e veredicto para perspectiva SB100
+                # Normalize scores and verdict to the SB100 perspective
                 if sb100_is_a:
                     sb100_score = judge_result["score_a"]
                     ref_score = judge_result["score_b"]
@@ -323,7 +324,7 @@ def run_judge(
                         "judge_score": None,
                         "reference_score": None,
                         "judge_verdict": "error",
-                        "judge_justification": f"[ERRO] {str(e)}",
+                        "judge_justification": f"[ERROR] {str(e)}",
                         "sb100_position": "A" if sb100_is_a else "B",
                     }
                 )
@@ -335,7 +336,7 @@ def run_judge(
             }
         )
 
-    # Monta dataset final
+    # Build final dataset
     judged_dataset = {
         "metadata": {
             **dataset.get("metadata", {}),
@@ -346,16 +347,16 @@ def run_judge(
         "results": judged_results,
     }
 
-    # Salva resultados
+    # Save results
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output, "w", encoding="utf-8") as f:
         json.dump(judged_dataset, f, ensure_ascii=False, indent=2)
 
-    print(f"\nResultados julgados salvos em: {output}")
+    print(f"\nJudged results saved to: {output}")
 
-    # Estatisticas rapidas
+    # Quick statistics
     all_judgments = [j for r in judged_results for j in r.get("judgments", [])]
     valid = [j for j in all_judgments if j.get("judge_score") is not None]
 
@@ -365,53 +366,53 @@ def run_judge(
         equiv = sum(1 for j in valid if j["judge_verdict"] == "equivalent")
         worse = sum(1 for j in valid if j["judge_verdict"] == "worse")
 
-        print(f"Score medio SB100: {avg_score:.2f}")
-        print(f"Veredictos: better={better}, equivalent={equiv}, worse={worse}")
+        print(f"SB100 average score: {avg_score:.2f}")
+        print(f"Verdicts: better={better}, equivalent={equiv}, worse={worse}")
 
     return judged_dataset
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Executa julgamento automatico das respostas")
+    parser = argparse.ArgumentParser(description="Run automatic judgment of the answers")
     parser.add_argument(
         "--input",
         default=str(DEFAULT_EVAL_RESULTS_PATH),
-        help=f"Caminho dos resultados da avaliacao (padrao: {DEFAULT_EVAL_RESULTS_PATH})",
+        help=f"Path to the evaluation results (default: {DEFAULT_EVAL_RESULTS_PATH})",
     )
     parser.add_argument(
         "--output",
         default=str(DEFAULT_JUDGED_RESULTS_PATH),
-        help=f"Caminho do arquivo de saida (padrao: {DEFAULT_JUDGED_RESULTS_PATH})",
+        help=f"Path to the output file (default: {DEFAULT_JUDGED_RESULTS_PATH})",
     )
     parser.add_argument(
         "--provider",
         choices=["groq", "ollama", "openrouter"],
         default=DEFAULT_PROVIDER,
-        help=f"Provider LLM (padrao: {DEFAULT_PROVIDER})",
+        help=f"LLM provider (default: {DEFAULT_PROVIDER})",
     )
     parser.add_argument(
         "--model",
-        help="Modelo juiz (padrao depende do provider)",
+        help="Judge model (default depends on provider)",
     )
 
     args = parser.parse_args()
 
-    # Valida provider
+    # Validate provider
     if args.provider == "groq" and not os.environ.get("GROQ_API_KEY"):
-        print("Erro: GROQ_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
+        print("Error: GROQ_API_KEY not set. Use --provider ollama or set the variable.")
         return 1
 
     if args.provider == "openrouter" and not os.environ.get("OPENROUTER_API_KEY"):
-        print("Erro: OPENROUTER_API_KEY nao definida. Use --provider ollama ou defina a variavel.")
+        print("Error: OPENROUTER_API_KEY not set. Use --provider ollama or set the variable.")
         return 1
 
-    # Verifica se arquivo de entrada existe
+    # Check that the input file exists
     if not Path(args.input).exists():
-        print(f"Erro: Arquivo de entrada nao encontrado: {args.input}")
-        print("Execute primeiro: python eval/run_evaluation.py")
+        print(f"Error: input file not found: {args.input}")
+        print("Run first: python eval/run_evaluation.py")
         return 1
 
-    # Executa julgamento
+    # Run judgment
     run_judge(
         input_path=args.input,
         output_path=args.output,

@@ -1,7 +1,7 @@
-"""Geração de embeddings via Ollama.
+"""Embedding generation via Ollama.
 
-Utiliza o modelo configurado em settings.embed_model (default: nomic-embed-text)
-para converter texto em vetores densos de 768 dimensões.
+Uses the model configured in settings.embed_model (default: nomic-embed-text)
+to convert text into 768-dimension dense vectors.
 """
 
 import logging
@@ -13,19 +13,20 @@ logger = logging.getLogger(__name__)
 
 
 def generate_embedding(text: str) -> list[float]:
-    """Gera vetor de embedding denso para o texto fornecido.
+    """Generates a dense embedding vector for the given text.
 
-    Utiliza o modelo de embedding configurado em settings (default: nomic-embed-text)
-    via API local do Ollama.
+    Uses the embedding model configured in settings (default: nomic-embed-text)
+    via the local Ollama API.
 
     Args:
-        text: Texto a ser convertido em embedding.
+        text: Text to convert into an embedding.
 
     Returns:
-        Lista de floats representando o vetor de embedding (768 dimensões).
+        List of floats representing the embedding vector (768 dimensions).
 
     Raises:
-        Exception: Última falha retornada pelo Ollama após esgotar retries (ex.: modelo ausente).
+        Exception: Last failure returned by Ollama after exhausting retries
+            (e.g. missing model).
     """
     logger.debug("embedder.generate", extra={"chars": len(text)})
     return embed_text(settings.embed_model, text)

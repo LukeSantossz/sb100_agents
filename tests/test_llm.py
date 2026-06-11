@@ -1,4 +1,4 @@
-"""Testes unitários para generation/llm.py."""
+"""Unit tests for generation/llm.py."""
 
 import unittest
 from unittest.mock import MagicMock, patch
@@ -20,7 +20,7 @@ class TestBuildSystemPrompt(unittest.TestCase):
         prompt = build_system_prompt(profile)
         self.assertIn(SYSTEM_PROMPTS[ExpertiseLevel.beginner], prompt)
         self.assertIn("linguagem simples", prompt)
-        self.assertIn("IMPORTANTE", prompt)  # aviso anti-injection
+        self.assertIn("IMPORTANTE", prompt)  # anti-injection notice
 
     def test_intermediate_profile_returns_intermediate_prompt(self):
         profile = UserProfile(name="Test", expertise=ExpertiseLevel.intermediate)
@@ -59,30 +59,30 @@ class TestGenerate(unittest.TestCase):
         call_kwargs = mock_chat.call_args.kwargs
         messages = call_kwargs["messages"]
 
-        # Verifica estrutura do messages[]
+        # Checks the messages[] structure
         self.assertEqual(len(messages), 4)  # system + 2 history + 1 user
 
-        # messages[0] é sempre system prompt (com aviso anti-injection embutido)
+        # messages[0] is always the system prompt (anti-injection notice embedded)
         self.assertEqual(messages[0]["role"], "system")
         self.assertIn(SYSTEM_PROMPTS[ExpertiseLevel.beginner], messages[0]["content"])
 
-        # Histórico inserido corretamente
+        # History inserted correctly
         self.assertEqual(messages[1]["role"], "user")
         self.assertEqual(messages[1]["content"], "Olá")
         self.assertEqual(messages[2]["role"], "assistant")
         self.assertEqual(messages[2]["content"], "Olá! Como posso ajudar?")
 
-        # Pergunta atual com contexto RAG envolvido em delimitador anti-injection
+        # Current question with RAG context wrapped in the anti-injection delimiter
         self.assertEqual(messages[3]["role"], "user")
         self.assertIn("[DOCUMENTO RECUPERADO", messages[3]["content"])
         self.assertIn("[/DOCUMENTO RECUPERADO]", messages[3]["content"])
         self.assertIn("A soja deve ser plantada", messages[3]["content"])
         self.assertIn("Pergunta: Qual a melhor época", messages[3]["content"])
 
-        # Modelo correto
+        # Correct model
         self.assertEqual(call_kwargs["model"], settings.chat_model)
 
-        # Retorno correto
+        # Correct return value
         self.assertEqual(result, "Resposta do LLM")
 
     @patch("generation.llm._ollama_chat")
@@ -100,7 +100,7 @@ class TestGenerate(unittest.TestCase):
 
         messages = mock_chat.call_args.kwargs["messages"]
 
-        # Apenas system + user (sem histórico)
+        # Only system + user (no history)
         self.assertEqual(len(messages), 2)
         self.assertEqual(messages[0]["role"], "system")
         self.assertIn(SYSTEM_PROMPTS[ExpertiseLevel.expert], messages[0]["content"])
@@ -122,7 +122,7 @@ class TestGenerate(unittest.TestCase):
         messages = mock_chat.call_args.kwargs["messages"]
         user_message = messages[1]["content"]
 
-        # Sem contexto, não deve ter o delimitador
+        # Without context, the delimiter must be absent
         self.assertNotIn("[DOCUMENTO RECUPERADO", user_message)
         self.assertIn("Pergunta: Pergunta sem contexto", user_message)
 
@@ -138,7 +138,7 @@ class TestGenerate(unittest.TestCase):
             messages = mock_chat.call_args.kwargs["messages"]
             system_prompts_used.append(messages[0]["content"])
 
-        # Todos os 3 prompts devem ser diferentes
+        # All 3 prompts must differ
         self.assertEqual(len(set(system_prompts_used)), 3)
 
 
@@ -263,12 +263,12 @@ class TestNoQdrantImport(unittest.TestCase):
     def test_module_does_not_import_qdrant(self):
         import generation.llm as llm_module
 
-        # Verifica que qdrant_client não está nos imports do módulo
+        # Checks that qdrant_client is not among the module imports
         module_imports = dir(llm_module)
         self.assertNotIn("QdrantClient", module_imports)
         self.assertNotIn("qdrant_client", module_imports)
 
-        # Verifica que o módulo qdrant_client não foi importado como dependência
+        # Checks that the qdrant_client module was not imported as a dependency
         with open(llm_module.__file__) as f:
             llm_source = f.read()
         self.assertNotIn("qdrant", llm_source.lower())

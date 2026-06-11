@@ -1,17 +1,17 @@
-"""Endpoint de chat com pipeline RAG completo.
+"""Chat endpoint with the full RAG pipeline.
 
-Este módulo implementa o endpoint principal de conversação:
+This module implements the main conversation endpoint:
 
-1. Recebe pergunta do usuário com session_id e perfil.
-2. Gera embedding da pergunta via Ollama.
-3. Busca chunks relevantes no Qdrant.
-4. Gera resposta adaptada ao perfil do usuário.
-5. (Opcional) Verifica alucinações via entropia semântica.
-6. Mantém histórico de conversação por sessão em memória.
+1. Receives the user's question with session_id and profile.
+2. Generates the question embedding via Ollama.
+3. Searches relevant chunks in Qdrant.
+4. Generates an answer adapted to the user's profile.
+5. (Optional) Checks for hallucinations via semantic entropy.
+6. Keeps per-session conversation history in memory.
 
-Cache de sessões:
-    - TTL: 1 hora de inatividade.
-    - Máximo: 1000 sessões simultâneas (LRU eviction).
+Session cache:
+    - TTL: 1 hour of inactivity.
+    - Maximum: 1000 concurrent sessions (LRU eviction).
 """
 
 import logging
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-_SESSION_TTL_SECONDS = 3600  # 1 hora
+_SESSION_TTL_SECONDS = 3600  # 1 hour
 _SESSION_MAX_SIZE = 1000
 
 _sessions: OrderedDict[str, tuple[ConversationBuffer, float]] = OrderedDict()
@@ -43,38 +43,38 @@ _sessions_lock = threading.Lock()
 
 
 def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
-    """Recupera ou cria buffer de conversação para a sessão.
+    """Get or create the conversation buffer for the session.
 
-    Implementa cache LRU com TTL para gerenciar memória de sessões.
-    Cleanup lazy de sessões expiradas (até 10 por chamada).
+    Implements an LRU cache with TTL to manage session memory.
+    Lazily cleans up expired sessions (up to 10 per call).
 
-    Thread-safe: todas as operações sobre ``_sessions`` ocorrem sob
-    ``_sessions_lock`` para evitar race conditions no thread pool do FastAPI.
+    Thread-safe: every operation on ``_sessions`` happens under
+    ``_sessions_lock`` to avoid race conditions in FastAPI's thread pool.
 
     Args:
-        session_id: Identificador único da sessão.
+        session_id: Unique session identifier.
 
     Returns:
-        Buffer de conversação associado à sessão.
+        Conversation buffer associated with the session.
     """
     now = time.time()
 
     with _sessions_lock:
-        # Cleanup de sessões expiradas (lazy, até 10 por chamada)
+        # Clean up expired sessions (lazy, up to 10 per call)
         expired = []
         for sid, (_, ts) in list(_sessions.items())[:10]:
             if now - ts > _SESSION_TTL_SECONDS:
                 expired.append(sid)
             else:
-                break  # OrderedDict mantém ordem de inserção
+                break  # OrderedDict keeps insertion order
         for sid in expired:
             _sessions.pop(sid, None)
 
-        # Enforce max size (remove mais antigas)
+        # Enforce max size (drop oldest entries)
         while len(_sessions) >= _SESSION_MAX_SIZE:
             _sessions.popitem(last=False)
 
-        # Recupera ou cria
+        # Get or create
         existing = _sessions.pop(session_id, None)
         if existing is not None:
             buffer, _ = existing
@@ -91,25 +91,25 @@ def chat(
     req: ChatRequest,
     current_user: User = Depends(verify_token),
 ) -> ChatResponse:
-    """Processa pergunta do usuário autenticado e retorna resposta do assistente.
+    """Process the authenticated user's question and return the assistant answer.
 
-    Pipeline RAG completo:
-    1. Recupera/cria buffer de conversação para a sessão.
-    2. Gera embedding da pergunta.
-    3. Busca contexto relevante no Qdrant.
-    4. Gera resposta via LLM (com verificação opcional de alucinações).
-    5. Atualiza histórico de conversação.
+    Full RAG pipeline:
+    1. Get/create the conversation buffer for the session.
+    2. Generate the question embedding.
+    3. Search relevant context in Qdrant.
+    4. Generate the answer via LLM (with optional hallucination check).
+    5. Update the conversation history.
 
     Args:
-        req: Requisição contendo session_id, question e profile.
-        current_user: Usuário autenticado (injetado por ``verify_token``).
+        req: Request containing session_id, question and profile.
+        current_user: Authenticated user (injected by ``verify_token``).
 
     Returns:
-        Resposta do assistente com score de alucinação.
+        Assistant answer with hallucination score.
 
     Raises:
-        HTTPException(401): Se o token JWT estiver ausente, inválido ou expirado.
-        HTTPException(503): Se Ollama ou Qdrant estiverem indisponíveis.
+        HTTPException(401): If the JWT is missing, invalid or expired.
+        HTTPException(503): If Ollama or Qdrant are unavailable.
     """
     logger.info(
         "chat.access",
@@ -170,7 +170,7 @@ def chat(
             detail=f"Erro ao gerar resposta: {str(e)}. Verifique se o Ollama está rodando.",
         ) from e
 
-    # Atualiza buffer somente após sucesso
+    # Update the buffer only after success
     buffer.add("user", req.question)
     buffer.add("assistant", response.answer)
 

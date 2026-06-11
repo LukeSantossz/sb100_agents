@@ -1,4 +1,4 @@
-"""Módulo de memória conversacional."""
+"""Conversational memory module."""
 
 from memory.conversation import ConversationBuffer
 

@@ -1,4 +1,4 @@
-"""Testes unitários para memory/conversation.py."""
+"""Unit tests for memory/conversation.py."""
 
 import unittest
 
@@ -6,20 +6,20 @@ from memory.conversation import ConversationBuffer
 
 
 class TestConversationBuffer(unittest.TestCase):
-    """Testes para ConversationBuffer."""
+    """Tests for ConversationBuffer."""
 
     def test_add_single_turn(self):
-        """Adicionar um turno deve inserir no buffer."""
+        """Adding a turn must insert it into the buffer."""
         buffer = ConversationBuffer(maxlen=5)
-        buffer.add("user", "Olá")
+        buffer.add("user", "Hello")
 
         messages = buffer.to_messages()
 
         self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0], {"role": "user", "content": "Olá"})
+        self.assertEqual(messages[0], {"role": "user", "content": "Hello"})
 
     def test_to_messages_empty_buffer(self):
-        """Buffer vazio retorna lista vazia."""
+        """An empty buffer returns an empty list."""
         buffer = ConversationBuffer(maxlen=5)
 
         messages = buffer.to_messages()
@@ -27,11 +27,11 @@ class TestConversationBuffer(unittest.TestCase):
         self.assertEqual(messages, [])
 
     def test_to_messages_preserves_order(self):
-        """to_messages retorna turnos na ordem de inserção."""
+        """to_messages returns turns in insertion order."""
         buffer = ConversationBuffer(maxlen=5)
-        buffer.add("user", "Pergunta 1")
-        buffer.add("assistant", "Resposta 1")
-        buffer.add("user", "Pergunta 2")
+        buffer.add("user", "Question 1")
+        buffer.add("assistant", "Answer 1")
+        buffer.add("user", "Question 2")
 
         messages = buffer.to_messages()
 
@@ -41,22 +41,22 @@ class TestConversationBuffer(unittest.TestCase):
         self.assertEqual(messages[2]["role"], "user")
 
     def test_fifo_overflow_discards_oldest(self):
-        """Ao exceder maxlen, o turno mais antigo é descartado."""
+        """When maxlen is exceeded, the oldest turn is discarded."""
         buffer = ConversationBuffer(maxlen=3)
-        buffer.add("user", "Turno 1")
-        buffer.add("assistant", "Turno 2")
-        buffer.add("user", "Turno 3")
-        buffer.add("assistant", "Turno 4")  # Overflow: Turno 1 descartado
+        buffer.add("user", "Turn 1")
+        buffer.add("assistant", "Turn 2")
+        buffer.add("user", "Turn 3")
+        buffer.add("assistant", "Turn 4")  # Overflow: Turn 1 discarded
 
         messages = buffer.to_messages()
 
         self.assertEqual(len(messages), 3)
-        self.assertEqual(messages[0]["content"], "Turno 2")
-        self.assertEqual(messages[1]["content"], "Turno 3")
-        self.assertEqual(messages[2]["content"], "Turno 4")
+        self.assertEqual(messages[0]["content"], "Turn 2")
+        self.assertEqual(messages[1]["content"], "Turn 3")
+        self.assertEqual(messages[2]["content"], "Turn 4")
 
     def test_fifo_multiple_overflows(self):
-        """Múltiplos overflows descartam turnos corretamente."""
+        """Multiple overflows discard turns correctly."""
         buffer = ConversationBuffer(maxlen=2)
         buffer.add("user", "A")
         buffer.add("assistant", "B")
@@ -71,29 +71,29 @@ class TestConversationBuffer(unittest.TestCase):
         self.assertEqual(messages[1]["content"], "E")
 
     def test_to_messages_returns_copy(self):
-        """to_messages retorna cópia, não referência ao buffer interno."""
+        """to_messages returns a copy, not a reference to the internal buffer."""
         buffer = ConversationBuffer(maxlen=5)
-        buffer.add("user", "Teste")
+        buffer.add("user", "Test")
 
         messages = buffer.to_messages()
-        messages[0]["content"] = "Alterado"
-        messages.append({"role": "fake", "content": "Intruso"})
+        messages[0]["content"] = "Changed"
+        messages.append({"role": "fake", "content": "Intruder"})
 
-        self.assertEqual(buffer.to_messages()[0]["content"], "Teste")
+        self.assertEqual(buffer.to_messages()[0]["content"], "Test")
         self.assertEqual(len(buffer.to_messages()), 1)
 
-    # ---------------- T65: validação de role/content ----------------
+    # ---------------- role/content validation ----------------
 
     def test_add_rejects_invalid_role(self):
-        """add() rejeita roles fora de {user, assistant}."""
+        """add() rejects roles outside {user, assistant}."""
         buffer = ConversationBuffer(maxlen=5)
         with self.assertRaises(ValueError):
-            buffer.add("system", "tentativa de override")
+            buffer.add("system", "override attempt")
         with self.assertRaises(ValueError):
-            buffer.add("", "vazio")
+            buffer.add("", "empty")
 
     def test_add_rejects_empty_content(self):
-        """add() rejeita content vazio ou só whitespace."""
+        """add() rejects empty or whitespace-only content."""
         buffer = ConversationBuffer(maxlen=5)
         with self.assertRaises(ValueError):
             buffer.add("user", "")
@@ -101,10 +101,10 @@ class TestConversationBuffer(unittest.TestCase):
             buffer.add("user", "   \n  ")
 
     def test_add_accepts_valid_roles(self):
-        """add() aceita 'user' e 'assistant'."""
+        """add() accepts 'user' and 'assistant'."""
         buffer = ConversationBuffer(maxlen=5)
-        buffer.add("user", "ola")
-        buffer.add("assistant", "oi")
+        buffer.add("user", "hello")
+        buffer.add("assistant", "hi")
         self.assertEqual(len(buffer.to_messages()), 2)
 
 
