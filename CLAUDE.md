@@ -13,5 +13,19 @@ and the documents it lists. Treat them as binding:
   hierarchy (R1 internal, R2 cross-provider, R3 automated PR).
 - Follow `.standards/docs/standards/github.md` for Conventional Commits, branch naming, and templates.
   No co-author or AI-attribution lines in commits.
-- Token economy per `.standards/docs/standards/token_economy.md`.
+- Token economy per `.standards/token_economy.md`.
 - All output in English.
+
+## Project Adoption Notes
+
+How the framework's generic rules instantiate in this repository:
+
+- Branch naming: `type/NNN-short-description`, where `NNN` is the GitHub issue number
+  (the project tracker). Example: `feat/130-persist-conversation-history`. This is the
+  project form of the framework's `type/TASK-NNN-description`.
+- Ephemeral `SPEC.md`: the spec lives at the repository root on the feature branch and
+  is removed as the branch's final commit before merge. The PR's Spec Link points to the
+  `SPEC.md` blob at a branch commit (or the content is pasted in the PR description).
+- Review composition: no second-provider Reviewer (R2) is available in this project.
+  R1 internal review plus the human CRURA review stand in for R2; record this in every
+  PR's Self-Review Checklist. R3 (automated PR review) is not configured.

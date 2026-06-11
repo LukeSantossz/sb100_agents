@@ -346,7 +346,7 @@ sb100_agents/
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](./CONTRIBUTING.md). Quick summary: fork, branch (`type/short-description`), tests, Conventional Commits, PR.
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md). Quick summary: fork, branch (`type/NNN-short-description`, NNN = issue number), tests, Conventional Commits, PR.
 
 ## License
 
