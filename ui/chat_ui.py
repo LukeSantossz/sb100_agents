@@ -1,22 +1,22 @@
-"""Interface Gradio para chat com o agente SmartB100.
+"""Gradio chat interface for the SmartB100 agent.
 
-Este módulo implementa uma interface web interativa que consome
-o endpoint POST /chat da API FastAPI, permitindo:
+Interactive web interface that consumes the FastAPI POST /chat
+endpoint, supporting:
 
-- Envio de perguntas em linguagem natural.
-- Configuração do perfil do usuário (nome e expertise).
-- Visualização do hallucination_score em cada resposta (cores alinhadas
-  com ``settings.hallucination_threshold``).
-- Gerenciamento de sessão com opção de reset.
-- Loading state via generator pattern (placeholder em <1s).
-- Retry automático com backoff para falhas transitórias (503/504/timeout).
-- URLs e detalhes técnicos da API são logados internamente; usuário recebe
-  apenas mensagens amigáveis.
+- Natural-language questions.
+- User profile configuration (name and expertise).
+- hallucination_score display per answer (colors aligned with
+  ``settings.hallucination_threshold``).
+- Session management with reset option.
+- Loading state via generator pattern (placeholder in <1s).
+- Automatic retry with backoff for transient failures (503/504/timeout).
+- API URLs and technical details are logged internally; the user only
+  sees friendly messages.
 
-Uso:
+Usage:
     python ui/chat_ui.py [--api-url URL] [--port PORT]
 
-    Exemplo:
+    Example:
         python ui/chat_ui.py --api-url http://localhost:8000 --port 7860
 """
 
@@ -32,7 +32,7 @@ from pathlib import Path
 import gradio as gr
 import httpx
 
-# Permite import de core.config quando ui/ é executado standalone
+# Allows importing core.config when ui/ runs standalone
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.config import settings  # noqa: E402
@@ -42,30 +42,30 @@ logger = logging.getLogger(__name__)
 DEFAULT_API_URL = "http://localhost:8000"
 DEFAULT_PORT = 7860
 
-# Retry transitório: 2 retries (3 tentativas total) com backoff 1s, 2s
+# Transient retry: 2 retries (3 attempts total) with 1s, 2s backoff
 RETRY_ATTEMPTS = 2
-RETRY_BACKOFF_BASE = 1.0  # segundos; multiplicado por 2**attempt
+RETRY_BACKOFF_BASE = 1.0  # seconds; multiplied by 2**attempt
 
 
 class ChatSession:
-    """Gerencia estado da sessão de chat."""
+    """Manages chat session state."""
 
     def __init__(self, api_url: str) -> None:
-        """Inicializa sessão de chat.
+        """Initializes the chat session.
 
         Args:
-            api_url: URL base da API SmartB100.
+            api_url: Base URL of the SmartB100 API.
         """
         self.api_url = api_url.rstrip("/")
         self.session_id = str(uuid.uuid4())
-        # settings.chat_timeout: configurável via env CHAT_TIMEOUT (default 600s)
+        # settings.chat_timeout: configurable via env CHAT_TIMEOUT (default 600s)
         self.client = httpx.Client(timeout=settings.chat_timeout)
 
     def reset(self) -> str:
-        """Reseta sessão gerando novo session_id.
+        """Resets the session by generating a new session_id.
 
         Returns:
-            Novo session_id gerado.
+            The new session_id.
         """
         self.session_id = str(uuid.uuid4())
         return self.session_id
@@ -76,19 +76,19 @@ class ChatSession:
         name: str,
         expertise: str,
     ) -> tuple[str, float]:
-        """Envia mensagem para a API e retorna resposta.
+        """Sends a message to the API and returns the answer.
 
         Args:
-            message: Pergunta do usuário.
-            name: Nome do usuário para o perfil.
-            expertise: Nível de expertise (beginner, intermediate, expert).
+            message: The user's question.
+            name: User name for the profile.
+            expertise: Expertise level (beginner, intermediate, expert).
 
         Returns:
-            Tupla com (resposta, hallucination_score).
+            Tuple of (answer, hallucination_score).
 
         Raises:
-            httpx.HTTPStatusError: Se a API retornar erro HTTP.
-            httpx.RequestError: Se houver erro de conexão.
+            httpx.HTTPStatusError: If the API returns an HTTP error.
+            httpx.RequestError: If a connection error occurs.
         """
         payload = {
             "session_id": self.session_id,
@@ -110,12 +110,12 @@ class ChatSession:
 
 
 def _is_transient_error(exc: Exception) -> bool:
-    """Identifica falhas transitórias passíveis de retry.
+    """Identifies transient failures eligible for retry.
 
-    Retry aplica-se a:
-    - ``httpx.TimeoutException``: timeout total da request.
-    - ``httpx.HTTPStatusError`` com status 503/504: backend indisponível ou
-      gateway timeout (típico de Ollama lento ou Qdrant em recovery).
+    Retry applies to:
+    - ``httpx.TimeoutException``: total request timeout.
+    - ``httpx.HTTPStatusError`` with status 503/504: backend unavailable or
+      gateway timeout (typical of slow Ollama or Qdrant in recovery).
     """
     if isinstance(exc, httpx.TimeoutException):
         return True
@@ -131,21 +131,21 @@ def send_with_retry(
     expertise: str,
     attempts: int = RETRY_ATTEMPTS,
 ) -> tuple[str, float]:
-    """Envia mensagem com retry exponencial para erros transitórios.
+    """Sends a message with exponential retry for transient errors.
 
     Args:
-        session: Sessão de chat ativa.
-        message: Pergunta do usuário.
-        name: Nome do usuário.
-        expertise: Expertise do usuário.
-        attempts: Número de retries adicionais (total = 1 + attempts).
+        session: Active chat session.
+        message: The user's question.
+        name: User name.
+        expertise: User expertise.
+        attempts: Number of additional retries (total = 1 + attempts).
 
     Returns:
-        Tupla (resposta, hallucination_score).
+        Tuple of (answer, hallucination_score).
 
     Raises:
-        httpx.HTTPStatusError | httpx.RequestError: Se todas as tentativas
-        falharem ou se o erro não for transitório.
+        httpx.HTTPStatusError | httpx.RequestError: If all attempts fail
+        or the error is not transient.
     """
     last_exc: Exception | None = None
     for attempt in range(attempts + 1):
@@ -165,29 +165,29 @@ def send_with_retry(
             )
             time.sleep(backoff)
 
-    # Defensivo — loop sempre retorna ou raise; este path é inalcançável.
+    # Defensive — the loop always returns or raises; this path is unreachable.
     assert last_exc is not None
     raise last_exc
 
 
 def _classify_score(score: float, threshold: float) -> tuple[str, str]:
-    """Mapeia score numérico para faixa de risco e cor visual.
+    """Maps a numeric score to a risk band and display color.
 
-    Bandas derivam de ``threshold`` (default 0.5) para que ajustes futuros
-    de ``HALLUCINATION_THRESHOLD`` movam todas as faixas coerentemente:
+    Bands derive from ``threshold`` (default 0.5) so future changes to
+    ``HALLUCINATION_THRESHOLD`` shift all bands consistently:
 
-    - **Verde** (baixo): score < threshold × 0.6.
-    - **Amarelo** (moderado): threshold × 0.6 ≤ score < threshold × 1.2.
-    - **Vermelho** (alto): score ≥ threshold × 1.2.
+    - **Green** (low): score < threshold × 0.6.
+    - **Yellow** (moderate): threshold × 0.6 ≤ score < threshold × 1.2.
+    - **Red** (high): score ≥ threshold × 1.2.
 
-    Com threshold=0.5 default: verde <0.3, amarelo 0.3-0.6, vermelho ≥0.6.
+    With the default threshold=0.5: green <0.3, yellow 0.3-0.6, red ≥0.6.
 
     Args:
         score: hallucination_score (0.0-1.0).
-        threshold: limiar base configurado em Settings.
+        threshold: Base threshold configured in Settings.
 
     Returns:
-        Tupla (texto descritivo, cor hex CSS).
+        Tuple of (descriptive text, CSS hex color).
     """
     low_band = threshold * 0.6
     high_band = threshold * 1.2
@@ -209,11 +209,11 @@ def _classify_score(score: float, threshold: float) -> tuple[str, str]:
 
 
 def _score_html(score: float, threshold: float) -> str:
-    """Renderiza badge HTML colorido para o score."""
+    """Renders the colored HTML badge for the score."""
     text, color = _classify_score(score, threshold)
-    # `text` é gerado internamente (sem input externo), mas escapamos por
-    # defesa em profundidade: se o conteúdo evoluir para incluir dado dinâmico,
-    # o escape já está em vigor.
+    # `text` is generated internally (no external input), but we escape it as
+    # defense in depth: if the content ever includes dynamic data, the escape
+    # is already in place.
     return (
         f'<div style="padding: 8px 12px; border-radius: 6px; '
         f"background: {color}1a; border-left: 4px solid {color}; "
@@ -222,7 +222,7 @@ def _score_html(score: float, threshold: float) -> str:
 
 
 def _processing_html() -> str:
-    """Placeholder visual exibido enquanto a API processa."""
+    """Visual placeholder shown while the API is processing."""
     return (
         '<div style="padding: 8px 12px; border-radius: 6px; '
         "background: #6b72801a; border-left: 4px solid #6b7280; "
@@ -231,10 +231,10 @@ def _processing_html() -> str:
 
 
 def _user_facing_http_error(status_code: int) -> str:
-    """Mensagem amigavel para erro HTTP (sem expor URL ou body).
+    """Friendly message for an HTTP error (no URL or body exposed).
 
-    Detalhes tecnicos vao para o logger; o usuario recebe apenas o que pode
-    acionar (tentar de novo, reportar ao operador).
+    Technical details go to the logger; the user only gets actionable
+    information (retry, report to the operator).
     """
     if status_code == 503:
         return (
@@ -258,11 +258,11 @@ def _user_facing_http_error(status_code: int) -> str:
 
 
 def _error_html(user_msg: str) -> str:
-    """Renderiza badge vermelho de erro para o painel de verificação.
+    """Renders the red error badge for the verification panel.
 
-    `user_msg` é escapado por defesa em profundidade — atualmente vem de
-    `_user_facing_http_error` (strings estáticas), mas o escape protege
-    contra regressões futuras que venham a incluir conteúdo dinâmico.
+    `user_msg` is escaped as defense in depth — it currently comes from
+    `_user_facing_http_error` (static strings), but the escape guards
+    against future regressions that include dynamic content.
     """
     return (
         '<div style="padding: 8px 12px; border-radius: 6px; '
@@ -276,7 +276,7 @@ def _history_with_error(
     user_message: str,
     error_text: str,
 ) -> list[dict[str, str]]:
-    """Acrescenta turn de erro ao histórico sem perder a pergunta do usuário."""
+    """Appends an error turn to the history without losing the user's question."""
     return history + [
         {"role": "user", "content": user_message},
         {"role": "assistant", "content": f"⚠ {error_text}"},
@@ -284,13 +284,13 @@ def _history_with_error(
 
 
 def create_interface(api_url: str) -> gr.Blocks:
-    """Cria interface Gradio completa.
+    """Creates the full Gradio interface.
 
     Args:
-        api_url: URL base da API SmartB100.
+        api_url: Base URL of the SmartB100 API.
 
     Returns:
-        Aplicação Gradio configurada.
+        Configured Gradio application.
     """
     session = ChatSession(api_url)
 
@@ -300,22 +300,22 @@ def create_interface(api_url: str) -> gr.Blocks:
         name: str,
         expertise: str,
     ) -> Generator[tuple[list[dict[str, str]], str, str], None, None]:
-        """Processa mensagem e atualiza histórico.
+        """Processes a message and updates the history.
 
-        Yields tripla ``(history, score_html, msg_input_value)``:
-        - Primeiro yield: placeholder "Processando..." (<1s) preservando input.
-        - Segundo yield: resultado final (sucesso ou erro). Em sucesso o
-          input é limpo; em erro o input é preservado para o usuário poder
-          tentar novamente sem redigitar.
+        Yields a ``(history, score_html, msg_input_value)`` triple:
+        - First yield: processing placeholder (<1s) preserving the input.
+        - Second yield: final result (success or error). On success the
+          input is cleared; on error it is preserved so the user can retry
+          without retyping.
 
         Args:
-            message: Mensagem do usuário.
-            history: Histórico de mensagens no formato Gradio.
-            name: Nome do usuário.
-            expertise: Nível de expertise.
+            message: The user's message.
+            history: Message history in Gradio format.
+            name: User name.
+            expertise: Expertise level.
 
         Yields:
-            Tupla (histórico atualizado, badge HTML do score, valor do input).
+            Tuple of (updated history, score HTML badge, input value).
         """
         if not message.strip():
             yield history, "", message
@@ -324,7 +324,7 @@ def create_interface(api_url: str) -> gr.Blocks:
         user_name = name.strip() or "Usuário"
         user_expertise = expertise or "intermediate"
 
-        # Yield #1: placeholder imediato para o usuário ver atividade
+        # Yield #1: immediate placeholder so the user sees activity
         preview = history + [
             {"role": "user", "content": message},
             {"role": "assistant", "content": "..."},
@@ -338,7 +338,7 @@ def create_interface(api_url: str) -> gr.Blocks:
                 {"role": "user", "content": message},
                 {"role": "assistant", "content": answer},
             ]
-            # Yield #2 sucesso: histórico final + score colorido + input vazio
+            # Yield #2 success: final history + colored score + empty input
             yield new_history, _score_html(score, settings.hallucination_threshold), ""
 
         except httpx.HTTPStatusError as exc:
@@ -368,19 +368,19 @@ def create_interface(api_url: str) -> gr.Blocks:
             yield _history_with_error(history, message, user_msg), _error_html(user_msg), message
 
     def reset_session() -> tuple[list[dict[str, str]], str, str]:
-        """Reseta sessão e limpa histórico.
+        """Resets the session and clears the history.
 
         Returns:
-            Tupla com (histórico vazio, novo session_id, score vazio).
+            Tuple of (empty history, new session_id, empty score).
         """
         new_session_id = session.reset()
         return [], f"Session ID: {new_session_id[:8]}...", ""
 
     def get_session_info() -> str:
-        """Retorna informação da sessão atual.
+        """Returns information about the current session.
 
         Returns:
-            String com session_id truncado.
+            String with the truncated session_id.
         """
         return f"Session ID: {session.session_id[:8]}..."
 
@@ -424,11 +424,11 @@ def create_interface(api_url: str) -> gr.Blocks:
                 reset_btn = gr.Button("Nova Sessão", variant="secondary")
 
                 gr.Markdown("### Verificação")
-                # `label` via Markdown — gr.HTML não suporta `label=` como Textbox,
-                # então preservamos o título "Última Verificação" acima do badge.
+                # `label` via Markdown — gr.HTML does not support `label=` like
+                # Textbox, so the title is kept above the badge.
                 gr.Markdown("**Última Verificação**")
-                # gr.HTML aceita markup com cores; substitui o textbox simples
-                # para permitir feedback visual alinhado ao hallucination_threshold.
+                # gr.HTML accepts colored markup; replaces the plain textbox to
+                # allow visual feedback aligned with hallucination_threshold.
                 score_display = gr.HTML(value="")
 
             with gr.Column(scale=3):
@@ -445,9 +445,9 @@ def create_interface(api_url: str) -> gr.Blocks:
                     submit_btn = gr.Button("Enviar", variant="primary")
                     clear_btn = gr.Button("Limpar Chat")
 
-        # `respond` agora retorna 3 outputs: (history, score_html, input_value).
-        # Em sucesso input vira ""; em erro input mantem o texto original para
-        # o usuario poder tentar novamente sem redigitar.
+        # `respond` returns 3 outputs: (history, score_html, input_value).
+        # On success the input becomes ""; on error it keeps the original text
+        # so the user can retry without retyping.
         submit_btn.click(
             fn=respond,
             inputs=[msg_input, chatbot, name_input, expertise_input],
@@ -474,7 +474,7 @@ def create_interface(api_url: str) -> gr.Blocks:
 
 
 def main() -> None:
-    """Ponto de entrada principal da aplicação."""
+    """Main application entry point."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
