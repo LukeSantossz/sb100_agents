@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 # ============================================================================
-# Stage 1: Builder — instala build-essential + pip install em venv isolado.
-# Apenas o venv resultante é copiado para o runtime; toolchain de compilação
-# nao acompanha a imagem final.
+# Stage 1: Builder — installs build-essential + pip install into an isolated venv.
+# Only the resulting venv is copied to the runtime stage; the compilation
+# toolchain does not ship in the final image.
 # ============================================================================
 FROM python:3.12.3-slim AS builder
 
@@ -12,23 +12,23 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /build
 
-# Build deps (precisam para wheels com C-extensions, e.g. pydantic/uvicorn)
+# Build deps (needed for wheels with C extensions, e.g. pydantic/uvicorn)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Cria virtualenv que sera copiado intacto para o runtime stage
+# Create the virtualenv that will be copied intact to the runtime stage
 ENV VIRTUAL_ENV=/opt/venv
 RUN python -m venv "$VIRTUAL_ENV"
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Aproveita cache de layers: requirements antes do codigo
+# Leverage layer caching: requirements before the code
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # ============================================================================
-# Stage 2: Runtime — slim sem build-essential. Apenas curl para healthcheck.
+# Stage 2: Runtime — slim without build-essential. Only curl for the healthcheck.
 # ============================================================================
 FROM python:3.12.3-slim AS runtime
 
@@ -36,24 +36,24 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-# curl: necessario pelos healthchecks no docker-compose.yml
+# curl: required by the healthchecks in docker-compose.yml
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# WORKDIR /app alinha com o bind mount `./smartb100_v2.db:/app/smartb100_v2.db`
-# do docker-compose: `database/db.py` resolve o path via
-# `Path(__file__).resolve().parents[1]`, entao com codigo em /app/database/
-# o DB cai em /app/smartb100_v2.db exatamente onde o bind monta.
+# WORKDIR /app aligns with the docker-compose bind mount
+# `./smartb100_v2.db:/app/smartb100_v2.db`: `database/db.py` resolves the path via
+# `Path(__file__).resolve().parents[1]`, so with the code in /app/database/ the DB
+# lands at /app/smartb100_v2.db, exactly where the bind mounts it.
 WORKDIR /app
 
-# Copia o venv do builder; activate via PATH (uvicorn vem do venv)
+# Copy the venv from the builder; activate via PATH (uvicorn comes from the venv)
 ENV VIRTUAL_ENV=/opt/venv
 COPY --from=builder $VIRTUAL_ENV $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Copia codigo (filtrado por .dockerignore — sem tests/, eval/, .git, etc.)
+# Copy the code (filtered by .dockerignore — no tests/, eval/, .git, etc.)
 COPY . .
 
 EXPOSE 8000

@@ -1,6 +1,6 @@
 # ============================================================================
-# .dockerignore - Reduz contexto de build da Docker.
-# Mantém scripts/ e archives/ disponíveis para indexação ad-hoc no container.
+# .dockerignore - Shrinks the Docker build context.
+# Keeps scripts/ and archives/ available for ad-hoc indexing inside the container.
 # ============================================================================
 
 # Git
@@ -34,28 +34,28 @@ tests/
 .coverage
 coverage.xml
 
-# Eval pipeline (não usado em runtime do container)
+# Eval pipeline (not used at container runtime)
 eval/
 
-# Project meta (não precisa em runtime)
+# Project meta (not needed at runtime)
 .claude/
 
-# Documentation (não precisa em runtime)
+# Documentation (not needed at runtime)
 *.md
 docs/
 
 # CI/CD
 .github/
 
-# Environment files (passados via -e ou env_file no compose)
+# Environment files (passed via -e or env_file in compose)
 .env
 .env.local
 
-# Local databases (montados via volume)
+# Local databases (mounted via volume)
 smartb100_v2.db
 smartb100.db
 
-# Qdrant local storage (montado via volume)
+# Qdrant local storage (mounted via volume)
 qdrant_storage/
 
 # Editor/IDE
@@ -73,7 +73,7 @@ Thumbs.db
 *.temp
 *.log
 
-# Docker artifacts (evita recursão)
+# Docker artifacts (avoids recursion)
 Dockerfile*
 .dockerignore
 docker-compose*.yml
