@@ -1,194 +1,194 @@
-# Guia de Setup — SmartB100
+# Setup Guide — SmartB100
 
-Este guia permite configurar e executar o sistema SmartB100 em menos de 15 minutos.
+This guide gets SmartB100 configured and running in under 15 minutes.
 
-O sistema suporta dois modos de operação do Qdrant:
-- **Modo Local**: Qdrant via Docker na máquina de desenvolvimento
-- **Modo Remoto**: Qdrant em servidor compartilhado via ZeroTier
+The system supports two Qdrant operation modes:
+- **Local Mode**: Qdrant via Docker on the development machine
+- **Remote Mode**: Qdrant on a shared server via ZeroTier
 
 ---
 
-## 1. Pré-requisitos
+## 1. Prerequisites
 
-### Obrigatórios (ambos os modos)
+### Required (both modes)
 
-| Componente | Versão | Verificação | Instalação |
-|------------|--------|-------------|------------|
+| Component | Version | Check | Install |
+|-----------|---------|-------|---------|
 | Python | 3.11+ | `python --version` | [python.org](https://www.python.org/downloads/) |
 | Ollama | latest | `ollama --version` | [ollama.com](https://ollama.com) |
 | Git | any | `git --version` | [git-scm.com](https://git-scm.com) |
 
-### Modo Local (adicional)
+### Local Mode (additional)
 
-| Componente | Versão | Verificação | Instalação |
-|------------|--------|-------------|------------|
+| Component | Version | Check | Install |
+|-----------|---------|-------|---------|
 | Docker | 20+ | `docker --version` | [docker.com](https://www.docker.com/products/docker-desktop) |
-| Docker Compose | v2+ | `docker compose version` | Incluído no Docker Desktop |
+| Docker Compose | v2+ | `docker compose version` | Included in Docker Desktop |
 
-### Modo Remoto (adicional)
+### Remote Mode (additional)
 
-| Componente | Versão | Verificação | Instalação |
-|------------|--------|-------------|------------|
+| Component | Version | Check | Install |
+|-----------|---------|-------|---------|
 | ZeroTier | latest | `zerotier-cli status` | [zerotier.com](https://www.zerotier.com/download/) |
 
 ---
 
-## 2. Modelos Ollama (local)
+## 2. Ollama Models (local)
 
-Ollama deve ser instalado e executado **localmente** (não via Docker). Execute os comandos abaixo para baixar os modelos necessários:
+Ollama must be installed and run **locally** (not via Docker). Run the commands below to download the required models:
 
 ```bash
-# Modelo de chat (geração de respostas)
+# Chat model (answer generation)
 ollama pull llama3.2:3b
 
-# Modelo de embeddings (vetorização)
+# Embedding model (vectorization)
 ollama pull nomic-embed-text
 ```
 
-> **Nota**: O modelo default é `llama3.2:3b` (mais leve). Para máquinas com mais recursos, use `llama3.1:8b` (ajuste `CHAT_MODEL` no `.env`).
+> **Note**: The default model is `llama3.2:3b` (lighter). For machines with more resources, use `llama3.1:8b` (adjust `CHAT_MODEL` in `.env`).
 
 ---
 
-## 3. Clonar e Instalar Dependências
+## 3. Clone and Install Dependencies
 
 ```bash
-# Clonar o repositório
+# Clone the repository
 git clone https://github.com/LukeSantossz/sb100_agents.git
 cd sb100_agents
 
-# Instalar dependências Python (escolha um)
-uv sync                          # Recomendado (mais rápido)
-# ou
-pip install -e .                 # Alternativa com pip
+# Install Python dependencies (pick one)
+uv sync                          # Recommended (faster)
+# or
+pip install -e .                 # pip alternative
 ```
 
 ---
 
-## 4. Configuração do `.env`
+## 4. `.env` Configuration
 
-Copie o arquivo de exemplo e configure conforme seu modo de operação:
+Copy the example file and configure it for your operation mode:
 
 ```bash
 cp .env.example .env
 ```
 
-### 4.1 Modo Local (Docker)
+### 4.1 Local Mode (Docker)
 
-Edite o `.env` com as seguintes variáveis:
+Edit `.env` with the following variables:
 
 ```env
-# === Modo Local (Qdrant via Docker) ===
+# === Local Mode (Qdrant via Docker) ===
 QDRANT_URL=http://localhost:6333
 COLLECTION_NAME=archives_v2
 
-# Modelos Ollama (roda localmente, não via Docker)
+# Ollama models (runs locally, not via Docker)
 CHAT_MODEL=llama3.2:3b
 EMBED_MODEL=nomic-embed-text
 
-# Configurações de busca
+# Search settings
 TOP_K=3
 HALLUCINATION_THRESHOLD=0.5
 VERIFICATION_ENABLED=true
 
-# JWT (troque em produção!)
+# JWT (change in production!)
 JWT_SECRET_KEY=super-secret-key-replace-in-production
 ```
 
-### 4.2 Modo Remoto (ZeroTier)
+### 4.2 Remote Mode (ZeroTier)
 
-Para usar o servidor Qdrant remoto compartilhado:
+To use the shared remote Qdrant server:
 
-1. **Junte-se à rede ZeroTier** (solicite o Network ID ao Tech Lead)
-2. **Obtenha o IP do servidor** (solicite ao Tech Lead)
-3. **Configure o `.env`**:
+1. **Join the ZeroTier network** (request the Network ID from the Tech Lead)
+2. **Get the server IP** (request it from the Tech Lead)
+3. **Configure `.env`**:
 
 ```env
-# === Modo Remoto (Qdrant via ZeroTier) ===
+# === Remote Mode (Qdrant via ZeroTier) ===
 QDRANT_URL=http://<REMOTE_HOST_ZEROTIER>:6333
-QDRANT_API_KEY=<SOLICITAR_AO_TECH_LEAD>
+QDRANT_API_KEY=<REQUEST_FROM_TECH_LEAD>
 COLLECTION_NAME=archives_v2
 
-# Modelos Ollama (roda localmente, não via Docker)
+# Ollama models (runs locally, not via Docker)
 CHAT_MODEL=llama3.2:3b
 EMBED_MODEL=nomic-embed-text
 
-# Configurações de busca
+# Search settings
 TOP_K=3
 HALLUCINATION_THRESHOLD=0.5
 VERIFICATION_ENABLED=true
 
-# JWT (troque em produção!)
+# JWT (change in production!)
 JWT_SECRET_KEY=super-secret-key-replace-in-production
 ```
 
-> **Importante**: As credenciais do servidor remoto (`QDRANT_API_KEY`, IP do host) são fornecidas fora do repositório por questões de segurança.
+> **Important**: The remote server credentials (`QDRANT_API_KEY`, host IP) are provided outside the repository for security reasons.
 
 ---
 
-## 5. Inicialização dos Serviços
+## 5. Starting the Services
 
-### 5.1 Modo Local
+### 5.1 Local Mode
 
 ```bash
-# Iniciar Qdrant via Docker Compose (apenas Qdrant — Ollama roda localmente)
+# Start Qdrant via Docker Compose (Qdrant only — Ollama runs locally)
 docker compose --profile infra up -d
 
-# Verificar se Qdrant está rodando
+# Check that Qdrant is running
 curl http://localhost:6333/health
-# Resposta esperada: {"title":"qdrant - vector search engine","version":"..."}
+# Expected response: {"title":"qdrant - vector search engine","version":"..."}
 
-# Verificar se Ollama está rodando localmente
+# Check that Ollama is running locally
 ollama list
 ```
 
-### 5.2 Modo Remoto
+### 5.2 Remote Mode
 
 ```bash
-# Verificar conexão ZeroTier
+# Check the ZeroTier connection
 zerotier-cli listnetworks
 
-# Testar conectividade com o servidor
+# Test connectivity to the server
 curl http://<REMOTE_HOST_ZEROTIER>:6333/health
 ```
 
 ---
 
-## 6. Ingestão de Documentos
+## 6. Document Ingestion
 
-Antes de usar o sistema, indexe os documentos PDF no Qdrant:
+Before using the system, index the PDF documents into Qdrant:
 
 ```bash
-# Indexar todos os PDFs do diretório archives/
+# Index every PDF in the archives/ directory
 python scripts/ingest.py ./archives/
 
-# Ou indexar um arquivo específico
-python scripts/ingest.py ./archives/documento_agricola.pdf
+# Or index a specific file
+python scripts/ingest.py ./archives/agricultural_document.pdf
 ```
 
-> **Alternativa**: Usar o semantic chunker diretamente:
+> **Alternative**: Use the semantic chunker directly:
 > ```bash
 > python database/semantic_chunker.py index ./archives/
 > ```
 
-O script processa os PDFs, extrai texto, gera embeddings e armazena no Qdrant.
+The script processes the PDFs, extracts text, generates embeddings, and stores them in Qdrant.
 
 ---
 
-## 7. Iniciar a API
+## 7. Starting the API
 
-### 7.1 Modo Desenvolvimento (hot-reload)
+### 7.1 Development Mode (hot-reload)
 
 ```bash
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 7.2 Modo Produção
+### 7.2 Production Mode
 
 ```bash
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-### 7.3 Via Scripts de Inicialização
+### 7.3 Via Startup Scripts
 
 ```bash
 # Windows (CMD)
@@ -198,11 +198,11 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
 .\start.ps1
 ```
 
-Esses scripts iniciam automaticamente a API e a interface Gradio.
+These scripts start the API and the Gradio interface automatically.
 
 ---
 
-## 8. Testar a API
+## 8. Testing the API
 
 ### Health Check
 
@@ -211,7 +211,7 @@ curl http://localhost:8000/health
 # {"status":"ok"}
 ```
 
-### Criar Usuário
+### Create a User
 
 ```bash
 curl -X POST http://localhost:8000/auth/register \
@@ -219,44 +219,44 @@ curl -X POST http://localhost:8000/auth/register \
   -d '{"username":"testuser","password":"testpass123"}'
 ```
 
-### Fazer Pergunta (RAG)
+### Ask a Question (RAG)
 
 ```bash
 curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
   -d '{
     "session_id": "demo-session",
-    "question": "Como corrigir acidez do solo?",
+    "question": "How do I correct soil acidity?",
     "profile": {
-      "name": "Agricultor",
+      "name": "Farmer",
       "expertise": "beginner"
     }
   }'
 ```
 
-**Resposta esperada:**
+**Expected response:**
 ```json
 {
-  "answer": "Para corrigir a acidez do solo, você pode utilizar calcário agrícola...",
+  "answer": "To correct soil acidity, you can apply agricultural lime...",
   "hallucination_score": 0.25
 }
 ```
 
 ---
 
-## 9. Interface Gradio
+## 9. Gradio Interface
 
-O sistema inclui uma interface web via Gradio para testes interativos.
+The system includes a Gradio web interface for interactive testing.
 
-### Iniciar a Interface
+### Start the Interface
 
 ```bash
 python ui/chat_ui.py
 ```
 
-### Acessar no Navegador
+### Open in the Browser
 
-Abra: **http://localhost:7860**
+Go to: **http://localhost:7860**
 
 ### Via Docker Compose (API + Gradio)
 
@@ -264,74 +264,76 @@ Abra: **http://localhost:7860**
 docker compose --profile infra --profile app up -d
 ```
 
-Acesse:
+Access:
 - API: http://localhost:8000
 - Gradio: http://localhost:7860
 - Qdrant Dashboard: http://localhost:6333/dashboard
 
-> O compose usa **multi-stage build** (Dockerfile.api) — a imagem final não
-> contém `build-essential`. **Healthchecks** garantem ordem real de startup:
-> `api` só inicia depois que `qdrant` está saudável; `gradio` só inicia depois
-> que `api` está saudável. **Logging** com `max-size: 10m` e `max-file: 3`
-> evita estouro de disco em runs longos.
+> The compose stack uses a **multi-stage build** (Dockerfile.api) — the final
+> image does not contain `build-essential`. **Healthchecks** enforce real
+> startup order: `api` only starts after `qdrant` is healthy; `gradio` only
+> starts after `api` is healthy. **Logging** with `max-size: 10m` and
+> `max-file: 3` prevents disk exhaustion on long runs.
 
 ---
 
-## 9.1 Deploy em Linux nativo
+## 9.1 Native Linux Deploy
 
-Em Linux nativo (sem Docker Desktop), `host.docker.internal` **não resolve por
-padrão**. Como o Ollama roda fora do Docker (no host), há três caminhos:
+On native Linux (without Docker Desktop), `host.docker.internal` **does not
+resolve by default**. Since Ollama runs outside Docker (on the host), there are
+three options:
 
-**(a) Override via `OLLAMA_HOST` no `.env`** — gateway `docker0`:
+**(a) Override via `OLLAMA_HOST` in `.env`** — `docker0` gateway:
 ```env
 OLLAMA_HOST=http://172.17.0.1:11434
 ```
 
-**(b) Inline na invocação do compose:**
+**(b) Inline in the compose invocation:**
 ```bash
 OLLAMA_HOST=http://172.17.0.1:11434 \
   docker compose --profile infra --profile app up -d
 ```
 
-**(c) Mapear `host.docker.internal` para o host-gateway** — em `docker-compose.yml`
-adicionar (não está habilitado por padrão para preservar compat com Docker Desktop):
+**(c) Map `host.docker.internal` to the host-gateway** — add to
+`docker-compose.yml` (not enabled by default to preserve Docker Desktop
+compatibility):
 ```yaml
 api:
   extra_hosts:
     - "host.docker.internal:host-gateway"
 ```
 
-Verifique conectividade do container:
+Check connectivity from the container:
 ```bash
 docker compose exec api curl -fsS "$OLLAMA_HOST/api/tags"
 ```
 
-> **Diagnóstico**: para confirmar o IP do gateway docker no host Linux, use
-> `ip route | grep docker0` (terceira coluna). Em hosts com firewall (ufw),
-> garanta que a porta `11434` está liberada para a rede `docker0`.
+> **Diagnostics**: to confirm the docker gateway IP on the Linux host, use
+> `ip route | grep docker0` (third column). On hosts with a firewall (ufw),
+> make sure port `11434` is open to the `docker0` network.
 
 ---
 
-## 10. URLs dos Serviços
+## 10. Service URLs
 
-| Serviço | URL | Descrição |
-|---------|-----|-----------|
-| API | http://localhost:8000 | Endpoints REST |
+| Service | URL | Description |
+|---------|-----|-------------|
+| API | http://localhost:8000 | REST endpoints |
 | API Docs | http://localhost:8000/docs | Swagger UI |
-| Gradio UI | http://localhost:7860 | Interface de chat |
-| Qdrant Dashboard | http://localhost:6333/dashboard | Gerenciamento de vetores |
+| Gradio UI | http://localhost:7860 | Chat interface |
+| Qdrant Dashboard | http://localhost:6333/dashboard | Vector management |
 
 ---
 
 ## Troubleshooting
 
-### Ollama não encontrado
+### Ollama not found
 
 ```
 'ollama' is not recognized as an internal or external command
 ```
 
-**Solução**: Adicione o Ollama ao PATH do sistema ou reinstale.
+**Fix**: Add Ollama to the system PATH or reinstall.
 
 ### Qdrant connection refused
 
@@ -339,83 +341,83 @@ docker compose exec api curl -fsS "$OLLAMA_HOST/api/tags"
 ConnectionRefusedError: [Errno 111] Connection refused
 ```
 
-**Solução**: Verifique se o Docker está rodando e o container do Qdrant está ativo:
+**Fix**: Check that Docker is running and the Qdrant container is up:
 ```bash
 docker ps | grep qdrant
 docker compose --profile infra up -d
 ```
 
-### Modelo não encontrado
+### Model not found
 
 ```
 ollama._exceptions.ResponseError: model 'llama3.2:3b' not found
 ```
 
-**Solução**: Baixe o modelo:
+**Fix**: Download the model:
 ```bash
 ollama pull llama3.2:3b
 ```
 
-### ZeroTier não conecta
+### ZeroTier does not connect
 
 ```
 zerotier-cli: command not found
 ```
 
-**Solução**: Instale o ZeroTier e junte-se à rede:
+**Fix**: Install ZeroTier and join the network:
 ```bash
-# Windows (PowerShell como Admin)
+# Windows (PowerShell as Admin)
 winget install ZeroTier.ZeroTierOne
 
 # Linux
 curl -s https://install.zerotier.com | sudo bash
 
-# Juntar à rede
+# Join the network
 zerotier-cli join <NETWORK_ID>
 ```
 
 ---
 
-## Resumo dos Comandos
+## Command Summary
 
-### Setup Completo (Modo Local)
+### Full Setup (Local Mode)
 
 ```bash
-# 1. Modelos
+# 1. Models
 ollama pull llama3.2:3b && ollama pull nomic-embed-text
 
-# 2. Dependências
+# 2. Dependencies
 uv sync
 
-# 3. Configuração
+# 3. Configuration
 cp .env.example .env
 
-# 4. Infraestrutura
+# 4. Infrastructure
 docker compose --profile infra up -d
 
-# 5. Ingestão
+# 5. Ingestion
 python scripts/ingest.py ./archives/
 
 # 6. API
 uvicorn api.main:app --reload
 ```
 
-### Setup Completo (Modo Remoto)
+### Full Setup (Remote Mode)
 
 ```bash
-# 1. Modelos
+# 1. Models
 ollama pull llama3.2:3b && ollama pull nomic-embed-text
 
-# 2. Dependências
+# 2. Dependencies
 uv sync
 
 # 3. ZeroTier
 zerotier-cli join <NETWORK_ID>
 
-# 4. Configuração (editar .env com host remoto)
+# 4. Configuration (edit .env with the remote host)
 cp .env.example .env
 
-# 5. Ingestão (se necessário)
+# 5. Ingestion (if needed)
 python scripts/ingest.py ./archives/
 
 # 6. API

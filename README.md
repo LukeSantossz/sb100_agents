@@ -234,7 +234,7 @@ docker compose --profile infra up -d
 
 Windows users: replace `.venv/bin/python` with `.venv\Scripts\python.exe`, or run `.\start.bat` / `.\start.ps1` after installation.
 
-Full Docker deployment: `docker compose --profile infra --profile app up -d`. The compose stack uses a **multi-stage `Dockerfile.api`** (no `build-essential` in the final image), **healthchecks** that gate `depends_on` ordering, and **log rotation** (`max-size: 10m`, `max-file: 3`). On **Linux** the `OLLAMA_HOST` override is required — see [`SETUP.md` §9.1](./SETUP.md#91-deploy-em-linux-nativo). See [`SETUP.md`](./SETUP.md) for remote Qdrant configuration.
+Full Docker deployment: `docker compose --profile infra --profile app up -d`. The compose stack uses a **multi-stage `Dockerfile.api`** (no `build-essential` in the final image), **healthchecks** that gate `depends_on` ordering, and **log rotation** (`max-size: 10m`, `max-file: 3`). On **Linux** the `OLLAMA_HOST` override is required — see [`SETUP.md` §9.1](./SETUP.md#91-native-linux-deploy). See [`SETUP.md`](./SETUP.md) for remote Qdrant configuration.
 
 Verify the stack is up:
 
