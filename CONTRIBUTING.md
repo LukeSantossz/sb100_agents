@@ -29,20 +29,37 @@ docker compose --profile infra up -d
 
 ### 3. Create a branch
 
-This project follows the `type/short-description` convention:
+Work is issue-first: open (or claim) a GitHub issue before branching. Branches follow
+the `type/NNN-short-description` convention, where `NNN` is the issue number:
 
 ```bash
-git checkout -b feat/my-feature
+git checkout -b feat/130-persist-conversation-history
 ```
 
 Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `build`, `ci`, `revert`
 
-### 4. Make your changes
+### 4. Pass the Spec Gate (non-trivial changes)
 
+Any change big enough to have a design starts with a `SPEC.md`, per
+`.standards/docs/standards/spec_method.md`. The spec passes the Gate only when:
+
+- the Problem is stated in one sentence;
+- Scope is filled, including a non-empty "Does NOT include" list;
+- at least one Acceptance Criterion exists and is verifiable.
+
+The `SPEC.md` is ephemeral: it lives at the repository root on the feature branch and is
+removed as the branch's final commit before merge. The PR's Spec Link points to the
+`SPEC.md` blob at a branch commit. Skip the spec only for changes too small to have a
+design (a typo, a one-line fix).
+
+### 5. Make your changes (test-first)
+
+- Write the test before the implementation: red (watch it fail), green (minimal
+  implementation passes), refactor. Each Acceptance Criterion in the spec becomes a test.
 - Follow the existing code style (`ruff` enforces lint and formatting)
 - Keep changes surgical — touch only what is necessary
 
-### 5. Run tests
+### 6. Run tests
 
 ```bash
 # Unit tests
@@ -56,7 +73,7 @@ ruff format --check .
 mypy retrieval/ generation/ memory/ --strict
 ```
 
-### 6. Commit
+### 7. Commit
 
 This project uses **Conventional Commits** — single line, no body, no co-authored-by:
 
@@ -64,9 +81,14 @@ This project uses **Conventional Commits** — single line, no body, no co-autho
 git commit -m "feat(auth): add password reset endpoint"
 ```
 
-### 7. Open a Pull Request
+### 8. Open a Pull Request
 
-- Describe what was done and how to test
+- Fill in `.github/PULL_REQUEST_TEMPLATE.md` with real content, including the
+  review-layers record: R1 (internal review) ran; R2 (cross-provider review) is not
+  available in this project — the human CRURA review stands in; R3 (automated PR
+  review) is not configured.
+- Review your own diff in the Files Changed tab before requesting review (the RA stage
+  of `.standards/docs/standards/crura_method.md`).
 - Make sure CI passes
 
 ## Project conventions
@@ -74,8 +96,10 @@ git commit -m "feat(auth): add password reset endpoint"
 | Item | Rule |
 |------|------|
 | Commits | `type(scope): subject` — no body, no co-authored-by |
-| Branches | `type/short-description` |
-| Tests | Required for new features and bug fixes |
+| Branches | `type/NNN-short-description` (NNN = issue number) |
+| Spec | Ephemeral `SPEC.md` per `.standards/docs/standards/spec_method.md` for non-trivial changes |
+| Tests | Test-first (red-green-refactor); required for new features and bug fixes |
+| Review | R1 internal + human CRURA review (R2 not available, recorded per PR) |
 | Lint | `ruff check .` must pass with no errors |
 
 ## Reporting bugs
