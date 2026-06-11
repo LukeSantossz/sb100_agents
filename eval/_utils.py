@@ -1,8 +1,8 @@
-"""Utilitarios compartilhados do pipeline de avaliacao.
+"""Shared utilities for the evaluation pipeline.
 
-Constantes de paths derivadas de `__file__` para permitir execucao
-de qualquer CWD; helpers de validacao de schema, qualidade de pergunta
-e decisao A/B deterministica.
+Path constants derived from `__file__` so scripts run from any CWD;
+helpers for schema validation, question quality filtering and
+deterministic A/B assignment.
 """
 
 from __future__ import annotations
@@ -29,24 +29,24 @@ QUESTION_MAX_LEN: int = 500
 
 
 def validate_dataset_schema(data: Any, expected_keys: list[str]) -> None:
-    """Valida que `data` e um dict contendo todas as chaves em `expected_keys`.
+    """Validate that `data` is a dict containing every key in `expected_keys`.
 
     Args:
-        data: Objeto carregado de JSON (esperado dict).
-        expected_keys: Chaves obrigatorias no nivel raiz.
+        data: Object loaded from JSON (expected to be a dict).
+        expected_keys: Required top-level keys.
 
     Raises:
-        ValueError: `data` nao e dict ou alguma chave esta ausente.
+        ValueError: `data` is not a dict or a required key is missing.
     """
     if not isinstance(data, dict):
-        raise ValueError(f"Dataset deve ser dict, recebido {type(data).__name__}")
+        raise ValueError(f"Dataset must be a dict, got {type(data).__name__}")
     missing = [key for key in expected_keys if key not in data]
     if missing:
-        raise ValueError(f"Dataset sem chaves obrigatorias: {missing}")
+        raise ValueError(f"Dataset missing required keys: {missing}")
 
 
 def is_valid_question(question: Any) -> bool:
-    """Filtro de qualidade: string contendo '?' com 20-500 caracteres."""
+    """Quality filter: string containing '?' with 20-500 characters."""
     if not isinstance(question, str):
         return False
     stripped = question.strip()
@@ -56,17 +56,17 @@ def is_valid_question(question: Any) -> bool:
 
 
 def deterministic_sb100_position_is_a(question_id: str) -> bool:
-    """Decide a posicao do SB100 (A ou B) de forma deterministica.
+    """Decide the SB100 position (A or B) deterministically.
 
-    Usa hash MD5 do `question_id` para evitar dependencia de
-    `random.seed()` ou de `PYTHONHASHSEED`. Mesmo `question_id` sempre
-    retorna o mesmo lado, permitindo reproducibilidade entre execucoes.
+    Uses the MD5 hash of `question_id` to avoid depending on
+    `random.seed()` or `PYTHONHASHSEED`. The same `question_id` always
+    yields the same side, keeping runs reproducible.
 
     Args:
-        question_id: Identificador unico da pergunta.
+        question_id: Unique question identifier.
 
     Returns:
-        True se SB100 deve ocupar a posicao A; False para posicao B.
+        True if SB100 should take position A; False for position B.
     """
     digest = hashlib.md5(question_id.encode("utf-8")).hexdigest()
     return int(digest[:8], 16) % 2 == 0

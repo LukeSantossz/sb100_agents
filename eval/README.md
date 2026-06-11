@@ -1,174 +1,174 @@
-# Pipeline de Avaliacao - SB100
+# Evaluation Pipeline - SB100
 
-Pipeline automatizado para avaliacao do sistema RAG SB100 Science.
+Automated pipeline for evaluating the SB100 Science RAG system.
 
-## Estrutura
+## Structure
 
 ```
 eval/
 ├── dataset/
-│   ├── questions.json          # Perguntas geradas (generate_questions.py)
-│   └── reference_answers.json  # Perguntas + respostas de referencia
+│   ├── questions.json          # Generated questions (generate_questions.py)
+│   └── reference_answers.json  # Questions + reference answers
 ├── results/
-│   ├── evaluation_results.json # Respostas do SB100
-│   ├── judged_results.json     # Julgamentos do LLM
-│   ├── report.md               # Relatorio sumario
-│   └── human_sample.csv        # Amostra para validacao humana
-├── generate_questions.py       # Gera perguntas a partir de documentos
-├── collect_references.py       # Coleta respostas de modelos de referencia
-├── run_evaluation.py           # Executa perguntas contra o SB100
-├── judge.py                    # Julgamento automatico por LLM
-├── report.py                   # Gera relatorio e amostra humana
+│   ├── evaluation_results.json # SB100 answers
+│   ├── judged_results.json     # LLM judgments
+│   ├── report.md               # Summary report
+│   └── human_sample.csv        # Sample for human validation
+├── generate_questions.py       # Generates questions from documents
+├── collect_references.py       # Collects answers from reference models
+├── run_evaluation.py           # Runs questions against the SB100
+├── judge.py                    # Automatic LLM judging
+├── report.py                   # Generates report and human sample
 └── README.md
 ```
 
-## Requisitos
+## Requirements
 
 - Python 3.12+
-- Dependencias do projeto (`pip install -e .`)
-- **Para Groq API**: variavel `GROQ_API_KEY` definida
-- **Para Ollama**: servidor Ollama rodando com modelos instalados
+- Project dependencies (`pip install -e .`)
+- **For Groq API**: `GROQ_API_KEY` variable set
+- **For Ollama**: Ollama server running with models installed
 
-## Execucao Completa
+## Full Run
 
-### 1. Gerar Perguntas
+### 1. Generate Questions
 
-Extrai perguntas de dominio agricola a partir de documentos PDF/TXT:
+Extracts agriculture-domain questions from PDF/TXT documents:
 
 ```bash
-# Usando Groq API (recomendado para qualidade)
-export GROQ_API_KEY=sua_chave_aqui
+# Using Groq API (recommended for quality)
+export GROQ_API_KEY=your_key_here
 python eval/generate_questions.py ./archives/boletim_sb100.pdf --num-questions 300
 
-# Usando Ollama local
+# Using local Ollama
 python eval/generate_questions.py ./archives/boletim_sb100.pdf --num-questions 300 --provider ollama
 ```
 
-**Saida:** `eval/dataset/questions.json`
+**Output:** `eval/dataset/questions.json`
 
-### 2. Coletar Respostas de Referencia
+### 2. Collect Reference Answers
 
-Coleta respostas de modelos open-source para cada pergunta:
+Collects answers from open-source models for each question:
 
 ```bash
-# Usando Groq API (llama-3.1-8b-instant + mixtral-8x7b-32768)
+# Using Groq API (llama-3.1-8b-instant + mixtral-8x7b-32768)
 python eval/collect_references.py
 
-# Usando Ollama (llama3:8b + mistral:7b)
+# Using Ollama (llama3:8b + mistral:7b)
 python eval/collect_references.py --provider ollama
 
-# Modelos customizados
+# Custom models
 python eval/collect_references.py --models llama3:8b,qwen2:7b --provider ollama
 ```
 
-**Saida:** `eval/dataset/reference_answers.json`
+**Output:** `eval/dataset/reference_answers.json`
 
-### 3. Executar Avaliacao do SB100
+### 3. Run the SB100 Evaluation
 
-Executa todas as perguntas contra o endpoint `POST /chat`:
+Runs every question against the `POST /chat` endpoint:
 
 ```bash
-# Certifique-se de que o SB100 esta rodando
-# Inicie a API: .venv\Scripts\python.exe -m uvicorn api.main:app --reload
-# Ou use: .\start.bat (Windows)
+# Make sure the SB100 is running
+# Start the API: .venv\Scripts\python.exe -m uvicorn api.main:app --reload
+# Or use: .\start.bat (Windows)
 
-# Em outro terminal, execute a avaliacao
+# In another terminal, run the evaluation
 python eval/run_evaluation.py
 
-# Com requests concorrentes (mais rapido, mas pode sobrecarregar)
+# With concurrent requests (faster, but may overload)
 python eval/run_evaluation.py --concurrent 5
 ```
 
-**Saida:** `eval/results/evaluation_results.json`
+**Output:** `eval/results/evaluation_results.json`
 
-### 4. Julgamento Automatico
+### 4. Automatic Judging
 
-Compara respostas do SB100 com referencias usando LLM juiz:
+Compares SB100 answers with references using an LLM judge:
 
 ```bash
-# Usando Groq API (llama-3.1-70b-versatile)
+# Using Groq API (llama-3.1-70b-versatile)
 python eval/judge.py
 
-# Usando Ollama
+# Using Ollama
 python eval/judge.py --provider ollama --model llama3:70b
 ```
 
-**Saida:** `eval/results/judged_results.json`
+**Output:** `eval/results/judged_results.json`
 
-### 5. Gerar Relatorio
+### 5. Generate Report
 
-Gera relatorio sumario e amostra para validacao humana:
+Generates the summary report and a sample for human validation:
 
 ```bash
 python eval/report.py
 
-# Amostra maior
+# Larger sample
 python eval/report.py --sample-size 50
 ```
 
-**Saidas:**
-- `eval/results/report.md` - Relatorio com estatisticas
-- `eval/results/human_sample.csv` - 30 questoes para revisao humana
+**Outputs:**
+- `eval/results/report.md` - Report with statistics
+- `eval/results/human_sample.csv` - 30 questions for human review
 
-## Opcoes dos Scripts
+## Script Options
 
 ### generate_questions.py
 
-| Opcao | Descricao | Padrao |
-|-------|-----------|--------|
-| `input` | Arquivo ou diretorio com documentos | (obrigatorio) |
-| `--num-questions` | Numero de perguntas a gerar | 300 |
-| `--provider` | Provider LLM (groq/ollama) | groq |
-| `--model` | Modelo LLM | (depende do provider) |
-| `--output` | Arquivo de saida | eval/dataset/questions.json |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `input` | File or directory with documents | (required) |
+| `--num-questions` | Number of questions to generate | 300 |
+| `--provider` | LLM provider (groq/ollama) | groq |
+| `--model` | LLM model | (depends on provider) |
+| `--output` | Output file | eval/dataset/questions.json |
 
 ### collect_references.py
 
-| Opcao | Descricao | Padrao |
-|-------|-----------|--------|
-| `--input` | Dataset de perguntas | eval/dataset/questions.json |
-| `--output` | Arquivo de saida | eval/dataset/reference_answers.json |
-| `--provider` | Provider LLM (groq/ollama) | groq |
-| `--models` | Modelos separados por virgula | (depende do provider) |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--input` | Question dataset | eval/dataset/questions.json |
+| `--output` | Output file | eval/dataset/reference_answers.json |
+| `--provider` | LLM provider (groq/ollama) | groq |
+| `--models` | Comma-separated models | (depends on provider) |
 
 ### run_evaluation.py
 
-| Opcao | Descricao | Padrao |
-|-------|-----------|--------|
-| `--input` | Dataset com referencias | eval/dataset/reference_answers.json |
-| `--output` | Arquivo de saida | eval/results/evaluation_results.json |
-| `--api-url` | URL da API SB100 | http://localhost:8000 |
-| `--concurrent` | Requests simultaneos | 1 |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--input` | Dataset with references | eval/dataset/reference_answers.json |
+| `--output` | Output file | eval/results/evaluation_results.json |
+| `--api-url` | SB100 API URL | http://localhost:8000 |
+| `--concurrent` | Concurrent requests | 1 |
 
 ### judge.py
 
-| Opcao | Descricao | Padrao |
-|-------|-----------|--------|
-| `--input` | Resultados da avaliacao | eval/results/evaluation_results.json |
-| `--output` | Arquivo de saida | eval/results/judged_results.json |
-| `--provider` | Provider LLM (groq/ollama) | groq |
-| `--model` | Modelo juiz | llama-3.1-70b-versatile |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--input` | Evaluation results | eval/results/evaluation_results.json |
+| `--output` | Output file | eval/results/judged_results.json |
+| `--provider` | LLM provider (groq/ollama) | groq |
+| `--model` | Judge model | llama-3.1-70b-versatile |
 
 ### report.py
 
-| Opcao | Descricao | Padrao |
-|-------|-----------|--------|
-| `--input` | Resultados julgados | eval/results/judged_results.json |
-| `--report` | Arquivo do relatorio | eval/results/report.md |
-| `--sample` | Arquivo da amostra CSV | eval/results/human_sample.csv |
-| `--sample-size` | Tamanho da amostra | 30 |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--input` | Judged results | eval/results/judged_results.json |
+| `--report` | Report file | eval/results/report.md |
+| `--sample` | Sample CSV file | eval/results/human_sample.csv |
+| `--sample-size` | Sample size | 30 |
 
-## Metricas do Relatorio
+## Report Metrics
 
-- **Score (0-10)**: Avaliacao numerica da qualidade da resposta SB100
-- **Veredictos**:
-  - `better`: SB100 teve resposta melhor que a referencia
-  - `equivalent`: Qualidade similar
-  - `worse`: Referencia teve resposta melhor
+- **Score (0-10)**: Numeric rating of SB100 answer quality
+- **Verdicts**:
+  - `better`: SB100 answered better than the reference
+  - `equivalent`: Similar quality
+  - `worse`: The reference answered better
 
-## Notas
+## Notes
 
-- O pipeline usa `random.seed(42)` para reproducibilidade
-- O juiz alterna a ordem das respostas (50%/50%) para evitar vies de posicao
-- Cada pergunta e executada com `session_id` unico para evitar contaminacao de historico
-- O perfil usado na avaliacao e fixo: `{"name": "eval", "expertise": "intermediate"}`
+- The pipeline uses `random.seed(42)` for reproducibility
+- The judge alternates answer order (50%/50%) to avoid position bias
+- Each question runs with a unique `session_id` to avoid history contamination
+- The profile used in the evaluation is fixed: `{"name": "eval", "expertise": "intermediate"}`

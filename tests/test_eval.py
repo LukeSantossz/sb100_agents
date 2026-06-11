@@ -1,12 +1,12 @@
-"""Smoke tests para o pipeline de avaliacao (eval/).
+"""Smoke tests for the evaluation pipeline (eval/).
 
-Cobre: helpers em `eval/_utils`, filtro de qualidade em
-`generate_questions`, formato de erro estruturado em `collect_references`,
-checkpoint atomico em `run_evaluation`, A/B deterministico e filtro de
-erros em `judge`, e exit-code/markdown em `report`.
+Covers: helpers in `eval/_utils`, quality filter in
+`generate_questions`, structured error format in `collect_references`,
+atomic checkpoint in `run_evaluation`, deterministic A/B and error
+filtering in `judge`, and exit-code/markdown in `report`.
 
-Sem chamadas reais a APIs (Groq/Ollama/OpenRouter); todos os providers
-sao substituidos via `monkeypatch`.
+No real API calls (Groq/Ollama/OpenRouter); every provider is replaced
+via `monkeypatch`.
 """
 
 from __future__ import annotations
@@ -41,36 +41,36 @@ class TestValidateDatasetSchema:
         validate_dataset_schema({"a": 1, "b": 2}, ["a", "b"])
 
     def test_missing_key(self) -> None:
-        with pytest.raises(ValueError, match="obrigatorias"):
+        with pytest.raises(ValueError, match="missing required keys"):
             validate_dataset_schema({"a": 1}, ["a", "b"])
 
     def test_not_dict(self) -> None:
-        with pytest.raises(ValueError, match="deve ser dict"):
+        with pytest.raises(ValueError, match="must be a dict"):
             validate_dataset_schema([1, 2, 3], ["a"])
 
     def test_empty_expected_keys(self) -> None:
-        validate_dataset_schema({"qualquer": "coisa"}, [])
+        validate_dataset_schema({"any": "thing"}, [])
 
 
 class TestIsValidQuestion:
     @pytest.mark.parametrize(
         "question",
         [
-            "Qual e a melhor pratica de irrigacao no cerrado?",
-            "Como funciona a rotacao de culturas em pequenas propriedades?",
+            "What is the best irrigation practice in the cerrado?",
+            "How does crop rotation work on small farms in Brazil?",
         ],
     )
     def test_valid(self, question: str) -> None:
         assert is_valid_question(question) is True
 
     def test_too_short(self) -> None:
-        assert is_valid_question("Curto?") is False
+        assert is_valid_question("Short?") is False
 
     def test_too_long(self) -> None:
         assert is_valid_question("A" * 600 + "?") is False
 
     def test_no_question_mark(self) -> None:
-        assert is_valid_question("Um enunciado declarativo de tamanho razoavel.") is False
+        assert is_valid_question("A declarative statement of reasonable length.") is False
 
     def test_non_string(self) -> None:
         assert is_valid_question(None) is False
@@ -89,7 +89,7 @@ class TestDeterministicABPosition:
         assert deterministic_sb100_position_is_a(qid) == deterministic_sb100_position_is_a(qid)
 
     def test_different_ids_balanced_distribution(self) -> None:
-        # 1000 ids → distribuicao ~50/50 (tolerancia ampla para MD5)
+        # 1000 ids → ~50/50 distribution (wide tolerance for MD5)
         ids = [f"q-{i:04d}" for i in range(1000)]
         a_count = sum(1 for qid in ids if deterministic_sb100_position_is_a(qid))
         assert 400 < a_count < 600
@@ -113,24 +113,24 @@ class TestParseQuestionsJson:
     def test_valid_json_array(self) -> None:
         content = (
             "[\n"
-            '  "Qual e a melhor pratica de irrigacao no cerrado?",\n'
-            '  "Como funciona a rotacao de culturas em propriedades?"\n'
+            '  "What is the best irrigation practice in the cerrado?",\n'
+            '  "How does crop rotation work on rural properties?"\n'
             "]"
         )
         result = parse_questions_json(content)
         assert len(result) == 2
 
     def test_filters_short_questions(self) -> None:
-        content = '["Q?", "Pergunta valida com tamanho suficiente?"]'
+        content = '["Q?", "A valid question with sufficient length?"]'
         result = parse_questions_json(content)
-        # "Q?" tem 2 chars → filtrada; segunda tem 38 chars → ok
+        # "Q?" has 2 chars → filtered; second has 40 chars → ok
         assert len(result) == 1
-        assert result[0] == "Pergunta valida com tamanho suficiente?"
+        assert result[0] == "A valid question with sufficient length?"
 
     def test_filters_no_question_mark(self) -> None:
         content = (
-            '["Frase declarativa sem ponto de interrogacao", '
-            '"Frase interrogativa com ponto adequado aqui?"]'
+            '["A declarative sentence without question mark", '
+            '"An interrogative sentence with a proper mark?"]'
         )
         result = parse_questions_json(content)
         assert len(result) == 1
@@ -138,8 +138,8 @@ class TestParseQuestionsJson:
 
     def test_fallback_lines_parsing(self) -> None:
         content = (
-            "1. Qual e a melhor estacao de plantio para milho safrinha?\n"
-            "2. Como fertilizar o solo de forma sustentavel no cerrado?"
+            "1. What is the best planting season for safrinha corn?\n"
+            "2. How can soil be fertilized sustainably in the cerrado?"
         )
         result = parse_questions_json(content)
         assert len(result) == 2
@@ -148,7 +148,7 @@ class TestParseQuestionsJson:
         assert parse_questions_json("") == []
 
     def test_non_string_items_filtered(self) -> None:
-        content = '["Pergunta valida com tamanho suficiente aqui?", 42, null]'
+        content = '["A valid question with sufficient length here?", 42, null]'
         result = parse_questions_json(content)
         assert len(result) == 1
 
@@ -161,7 +161,7 @@ class TestParseQuestionsJson:
 class TestParseJudgeResponse:
     def test_valid_json(self) -> None:
         content = (
-            '{"score_a": 8, "score_b": 5, "justification": "A e melhor", "verdict": "A_better"}'
+            '{"score_a": 8, "score_b": 5, "justification": "A is better", "verdict": "A_better"}'
         )
         result = parse_judge_response(content)
         assert result["score_a"] == 8.0
@@ -169,7 +169,7 @@ class TestParseJudgeResponse:
         assert result["verdict"] == "A_better"
 
     def test_invalid_json_fallback_neutral(self) -> None:
-        result = parse_judge_response("texto sem json valido aqui")
+        result = parse_judge_response("text without valid json here")
         assert result["score_a"] == 5.0
         assert result["score_b"] == 5.0
         assert "[PARSE ERROR]" in result["justification"]
@@ -210,10 +210,10 @@ class TestCheckpoint:
         assert loaded == results
 
     def test_missing_returns_empty(self, tmp_path) -> None:
-        assert load_checkpoint(tmp_path / "nao_existe.json") == []
+        assert load_checkpoint(tmp_path / "does_not_exist.json") == []
 
     def test_corrupted_returns_empty(self, tmp_path) -> None:
-        path = tmp_path / "corrupto.json"
+        path = tmp_path / "corrupted.json"
         path.write_text("not valid json {", encoding="utf-8")
         assert load_checkpoint(path) == []
 
@@ -230,8 +230,8 @@ class TestCheckpoint:
                 {
                     "results": [
                         {"question_id": "q1"},
-                        "string solta sem question_id",
-                        {"sem_question_id": True},
+                        "loose string without question_id",
+                        {"no_question_id": True},
                     ]
                 }
             ),
@@ -242,7 +242,7 @@ class TestCheckpoint:
 
 
 # ============================================================================
-# collect_references: erro estruturado
+# collect_references: structured error
 # ============================================================================
 
 
@@ -255,7 +255,7 @@ class TestCollectReferencesErrorStructure:
             "questions": [
                 {
                     "question_id": "q1",
-                    "question": "Pergunta valida com tamanho suficiente para teste?",
+                    "question": "A valid question with sufficient length for testing?",
                     "reference_answers": [],
                 }
             ],
@@ -290,7 +290,7 @@ class TestCollectReferencesErrorStructure:
             "questions": [
                 {
                     "question_id": "q1",
-                    "question": "Pergunta de teste valida e suficientemente longa?",
+                    "question": "A valid test question that is sufficiently long?",
                     "reference_answers": [],
                 }
             ],
@@ -299,7 +299,7 @@ class TestCollectReferencesErrorStructure:
         output_path = tmp_path / "references.json"
         input_path.write_text(json.dumps(questions_data), encoding="utf-8")
 
-        monkeypatch.setattr(cr, "get_reference_groq", lambda q, m: "Resposta OK")
+        monkeypatch.setattr(cr, "get_reference_groq", lambda q, m: "Answer OK")
 
         cr.collect_references(
             questions_path=str(input_path),
@@ -310,12 +310,12 @@ class TestCollectReferencesErrorStructure:
 
         data = json.loads(output_path.read_text(encoding="utf-8"))
         ref = data["questions"][0]["reference_answers"][0]
-        assert ref["reference_answer"] == "Resposta OK"
+        assert ref["reference_answer"] == "Answer OK"
         assert ref["error"] is None
 
 
 # ============================================================================
-# judge: filtro de erro + smoke
+# judge: error filtering + smoke
 # ============================================================================
 
 
@@ -326,8 +326,8 @@ class TestJudgeFiltersErrors:
             "results": [
                 {
                     "question_id": "q1",
-                    "question": "Pergunta de teste valida?",
-                    "sb100_answer": "resposta SB100",
+                    "question": "A valid test question?",
+                    "sb100_answer": "SB100 answer",
                     "sb100_hallucination_score": 0.1,
                     "sb100_session_id": "s",
                     "sb100_success": True,
@@ -348,7 +348,7 @@ class TestJudgeFiltersErrors:
                 },
                 {
                     "reference_model": "model-ok",
-                    "reference_answer": "Resposta OK",
+                    "reference_answer": "Answer OK",
                     "error": None,
                 },
             ]
@@ -387,7 +387,7 @@ class TestJudgeFiltersErrors:
             [
                 {
                     "reference_model": "model-legacy",
-                    "reference_answer": "[ERRO] formato antigo",
+                    "reference_answer": "[ERRO] legacy-format marker",
                 }
             ]
         )
@@ -396,7 +396,7 @@ class TestJudgeFiltersErrors:
         input_path.write_text(json.dumps(data), encoding="utf-8")
 
         def fake_judge(*_args: object, **_kwargs: object) -> dict:
-            pytest.fail("Judge nao deveria ser chamado para refs com erro")
+            pytest.fail("Judge should not be called for refs with errors")
 
         monkeypatch.setattr(jd, "judge_groq", fake_judge)
 
@@ -442,7 +442,7 @@ class TestJudgeFiltersErrors:
                 model="m",
             )
 
-        # Mesma pergunta → mesma posicao em ambas execucoes
+        # Same question → same position in both runs
         assert captured[0] == captured[1]
 
 
@@ -453,7 +453,7 @@ class TestJudgeFiltersErrors:
 
 @pytest.fixture
 def sample_judged_dataset() -> dict:
-    """Dataset minimo julgado para testar report."""
+    """Minimal judged dataset for testing report."""
     return {
         "metadata": {
             "total_questions": 2,
@@ -463,8 +463,8 @@ def sample_judged_dataset() -> dict:
         "results": [
             {
                 "question_id": "q1",
-                "question": "Pergunta de teste 1?",
-                "sb100_answer": "Resposta SB100 1",
+                "question": "Test question 1?",
+                "sb100_answer": "SB100 answer 1",
                 "reference_answers": [{"reference_model": "modelA", "reference_answer": "Ref A"}],
                 "judgments": [
                     {
@@ -472,14 +472,14 @@ def sample_judged_dataset() -> dict:
                         "judge_score": 7,
                         "reference_score": 5,
                         "judge_verdict": "better",
-                        "judge_justification": "Justificativa 1",
+                        "judge_justification": "Justification 1",
                     }
                 ],
             },
             {
                 "question_id": "q2",
-                "question": "Pergunta de teste 2?",
-                "sb100_answer": "Resposta SB100 2",
+                "question": "Test question 2?",
+                "sb100_answer": "SB100 answer 2",
                 "reference_answers": [{"reference_model": "modelB", "reference_answer": "Ref B"}],
                 "judgments": [
                     {
@@ -487,7 +487,7 @@ def sample_judged_dataset() -> dict:
                         "judge_score": 4,
                         "reference_score": 6,
                         "judge_verdict": "worse",
-                        "judge_justification": "Justificativa 2",
+                        "judge_justification": "Justification 2",
                     }
                 ],
             },
@@ -504,7 +504,7 @@ class TestReport:
     def test_extract_skips_none_score(self) -> None:
         results = [
             {
-                "question": "Pergunta valida de teste?",
+                "question": "A valid test question?",
                 "sb100_answer": "a",
                 "reference_answers": [],
                 "judgments": [
@@ -521,8 +521,8 @@ class TestReport:
     def test_score_distribution(self, sample_judged_dataset: dict) -> None:
         judgments = extract_all_judgments(sample_judged_dataset["results"])
         dist = generate_score_distribution(judgments)
-        assert dist["7-8 (Bom)"] == 1
-        assert dist["3-4 (Fraco)"] == 1
+        assert dist["7-8 (Good)"] == 1
+        assert dist["3-4 (Weak)"] == 1
 
     def test_verdict_stats(self, sample_judged_dataset: dict) -> None:
         judgments = extract_all_judgments(sample_judged_dataset["results"])
@@ -546,7 +546,7 @@ class TestReport:
         assert ok is True
         assert report_path.exists()
         assert sample_path.exists()
-        assert "# Relatorio de Avaliacao - SB100" in report_path.read_text(encoding="utf-8")
+        assert "# Evaluation Report - SB100" in report_path.read_text(encoding="utf-8")
 
     def test_generate_report_returns_false_when_empty(self, tmp_path) -> None:
         empty = {"metadata": {}, "results": []}
@@ -563,7 +563,7 @@ class TestReport:
 
 
 # ============================================================================
-# Smoke integrativo: judge -> report
+# Integration smoke: judge -> report
 # ============================================================================
 
 
@@ -575,11 +575,11 @@ class TestPipelineSmoke:
         questions = [
             {
                 "question_id": f"q-{i:02d}",
-                "question": f"Pergunta valida de teste numero {i:02d}?",
+                "question": f"A valid test question number {i:02d}?",
                 "reference_answers": [
                     {
                         "reference_model": "ref-m",
-                        "reference_answer": f"resposta ref {i}",
+                        "reference_answer": f"ref answer {i}",
                         "error": None,
                     }
                 ],
@@ -591,7 +591,7 @@ class TestPipelineSmoke:
             "results": [
                 {
                     **q,
-                    "sb100_answer": f"resposta sb100 {q['question_id']}",
+                    "sb100_answer": f"sb100 answer {q['question_id']}",
                     "sb100_hallucination_score": 0.1,
                     "sb100_session_id": "session-1",
                     "sb100_success": True,
@@ -633,4 +633,4 @@ class TestPipelineSmoke:
         assert ok is True
         assert report_path.exists()
         content = report_path.read_text(encoding="utf-8")
-        assert "# Relatorio de Avaliacao - SB100" in content
+        assert "# Evaluation Report - SB100" in content
