@@ -1,4 +1,4 @@
-"""Schemas Pydantic do contrato público da API (request/response compartilhados)."""
+"""Pydantic schemas for the public API contract (shared request/response)."""
 
 from enum import StrEnum
 
@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ExpertiseLevel(StrEnum):
-    """Nível de familiaridade do usuário com o domínio agrícola.
-    Valores: ``beginner`` (iniciante), ``intermediate`` (intermediário), ``expert`` (avançado).
+    """User's familiarity level with the agricultural domain.
+    Values: ``beginner``, ``intermediate``, ``expert``.
     """
 
     beginner = "beginner"
@@ -16,13 +16,13 @@ class ExpertiseLevel(StrEnum):
 
 
 class UserProfile(BaseModel):
-    """Perfil do usuário utilizado para contextualizar respostas."""
+    """User profile used to contextualize answers."""
 
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
-                    "name": "Hilário Silva",
+                    "name": "John Silva",
                     "expertise": "intermediate",
                 }
             ]
@@ -33,25 +33,25 @@ class UserProfile(BaseModel):
         ...,
         min_length=1,
         max_length=255,
-        description="Nome de exibição ou identificação do usuário (1 a 255 caracteres).",
+        description="User display name or identifier (1 to 255 characters).",
     )
     expertise: ExpertiseLevel = Field(
         ...,
-        description="Grau de experiência do usuário no domínio (beginner, intermediate ou expert).",
+        description="User's experience level in the domain (beginner, intermediate or expert).",
     )
 
 
 class ChatRequest(BaseModel):
-    """Requisição de mensagem em uma sessão de chat."""
+    """Message request within a chat session."""
 
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
                     "session_id": "550e8400-e29b-41d4-a716-446655440000",
-                    "question": "Qual é a época ideal de plantio da soja na região Centro-Oeste?",
+                    "question": "What is the ideal soybean planting window in the Midwest region?",
                     "profile": {
-                        "name": "Hilário Silva",
+                        "name": "John Silva",
                         "expertise": "intermediate",
                     },
                 }
@@ -63,38 +63,38 @@ class ChatRequest(BaseModel):
         ...,
         min_length=1,
         max_length=255,
-        description="Identificador da sessão de conversa (1 a 255 caracteres).",
+        description="Conversation session identifier (1 to 255 characters).",
     )
     question: str = Field(
         ...,
         min_length=1,
         max_length=2000,
-        description="Texto da pergunta enviada pelo usuário (1 a 2000 caracteres).",
+        description="Text of the question sent by the user (1 to 2000 characters).",
     )
     profile: UserProfile = Field(
         ...,
-        description="Perfil associado ao usuário para ajuste de tom e profundidade da resposta.",
+        description="User profile used to adjust the answer's tone and depth.",
     )
 
 
 class ChatResponse(BaseModel):
-    """Resposta do assistente após processar a pergunta."""
+    """Assistant answer after processing the question."""
 
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
-                    "answer": "Com base na documentação indexada, a janela de plantio recomendada é...",
+                    "answer": "Based on the indexed documentation, the recommended window is...",
                     "hallucination_score": 0.18,
                 }
             ]
         }
     )
 
-    answer: str = Field(..., description="Conteúdo textual da resposta ao usuário.")
+    answer: str = Field(..., description="Text content of the answer to the user.")
     hallucination_score: float = Field(
         ...,
         ge=0.0,
         le=1.0,
-        description="Risco estimado de alucinação (0.0 grounded — 1.0 likely hallucinated).",
+        description="Estimated hallucination risk (0.0 grounded — 1.0 likely hallucinated).",
     )

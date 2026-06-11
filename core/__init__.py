@@ -1,16 +1,16 @@
-"""Módulo core — configurações e schemas compartilhados.
+"""Core module — shared settings and schemas.
 
-Este módulo centraliza as definições fundamentais do sistema SmartB100:
+This module centralizes the fundamental definitions of the SmartB100 system:
 
-- **Configurações**: Parâmetros de ambiente e defaults do sistema (via Pydantic Settings).
-- **Schemas**: Modelos Pydantic que definem o contrato público da API (requests/responses).
+- **Settings**: Environment parameters and system defaults (via Pydantic Settings).
+- **Schemas**: Pydantic models defining the public API contract (requests/responses).
 
 Exports:
-    settings: Instância singleton das configurações do sistema.
-    ExpertiseLevel: Enum com níveis de expertise do usuário.
-    UserProfile: Schema do perfil do usuário.
-    ChatRequest: Schema de requisição de chat.
-    ChatResponse: Schema de resposta de chat.
+    settings: Singleton instance of the system settings.
+    ExpertiseLevel: Enum of user expertise levels.
+    UserProfile: User profile schema.
+    ChatRequest: Chat request schema.
+    ChatResponse: Chat response schema.
 """
 
 from core.config import settings
