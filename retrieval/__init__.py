@@ -1,13 +1,13 @@
-"""Módulo de retrieval — busca vetorial e embeddings.
+"""Retrieval module — vector search and embeddings.
 
-Este módulo implementa a camada de recuperação do pipeline RAG:
+Implements the retrieval layer of the RAG pipeline:
 
-1. **Embeddings**: Converte texto em vetores densos via Ollama (nomic-embed-text).
-2. **Busca Vetorial**: Recupera chunks relevantes do Qdrant por similaridade.
+1. **Embeddings**: Converts text into dense vectors via Ollama (nomic-embed-text).
+2. **Vector Search**: Retrieves relevant chunks from Qdrant by similarity.
 
 Exports:
-    generate_embedding: Gera vetor de embedding para um texto.
-    search_context: Busca chunks similares no Qdrant.
+    generate_embedding: Generates an embedding vector for a text.
+    search_context: Searches for similar chunks in Qdrant.
 """
 
 from .embedder import generate_embedding

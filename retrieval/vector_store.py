@@ -1,10 +1,10 @@
-"""Busca vetorial no Qdrant.
+"""Vector search in Qdrant.
 
-Recupera chunks de texto semanticamente similares à query usando
-busca por vizinhos mais próximos (ANN) no Qdrant.
+Retrieves text chunks semantically similar to the query using
+approximate nearest neighbor (ANN) search in Qdrant.
 
-TASK-T66: usa singleton thread-safe do ``QdrantClient`` (evita instanciar
-TCP/HTTP a cada query) e valida a dimensão do embedding antes da chamada.
+Uses a thread-safe ``QdrantClient`` singleton (avoids opening TCP/HTTP per
+query) and validates the embedding dimension before the call.
 """
 
 import logging
@@ -23,10 +23,10 @@ _qdrant_lock = threading.Lock()
 
 
 def _get_client() -> QdrantClient:
-    """Retorna instância singleton do ``QdrantClient`` (lazy init thread-safe).
+    """Returns the ``QdrantClient`` singleton (thread-safe lazy init).
 
-    Implementa double-checked locking para minimizar contenção após o primeiro
-    acesso. Reset (para testes) deve zerar o módulo-level ``_qdrant_client``.
+    Uses double-checked locking to minimize contention after the first
+    access. Reset (for tests) must clear the module-level ``_qdrant_client``.
     """
     global _qdrant_client
     if _qdrant_client is None:
@@ -39,28 +39,28 @@ def _get_client() -> QdrantClient:
 
 
 def search_context(embedding: list[float]) -> list[str]:
-    """Recupera chunks de texto similares ao vetor de consulta.
+    """Retrieves text chunks similar to the query vector.
 
-    Executa busca ANN (Approximate Nearest Neighbors) na coleção Qdrant
-    configurada e retorna os textos dos top_k resultados mais similares.
+    Runs ANN (Approximate Nearest Neighbors) search on the configured Qdrant
+    collection and returns the texts of the top_k most similar results.
 
     Args:
-        embedding: Vetor de embedding da query (768 dimensões).
+        embedding: Query embedding vector (768 dimensions).
 
     Returns:
-        Lista de strings contendo o texto de cada chunk recuperado.
-        Retorna lista vazia se nenhum resultado for encontrado.
+        List of strings with the text of each retrieved chunk.
+        Returns an empty list if no results are found.
 
     Raises:
-        ValueError: Se o embedding não tiver exatamente 768 dimensões.
-        qdrant_client.http.exceptions.UnexpectedResponse: Se a coleção não existir.
-        requests.exceptions.ConnectionError: Se o Qdrant estiver offline.
+        ValueError: If the embedding does not have exactly 768 dimensions.
+        qdrant_client.http.exceptions.UnexpectedResponse: If the collection does not exist.
+        requests.exceptions.ConnectionError: If Qdrant is offline.
     """
     if len(embedding) != _EMBEDDING_DIM:
         raise ValueError(f"embedding must have {_EMBEDDING_DIM} dimensions; got {len(embedding)}")
 
     client = _get_client()
-    resultados = client.query_points(
+    results = client.query_points(
         collection_name=settings.collection_name,
         query=embedding,
         limit=settings.top_k,
@@ -68,7 +68,7 @@ def search_context(embedding: list[float]) -> list[str]:
     ).points
 
     chunks: list[str] = []
-    for point in resultados:
+    for point in results:
         payload = point.payload or {}
         text = payload.get("text")
         if not text:

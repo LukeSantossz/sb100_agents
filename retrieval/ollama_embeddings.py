@@ -1,12 +1,12 @@
-"""Chamadas a embeddings Ollama com truncagem e retries.
+"""Ollama embedding calls with truncation and retries.
 
-O servidor local do Ollama no Windows pode retornar 500 ou derrubar a conexão
-sob carga; retries com backoff reduzem falhas intermitentes na indexação e no RAG.
+The local Ollama server on Windows may return 500 or drop the connection
+under load; retries with backoff reduce intermittent failures during
+indexing and RAG.
 
-TASK-T76 (consolidação): cliente HTTP centralizado em
-:mod:`core.ollama_clients`. Timeout HTTP vem de ``settings.ollama_embed_timeout``
-(default 5s, ajustável). Worst-case do orçamento total permanece em ~25s
-(4 tentativas × 5s + sleeps 0.75/1.5/2.0).
+The HTTP client is centralized in :mod:`core.ollama_clients`. The HTTP
+timeout comes from ``settings.ollama_embed_timeout`` (default 5s, tunable).
+Worst-case total budget stays at ~25s (4 attempts x 5s + sleeps 0.75/1.5/2.0).
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from core.ollama_clients import get_embed_client
 
 logger = logging.getLogger(__name__)
 
-# Limite conservador para o contexto do modelo de embedding (caracteres).
+# Conservative limit for the embedding model context (characters).
 _MAX_EMBED_CHARS = 8192
 _MAX_RETRIES = 4
 _RETRY_BASE_SEC = 0.75
@@ -29,17 +29,17 @@ _RETRY_MAX_SEC = 2.0
 
 
 def embed_text(model: str, prompt: str) -> list[float]:
-    """Retorna o vetor de embedding para o texto, com truncagem e retries.
+    """Returns the embedding vector for the text, with truncation and retries.
 
     Args:
-        model: Nome do modelo no Ollama (ex.: nomic-embed-text).
-        prompt: Texto de entrada.
+        model: Model name in Ollama (e.g. nomic-embed-text).
+        prompt: Input text.
 
     Returns:
-        Lista de floats do embedding.
+        List of floats for the embedding.
 
     Raises:
-        A última exceção após esgotar as tentativas, se todas falharem.
+        The last exception after exhausting attempts, if all fail.
     """
     text = (prompt or "")[:_MAX_EMBED_CHARS]
     client = get_embed_client()
@@ -67,6 +67,6 @@ def embed_text(model: str, prompt: str) -> list[float]:
             delay = min(_RETRY_BASE_SEC * (2**attempt), _RETRY_MAX_SEC)
             time.sleep(delay)
     if last_exc is None:
-        # Defensivo: o loop só sai sem exceção se retornar com sucesso.
+        # Defensive: the loop only exits without an exception on success.
         raise RuntimeError("embed_text exhausted retries with no captured exception")
     raise last_exc
