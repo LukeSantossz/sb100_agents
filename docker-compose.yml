@@ -1,8 +1,8 @@
 services:
   # ============================================================================
-  # Profile: infra - Servicos de infraestrutura (Qdrant)
-  # Uso: docker compose --profile infra up -d
-  # Nota: Ollama roda localmente (nao via Docker). Veja README.md / SETUP.md.
+  # Profile: infra - Infrastructure services (Qdrant)
+  # Usage: docker compose --profile infra up -d
+  # Note: Ollama runs locally (not via Docker). See README.md / SETUP.md.
   # ============================================================================
 
   qdrant:
@@ -18,8 +18,8 @@ services:
     networks:
       - smartb100_net
     healthcheck:
-      # Qdrant expoe a versao em / com status 200 quando saudavel.
-      # Imagem oficial nao traz curl; usamos /proc/net/tcp como liveness barato.
+      # Qdrant exposes its version at / with status 200 when healthy.
+      # The official image has no curl; /proc/net/tcp is a cheap liveness probe.
       test: ["CMD-SHELL", "grep -q ':18BD' /proc/net/tcp || exit 1"]
       interval: 10s
       timeout: 5s
@@ -32,9 +32,9 @@ services:
         max-file: "3"
 
   # ============================================================================
-  # Profile: app - Servicos de aplicacao (API + Gradio UI)
-  # Uso: docker compose --profile infra --profile app up -d
-  # OLLAMA_HOST override: Linux nativo usa http://172.17.0.1:11434 ou host-net.
+  # Profile: app - Application services (API + Gradio UI)
+  # Usage: docker compose --profile infra --profile app up -d
+  # OLLAMA_HOST override: native Linux uses http://172.17.0.1:11434 or host-net.
   # ============================================================================
 
   api:

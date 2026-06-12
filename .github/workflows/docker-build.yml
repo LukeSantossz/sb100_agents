@@ -1,8 +1,8 @@
 name: Docker Build
 
-# Valida que o Dockerfile multi-stage builda em CI e que a imagem final
-# nao contem build-essential (criterio T71). Trigger so em mudancas
-# relevantes para reduzir custo.
+# Validates that the multi-stage Dockerfile builds in CI and that the final
+# image does not contain build-essential. Triggers only on relevant changes
+# to reduce cost.
 
 on:
   push:
@@ -46,8 +46,8 @@ jobs:
 
       - name: Assert build-essential is NOT in runtime image
         run: |
-          # build-essential aparece no builder stage mas nao deve aparecer no runtime final.
-          # docker history mostra layers; o paginate completo expoe instalacoes apt-get install.
+          # build-essential appears in the builder stage but must not appear in the final runtime.
+          # docker history shows the layers; the full output exposes apt-get install steps.
           if docker history --no-trunc smartb100_api:ci | grep -q "build-essential"; then
             echo "ERROR: build-essential found in final image — multi-stage broken"
             docker history --no-trunc smartb100_api:ci | head -30
@@ -57,7 +57,7 @@ jobs:
 
       - name: Assert curl IS in runtime image (needed for healthchecks)
         run: |
-          # curl precisa estar instalado para os healthchecks do docker-compose funcionarem.
+          # curl must be installed for the docker-compose healthchecks to work.
           docker run --rm --entrypoint sh smartb100_api:ci -c "command -v curl"
 
       - name: Validate compose configuration
