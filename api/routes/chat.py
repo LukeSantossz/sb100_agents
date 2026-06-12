@@ -126,7 +126,7 @@ def chat(
         )
         raise HTTPException(
             status_code=503,
-            detail=f"Erro ao gerar embedding: {str(e)}. Verifique se o Ollama está rodando.",
+            detail=f"Embedding generation failed: {str(e)}. Check that Ollama is running.",
         ) from e
 
     try:
@@ -138,7 +138,7 @@ def chat(
         )
         raise HTTPException(
             status_code=503,
-            detail=f"Erro ao buscar contexto: {str(e)}. Verifique se o Qdrant está rodando.",
+            detail=f"Context search failed: {str(e)}. Check that Qdrant is running.",
         ) from e
 
     context_text = "\n\n".join(context_chunks) if context_chunks else ""
@@ -167,7 +167,7 @@ def chat(
         )
         raise HTTPException(
             status_code=503,
-            detail=f"Erro ao gerar resposta: {str(e)}. Verifique se o Ollama está rodando.",
+            detail=f"Answer generation failed: {str(e)}. Check that Ollama is running.",
         ) from e
 
     # Update the buffer only after success

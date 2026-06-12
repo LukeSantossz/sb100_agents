@@ -101,6 +101,22 @@ def test_compute_entropy_score_raises_for_unknown_provider() -> None:
         compute_entropy_score("q", "c")
 
 
+# ----------------------------- sampling prompt language -----------------------------
+
+
+def test_build_messages_uses_english_labels() -> None:
+    messages = entropy_module._build_messages("q", "ctx")
+    assert messages[0]["content"] == (
+        "You are an assistant specialized in agronomy. Answer concisely."
+    )
+    assert messages[1]["content"] == "Context:\nctx\n\nQuestion: q"
+
+
+def test_build_messages_without_context_passes_question_through() -> None:
+    messages = entropy_module._build_messages("q", "")
+    assert messages[1]["content"] == "q"
+
+
 # ----------------------------- _generate_samples failure modes -----------------------------
 
 
@@ -190,6 +206,10 @@ def test_gate_returns_clean_answer_when_score_under_threshold() -> None:
         result = gate_module.evaluate(question="q", context="c", history=[], profile=_profile())
     assert result.answer == "good answer"
     assert result.hallucination_score == 0.1
+
+
+def test_fallback_message_is_english() -> None:
+    assert gate_module.FALLBACK_MESSAGE == "I cannot answer this topic with confidence."
 
 
 def test_gate_returns_fallback_message_when_all_retries_exceed_threshold() -> None:

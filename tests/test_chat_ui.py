@@ -28,17 +28,17 @@ class TestClassifyScore:
     def test_low_band_returns_green(self) -> None:
         text, color = _classify_score(0.1, 0.5)
         assert color == "#22c55e"
-        assert "Baixo risco" in text
+        assert "Low risk" in text
 
     def test_mid_band_returns_yellow(self) -> None:
         text, color = _classify_score(0.4, 0.5)
         assert color == "#eab308"
-        assert "moderado" in text
+        assert "Moderate risk" in text
 
     def test_high_band_returns_red(self) -> None:
         text, color = _classify_score(0.8, 0.5)
         assert color == "#ef4444"
-        assert "Alto risco" in text
+        assert "High risk" in text
 
     def test_boundary_low_high(self) -> None:
         # threshold=0.5: low_band=0.3, high_band=0.6
@@ -75,16 +75,16 @@ class TestUserFacingHttpError:
         assert "://" not in msg
 
     def test_503_mentions_backend(self) -> None:
-        assert "indispon" in _user_facing_http_error(503).lower()
+        assert "unavailable" in _user_facing_http_error(503).lower()
 
     def test_504_mentions_timeout(self) -> None:
-        assert "tempo" in _user_facing_http_error(504).lower()
+        assert "timed out" in _user_facing_http_error(504).lower()
 
     def test_401_session_expired(self) -> None:
-        assert "sess" in _user_facing_http_error(401).lower()
+        assert "session" in _user_facing_http_error(401).lower()
 
     def test_429_rate_limit(self) -> None:
-        assert "limite" in _user_facing_http_error(429).lower()
+        assert "limit" in _user_facing_http_error(429).lower()
 
     def test_4xx_fallback(self) -> None:
         msg = _user_facing_http_error(418)
