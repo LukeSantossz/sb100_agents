@@ -3,10 +3,24 @@
 Covers the bounds applied to `Settings` and the `VerificationProvider` enum.
 """
 
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
 from core.config import Settings, VerificationProvider
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_WORKING_JWT_SECRET = "super-secret-key-replace-in-production"
+
+
+def _env_example_jwt_secret() -> str:
+    """Return the JWT_SECRET_KEY value distributed in .env.example."""
+    for line in (_REPO_ROOT / ".env.example").read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("JWT_SECRET_KEY="):
+            return stripped.split("=", 1)[1].strip()
+    raise AssertionError("JWT_SECRET_KEY line not found in .env.example")
 
 
 def _kwargs(**overrides: object) -> dict[str, object]:
@@ -139,3 +153,24 @@ def test_jwt_secret_key_rejects_short() -> None:
 def test_jwt_secret_key_rejects_empty() -> None:
     with pytest.raises(ValidationError):
         Settings(jwt_secret_key="")
+
+
+# --------------- shipped secrets must not be functional (#109) ---------------
+
+
+def test_env_example_jwt_secret_does_not_pass_validation() -> None:
+    """The JWT secret distributed in .env.example must fail Settings validation.
+
+    A public repository must not ship a usable JWT signing key: the example must
+    force the operator to generate their own (fail-loud at boot), never satisfy
+    the >=32-char validator with a published value.
+    """
+    shipped = _env_example_jwt_secret()
+    with pytest.raises(ValidationError):
+        Settings(jwt_secret_key=shipped)
+
+
+def test_setup_md_contains_no_functional_jwt_secret() -> None:
+    """SETUP.md must not paste a working JWT secret in its copy-paste blocks."""
+    setup_md = (_REPO_ROOT / "SETUP.md").read_text(encoding="utf-8")
+    assert _WORKING_JWT_SECRET not in setup_md
