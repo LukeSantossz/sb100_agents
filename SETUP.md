@@ -90,8 +90,8 @@ TOP_K=3
 HALLUCINATION_THRESHOLD=0.5
 VERIFICATION_ENABLED=true
 
-# JWT (change in production!)
-JWT_SECRET_KEY=super-secret-key-replace-in-production
+# JWT — REQUIRED. Generate one: python -c "import secrets; print(secrets.token_urlsafe(32))"
+JWT_SECRET_KEY=
 ```
 
 ### 4.2 Remote Mode (ZeroTier)
@@ -117,8 +117,8 @@ TOP_K=3
 HALLUCINATION_THRESHOLD=0.5
 VERIFICATION_ENABLED=true
 
-# JWT (change in production!)
-JWT_SECRET_KEY=super-secret-key-replace-in-production
+# JWT — REQUIRED. Generate one: python -c "import secrets; print(secrets.token_urlsafe(32))"
+JWT_SECRET_KEY=
 ```
 
 > **Important**: The remote server credentials (`QDRANT_API_KEY`, host IP) are provided outside the repository for security reasons.
