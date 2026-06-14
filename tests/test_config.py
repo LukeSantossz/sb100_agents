@@ -174,3 +174,19 @@ def test_setup_md_contains_no_functional_jwt_secret() -> None:
     """SETUP.md must not paste a working JWT secret in its copy-paste blocks."""
     setup_md = (_REPO_ROOT / "SETUP.md").read_text(encoding="utf-8")
     assert _WORKING_JWT_SECRET not in setup_md
+
+
+# ----------------------------- ollama_timeout (#92) -----------------------------
+
+
+def test_ollama_timeout_default_is_at_least_210s() -> None:
+    # CPU-only generation takes ~160-200s; the default must clear it with margin.
+    s = Settings(**_kwargs())
+    assert s.ollama_timeout >= 210
+    assert s.ollama_timeout == 240.0
+
+
+def test_ollama_timeout_rejects_over_max() -> None:
+    # The le=600.0 bound (headroom under chat_timeout) stays enforced.
+    with pytest.raises(ValidationError):
+        Settings(**_kwargs(ollama_timeout=601.0))

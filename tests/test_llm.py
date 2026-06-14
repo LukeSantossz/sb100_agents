@@ -3,6 +3,9 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+import httpx
+import ollama
+
 from core.config import settings
 from core.schemas import ExpertiseLevel, UserProfile
 from generation.llm import (
@@ -279,6 +282,45 @@ class TestOllamaTimeout(unittest.TestCase):
 
         with self.assertRaises(ConnectionError):
             generate(question="q", context="c", history=[], profile=profile)
+
+    @patch("generation.llm._ollama_chat")
+    def test_generate_logs_and_reraises_on_httpx_timeout(self, mock_chat: MagicMock):
+        # The dominant CPU-only failure: an httpx timeout propagated by the Ollama
+        # client. It must be logged (generation.llm.failure) and re-raised.
+        mock_chat.side_effect = httpx.ReadTimeout("read timed out")
+        profile = UserProfile(name="Test", expertise=ExpertiseLevel.beginner)
+
+        with (
+            self.assertLogs("generation.llm", level="ERROR") as cm,
+            self.assertRaises(httpx.ReadTimeout),
+        ):
+            generate(question="q", context="c", history=[], profile=profile)
+        self.assertTrue(any("generation.llm.failure" in line for line in cm.output))
+
+    @patch("generation.llm._ollama_chat")
+    def test_generate_logs_and_reraises_on_httpx_request_error(self, mock_chat: MagicMock):
+        mock_chat.side_effect = httpx.ConnectError("connection refused")
+        profile = UserProfile(name="Test", expertise=ExpertiseLevel.beginner)
+
+        with (
+            self.assertLogs("generation.llm", level="ERROR") as cm,
+            self.assertRaises(httpx.ConnectError),
+        ):
+            generate(question="q", context="c", history=[], profile=profile)
+        self.assertTrue(any("generation.llm.failure" in line for line in cm.output))
+
+    @patch("generation.llm._ollama_chat")
+    def test_generate_still_logs_on_ollama_response_error(self, mock_chat: MagicMock):
+        # Existing coverage must be preserved (no regression).
+        mock_chat.side_effect = ollama.ResponseError("server error")
+        profile = UserProfile(name="Test", expertise=ExpertiseLevel.beginner)
+
+        with (
+            self.assertLogs("generation.llm", level="ERROR") as cm,
+            self.assertRaises(ollama.ResponseError),
+        ):
+            generate(question="q", context="c", history=[], profile=profile)
+        self.assertTrue(any("generation.llm.failure" in line for line in cm.output))
 
 
 class TestNoQdrantImport(unittest.TestCase):
