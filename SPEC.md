@@ -17,7 +17,7 @@ Authenticate once at startup and reuse the token for every `/chat` call. Read cr
 ## Scope
 
 - **Includes:** read `EVAL_API_TOKEN` or `EVAL_USERNAME`/`EVAL_PASSWORD` from env; obtain a bearer token (direct or via `/auth/token`) at startup; send `Authorization: Bearer` on every `/chat` call; abort early (non-zero exit, clear message) when credentials are missing or the token exchange fails; document the new env vars in `.env.example` / `eval/README.md`.
-- **Does NOT include:** the checkpoint-integrity fixes (#94/#103/#107 — separate PR, though they compose); token refresh during long runs; authenticating the other eval stages (`generate_questions.py`, `collect_references.py`, `judge.py`) which call external LLM providers, not `/chat`; any API-side change.
+- **Does NOT include:** the checkpoint-integrity fixes (#94, #103, #107 — separate PR, though they compose); token refresh during long runs (no tracked issue — a deliberate non-goal); authenticating the other eval stages (`generate_questions.py`, `collect_references.py`, `judge.py`), which use external-provider API keys, not `/chat` (no tracked issue); or any API-side change (API-side auth hardening is tracked separately, e.g. #115).
 
 ## Acceptance Criteria
 
