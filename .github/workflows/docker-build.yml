@@ -61,6 +61,11 @@ jobs:
           docker run --rm --entrypoint sh smartb100_api:ci -c "command -v curl"
 
       - name: Validate compose configuration
+        env:
+          # docker-compose.yml now requires JWT_SECRET_KEY via the fail-fast
+          # ${VAR:?} form; a throwaway value satisfies interpolation for this
+          # syntax-only check (no container is started).
+          JWT_SECRET_KEY: ci-compose-config-validation-dummy-32-chars
         run: |
           docker compose --profile infra --profile app config > /dev/null
           echo "OK: docker-compose.yml is syntactically valid"
