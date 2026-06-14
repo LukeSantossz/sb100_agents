@@ -76,6 +76,7 @@ def _service_environment(result: subprocess.CompletedProcess, service: str) -> d
 
 
 def test_compose_config_api_environment_contains_jwt_secret():
+    """The api service carries JWT_SECRET_KEY when the secret is set."""
     env = _env_without_secret()
     env["JWT_SECRET_KEY"] = VALID_SECRET
     result = _run_compose_config(env, "infra", "app")
@@ -84,6 +85,7 @@ def test_compose_config_api_environment_contains_jwt_secret():
 
 
 def test_compose_config_gradio_environment_contains_jwt_secret():
+    """The gradio service carries JWT_SECRET_KEY when the secret is set."""
     env = _env_without_secret()
     env["JWT_SECRET_KEY"] = VALID_SECRET
     result = _run_compose_config(env, "infra", "app")
@@ -92,6 +94,7 @@ def test_compose_config_gradio_environment_contains_jwt_secret():
 
 
 def test_compose_config_fails_when_jwt_secret_unset():
+    """Compose config fails fast with the :? message when the secret is unset."""
     # Both profiles are activated so the only reason config can fail is the
     # missing secret: api depends_on qdrant (infra profile), so "--profile app"
     # alone would fail with an unrelated "undefined service qdrant" error.
