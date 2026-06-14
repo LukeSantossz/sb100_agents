@@ -1,13 +1,16 @@
 """Gradio chat interface for the SmartB100 agent.
 
-Interactive web interface that consumes the FastAPI POST /chat
-endpoint, supporting:
+Interactive web interface that consumes the FastAPI POST /chat endpoint
+behind JWT authentication, supporting:
 
-- Natural-language questions.
+- A login row exchanging credentials for a JWT via POST /auth/token.
+- Per-browser session state (``gr.State``) holding the token, a unique
+  session_id, and the API URL — two browsers are fully independent.
+- Natural-language questions sent with ``Authorization: Bearer <token>``.
 - User profile configuration (name and expertise).
 - hallucination_score display per answer (colors aligned with
   ``settings.hallucination_threshold``).
-- Session management with reset option.
+- Session management with reset option (per-session only).
 - Loading state via generator pattern (placeholder in <1s).
 - Automatic retry with backoff for transient failures (503/504/timeout).
 - API URLs and technical details are logged internally; the user only
@@ -46,67 +49,117 @@ DEFAULT_PORT = 7860
 RETRY_ATTEMPTS = 2
 RETRY_BACKOFF_BASE = 1.0  # seconds; multiplied by 2**attempt
 
+# Shared HTTP client. httpx.Client is safe to reuse across requests; the
+# per-user identity lives in the session state's token, not in the client.
+# settings.chat_timeout: configurable via env CHAT_TIMEOUT (default 600s)
+_client = httpx.Client(timeout=settings.chat_timeout)
 
-class ChatSession:
-    """Manages chat session state."""
 
-    def __init__(self, api_url: str) -> None:
-        """Initializes the chat session.
+# ============================================================================
+# Per-session state
+# ============================================================================
+#
+# The session is a plain dict carried in a per-browser ``gr.State``:
+#   {"token": str | None, "session_id": str, "api_url": str}
+# Replacing the former shared module-level ChatSession isolates every browser
+# connection — distinct token, session_id, and history (#96).
 
-        Args:
-            api_url: Base URL of the SmartB100 API.
-        """
-        self.api_url = api_url.rstrip("/")
-        self.session_id = str(uuid.uuid4())
-        # settings.chat_timeout: configurable via env CHAT_TIMEOUT (default 600s)
-        self.client = httpx.Client(timeout=settings.chat_timeout)
 
-    def reset(self) -> str:
-        """Resets the session by generating a new session_id.
+def new_session_state(api_url: str) -> dict:
+    """Create a fresh, unauthenticated session state for one browser.
 
-        Returns:
-            The new session_id.
-        """
-        self.session_id = str(uuid.uuid4())
-        return self.session_id
+    Args:
+        api_url: Base URL of the SmartB100 API.
 
-    def send_message(
-        self,
-        message: str,
-        name: str,
-        expertise: str,
-    ) -> tuple[str, float]:
-        """Sends a message to the API and returns the answer.
+    Returns:
+        A state dict with no token and a unique session_id.
+    """
+    return {
+        "token": None,
+        "session_id": str(uuid.uuid4()),
+        "api_url": api_url.rstrip("/"),
+    }
 
-        Args:
-            message: The user's question.
-            name: User name for the profile.
-            expertise: Expertise level (beginner, intermediate, expert).
 
-        Returns:
-            Tuple of (answer, hallucination_score).
+def get_session_info(state: dict) -> str:
+    """Human-readable label with the truncated session_id."""
+    return f"Session ID: {state['session_id'][:8]}..."
 
-        Raises:
-            httpx.HTTPStatusError: If the API returns an HTTP error.
-            httpx.RequestError: If a connection error occurs.
-        """
-        payload = {
-            "session_id": self.session_id,
-            "question": message,
-            "profile": {
-                "name": name,
-                "expertise": expertise,
-            },
-        }
 
-        response = self.client.post(
-            f"{self.api_url}/chat",
-            json=payload,
+def login(state: dict, username: str, password: str) -> tuple[dict, str]:
+    """Exchange username/password for a JWT and store it in the session state.
+
+    Posts the OAuth2 password form to ``/auth/token``. On success the returned
+    ``access_token`` is stored in a new state; on failure the token stays unset
+    and a friendly message is returned (no technical detail leaks to the user).
+
+    Args:
+        state: Current session state.
+        username: Username typed in the UI.
+        password: Password typed in the UI.
+
+    Returns:
+        Tuple of (updated state, status message for display).
+    """
+    if not username or not password:
+        return {**state, "token": None}, "Enter your username and password to log in."
+
+    try:
+        response = _client.post(
+            f"{state['api_url']}/auth/token",
+            data={"username": username, "password": password},
         )
         response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 401:
+            logger.info("ui.login.invalid_credentials")
+            return {**state, "token": None}, "Login failed: incorrect username or password."
+        logger.error("ui.login.http_error status=%d", exc.response.status_code)
+        return {**state, "token": None}, "Login failed. Please try again."
+    except httpx.RequestError:
+        logger.exception("ui.login.connection_error url=%s", state["api_url"])
+        return (
+            {**state, "token": None},
+            "Could not reach the API to log in. Check the server and try again.",
+        )
 
-        data = response.json()
-        return data["answer"], data["hallucination_score"]
+    token = response.json()["access_token"]
+    logger.info("ui.login.success")
+    return {**state, "token": token}, "Logged in. You can ask your question now."
+
+
+def post_chat(state: dict, message: str, name: str, expertise: str) -> tuple[str, float]:
+    """Send one authenticated question to POST /chat.
+
+    Attaches ``Authorization: Bearer <token>`` and targets the state's own
+    session_id. The caller guarantees a token is present (see ``respond``).
+
+    Args:
+        state: Authenticated session state.
+        message: The user's question.
+        name: User name for the profile.
+        expertise: Expertise level (beginner, intermediate, expert).
+
+    Returns:
+        Tuple of (answer, hallucination_score).
+
+    Raises:
+        httpx.HTTPStatusError: If the API returns an HTTP error (401 included).
+        httpx.RequestError: If a connection error occurs.
+    """
+    payload = {
+        "session_id": state["session_id"],
+        "question": message,
+        "profile": {"name": name, "expertise": expertise},
+    }
+    response = _client.post(
+        f"{state['api_url']}/chat",
+        json=payload,
+        headers={"Authorization": f"Bearer {state['token']}"},
+    )
+    response.raise_for_status()
+    data = response.json()
+    return data["answer"], data["hallucination_score"]
 
 
 def _is_transient_error(exc: Exception) -> bool:
@@ -125,16 +178,16 @@ def _is_transient_error(exc: Exception) -> bool:
 
 
 def send_with_retry(
-    session: ChatSession,
+    state: dict,
     message: str,
     name: str,
     expertise: str,
     attempts: int = RETRY_ATTEMPTS,
 ) -> tuple[str, float]:
-    """Sends a message with exponential retry for transient errors.
+    """Send a message with exponential retry for transient errors.
 
     Args:
-        session: Active chat session.
+        state: Authenticated session state.
         message: The user's question.
         name: User name.
         expertise: User expertise.
@@ -145,12 +198,13 @@ def send_with_retry(
 
     Raises:
         httpx.HTTPStatusError | httpx.RequestError: If all attempts fail
-        or the error is not transient.
+        or the error is not transient (401 propagates so the caller can
+        clear the token).
     """
     last_exc: Exception | None = None
     for attempt in range(attempts + 1):
         try:
-            return session.send_message(message, name, expertise)
+            return post_chat(state, message, name, expertise)
         except (httpx.HTTPStatusError, httpx.RequestError) as exc:
             last_exc = exc
             if attempt >= attempts or not _is_transient_error(exc):
@@ -278,6 +332,110 @@ def _history_with_error(
     ]
 
 
+def respond(
+    state: dict,
+    message: str,
+    history: list[dict[str, str]],
+    name: str,
+    expertise: str,
+) -> Generator[tuple[dict, list[dict[str, str]], str, str], None, None]:
+    """Process a message and update history, threaded through the session state.
+
+    Yields a ``(state, history, score_html, msg_input_value)`` tuple:
+    - Without a token: a "please log in" message and no /chat request (#89).
+    - First yield (authenticated): processing placeholder (<1s), input kept.
+    - Second yield: final result. On success the input is cleared; on error it
+      is preserved. A 401 clears the token in the returned state so the user is
+      prompted to authenticate again (#89).
+
+    Args:
+        state: Per-browser session state.
+        message: The user's message.
+        history: Message history in Gradio format.
+        name: User name.
+        expertise: Expertise level.
+
+    Yields:
+        Tuple of (state, updated history, score HTML badge, input value).
+    """
+    if not message.strip():
+        yield state, history, "", message
+        return
+
+    if not state.get("token"):
+        msg = "Please log in before sending a question."
+        yield state, _history_with_error(history, message, msg), _error_html(msg), message
+        return
+
+    user_name = name.strip() or "User"
+    user_expertise = expertise or "intermediate"
+
+    # Yield #1: immediate placeholder so the user sees activity
+    preview = history + [
+        {"role": "user", "content": message},
+        {"role": "assistant", "content": "..."},
+    ]
+    yield state, preview, _processing_html(), message
+
+    try:
+        answer, score = send_with_retry(state, message, user_name, user_expertise)
+
+        new_history = history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": answer},
+        ]
+        # Yield #2 success: final history + colored score + empty input
+        yield state, new_history, _score_html(score, settings.hallucination_threshold), ""
+
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 401:
+            # Token rejected: clear it so the UI prompts a fresh login.
+            logger.warning("chat.unauthorized session=%s", state["session_id"][:8])
+            user_msg = _user_facing_http_error(401)
+            cleared = {**state, "token": None}
+            yield (
+                cleared,
+                _history_with_error(history, message, user_msg),
+                _error_html(user_msg),
+                message,
+            )
+            return
+        logger.error(
+            "chat.http_error status=%d url=%s body=%s",
+            exc.response.status_code,
+            exc.request.url,
+            exc.response.text[:200],
+        )
+        user_msg = _user_facing_http_error(exc.response.status_code)
+        yield state, _history_with_error(history, message, user_msg), _error_html(user_msg), message
+
+    except httpx.TimeoutException:
+        logger.exception("chat.timeout url=%s", state["api_url"])
+        user_msg = (
+            "Timed out waiting for the API. In CPU-only environments Ollama "
+            "can take several minutes per answer. Try again shortly."
+        )
+        yield state, _history_with_error(history, message, user_msg), _error_html(user_msg), message
+
+    except httpx.RequestError:
+        logger.exception("chat.connection_error url=%s", state["api_url"])
+        user_msg = "Could not connect to the API. Check that the server is running and try again."
+        yield state, _history_with_error(history, message, user_msg), _error_html(user_msg), message
+
+
+def reset_session(state: dict) -> tuple[dict, list[dict[str, str]], str, str]:
+    """Start a new conversation for this browser only (keeps the login).
+
+    Generates a fresh session_id on the per-session state and clears the
+    history; the token is preserved so the user stays logged in.
+
+    Returns:
+        Tuple of (new state, empty history, session label, empty score).
+    """
+    new_state = {**state, "session_id": str(uuid.uuid4())}
+    return new_state, [], get_session_info(new_state), ""
+
+
 def create_interface(api_url: str) -> gr.Blocks:
     """Creates the full Gradio interface.
 
@@ -287,100 +445,18 @@ def create_interface(api_url: str) -> gr.Blocks:
     Returns:
         Configured Gradio application.
     """
-    session = ChatSession(api_url)
 
-    def respond(
-        message: str,
-        history: list[dict[str, str]],
-        name: str,
-        expertise: str,
-    ) -> Generator[tuple[list[dict[str, str]], str, str], None, None]:
-        """Processes a message and updates the history.
-
-        Yields a ``(history, score_html, msg_input_value)`` triple:
-        - First yield: processing placeholder (<1s) preserving the input.
-        - Second yield: final result (success or error). On success the
-          input is cleared; on error it is preserved so the user can retry
-          without retyping.
-
-        Args:
-            message: The user's message.
-            history: Message history in Gradio format.
-            name: User name.
-            expertise: Expertise level.
-
-        Yields:
-            Tuple of (updated history, score HTML badge, input value).
-        """
-        if not message.strip():
-            yield history, "", message
-            return
-
-        user_name = name.strip() or "User"
-        user_expertise = expertise or "intermediate"
-
-        # Yield #1: immediate placeholder so the user sees activity
-        preview = history + [
-            {"role": "user", "content": message},
-            {"role": "assistant", "content": "..."},
-        ]
-        yield preview, _processing_html(), message
-
-        try:
-            answer, score = send_with_retry(session, message, user_name, user_expertise)
-
-            new_history = history + [
-                {"role": "user", "content": message},
-                {"role": "assistant", "content": answer},
-            ]
-            # Yield #2 success: final history + colored score + empty input
-            yield new_history, _score_html(score, settings.hallucination_threshold), ""
-
-        except httpx.HTTPStatusError as exc:
-            logger.error(
-                "chat.http_error status=%d url=%s body=%s",
-                exc.response.status_code,
-                exc.request.url,
-                exc.response.text[:200],
-            )
-            user_msg = _user_facing_http_error(exc.response.status_code)
-            yield _history_with_error(history, message, user_msg), _error_html(user_msg), message
-
-        except httpx.TimeoutException:
-            logger.exception("chat.timeout url=%s", api_url)
-            user_msg = (
-                "Timed out waiting for the API. In CPU-only environments Ollama "
-                "can take several minutes per answer. Try again shortly."
-            )
-            yield _history_with_error(history, message, user_msg), _error_html(user_msg), message
-
-        except httpx.RequestError:
-            logger.exception("chat.connection_error url=%s", api_url)
-            user_msg = (
-                "Could not connect to the API. Check that the server is running and try again."
-            )
-            yield _history_with_error(history, message, user_msg), _error_html(user_msg), message
-
-    def reset_session() -> tuple[list[dict[str, str]], str, str]:
-        """Resets the session and clears the history.
-
-        Returns:
-            Tuple of (empty history, new session_id, empty score).
-        """
-        new_session_id = session.reset()
-        return [], f"Session ID: {new_session_id[:8]}...", ""
-
-    def get_session_info() -> str:
-        """Returns information about the current session.
-
-        Returns:
-            String with the truncated session_id.
-        """
-        return f"Session ID: {session.session_id[:8]}..."
+    def init_session() -> tuple[dict, str]:
+        """Per-connection initialiser wired to ``interface.load``."""
+        state = new_session_state(api_url)
+        return state, get_session_info(state)
 
     with gr.Blocks(
         title="SmartB100 - Agricultural Assistant",
     ) as interface:
+        # Per-browser state; populated per connection by interface.load below.
+        session_state = gr.State()
+
         gr.Markdown(
             """
             # SmartB100 - Intelligent Agricultural Assistant
@@ -393,6 +469,19 @@ def create_interface(api_url: str) -> gr.Blocks:
 
         with gr.Row():
             with gr.Column(scale=1):
+                gr.Markdown("### Login")
+                username_input = gr.Textbox(
+                    label="Username",
+                    placeholder="your username",
+                )
+                password_input = gr.Textbox(
+                    label="Password",
+                    placeholder="your password",
+                    type="password",
+                )
+                login_btn = gr.Button("Log in", variant="primary")
+                login_status = gr.Markdown("")
+
                 gr.Markdown("### Profile Settings")
                 name_input = gr.Textbox(
                     label="Name",
@@ -412,7 +501,7 @@ def create_interface(api_url: str) -> gr.Blocks:
                 gr.Markdown("### Session")
                 session_info = gr.Textbox(
                     label="Current Session",
-                    value=get_session_info(),
+                    value="",
                     interactive=False,
                 )
                 reset_btn = gr.Button("New Session", variant="secondary")
@@ -439,24 +528,35 @@ def create_interface(api_url: str) -> gr.Blocks:
                     submit_btn = gr.Button("Send", variant="primary")
                     clear_btn = gr.Button("Clear Chat")
 
-        # `respond` returns 3 outputs: (history, score_html, input_value).
+        # Initialise per-browser state and session label on connection.
+        interface.load(init_session, outputs=[session_state, session_info])
+
+        # Login exchanges credentials for a token stored in the session state.
+        login_btn.click(
+            fn=login,
+            inputs=[session_state, username_input, password_input],
+            outputs=[session_state, login_status],
+        )
+
+        # `respond` returns 4 outputs: (state, history, score_html, input_value).
         # On success the input becomes ""; on error it keeps the original text
-        # so the user can retry without retyping.
+        # so the user can retry without retyping. A 401 clears the token.
         submit_btn.click(
             fn=respond,
-            inputs=[msg_input, chatbot, name_input, expertise_input],
-            outputs=[chatbot, score_display, msg_input],
+            inputs=[session_state, msg_input, chatbot, name_input, expertise_input],
+            outputs=[session_state, chatbot, score_display, msg_input],
         )
 
         msg_input.submit(
             fn=respond,
-            inputs=[msg_input, chatbot, name_input, expertise_input],
-            outputs=[chatbot, score_display, msg_input],
+            inputs=[session_state, msg_input, chatbot, name_input, expertise_input],
+            outputs=[session_state, chatbot, score_display, msg_input],
         )
 
         reset_btn.click(
             fn=reset_session,
-            outputs=[chatbot, session_info, score_display],
+            inputs=[session_state],
+            outputs=[session_state, chatbot, session_info, score_display],
         )
 
         clear_btn.click(
