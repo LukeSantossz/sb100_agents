@@ -50,6 +50,7 @@ services:
       - CHAT_MODEL=llama3.2:3b
       - EMBED_MODEL=nomic-embed-text
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in the host environment or .env}
     volumes:
       - ./smartb100_v2.db:/app/smartb100_v2.db
     restart: unless-stopped
@@ -80,6 +81,7 @@ services:
       - "7860:7860"
     environment:
       - API_URL=http://api:8000
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in the host environment or .env}
     command: ["python", "ui/chat_ui.py", "--api-url", "http://api:8000", "--port", "7860"]
     restart: unless-stopped
     depends_on:
