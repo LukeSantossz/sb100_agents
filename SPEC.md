@@ -19,7 +19,7 @@ Replace the shared module-level `ChatSession` with a per-browser `gr.State` hold
 ## Scope
 
 - **Includes:** a login row and handler hitting `POST /auth/token`; a per-session `gr.State` carrying `{token, session_id, api_url}`; `send_message`/`send_with_retry`/`respond` threaded through that state; `Authorization: Bearer` on `/chat`; 401 → clear token and prompt re-login; removal of the shared module-level `ChatSession` instance; per-session `session_id` generation; reset/"New Session" operating on the per-session state only.
-- **Does NOT include:** a registration form in the UI (operators still register via the API/SETUP), token refresh / "remember me" persistence, rate-limit UX for `/chat` (#110), the server-side session→user binding (#108), or any API-side change. The UI continues to call existing endpoints only.
+- **Does NOT include:** a registration form in the UI (registration stays API-side via `/auth/register` / SETUP; UI account self-service is #124); token refresh / "remember me" persistence (no tracked issue — a deliberate non-goal); rate-limit UX for `/chat` (#110); the server-side session→user binding (#108); or any API-side change (API-side auth hardening is tracked separately, e.g. #115). The UI continues to call existing endpoints only.
 
 ## Acceptance Criteria
 
