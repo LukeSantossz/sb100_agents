@@ -17,6 +17,7 @@ Usage:
 import argparse
 import asyncio
 import json
+import os
 import sys
 import uuid
 from datetime import UTC, datetime
@@ -41,12 +42,65 @@ DEFAULT_PROFILE = {"name": "eval", "expertise": "intermediate"}
 DEFAULT_CONCURRENT = 1  # Concurrent requests (1 = sequential)
 DEFAULT_TIMEOUT = 300.0  # Per-request timeout in seconds (5 min for local Ollama)
 CHECKPOINT_EVERY = 10  # Persist partial state every N results
+AUTH_TIMEOUT = 30.0  # Timeout for the one-time /auth/token exchange
+
+
+class EvalAuthError(Exception):
+    """Raised when evaluation credentials are missing or rejected."""
+
+
+async def resolve_token(client: httpx.AsyncClient, api_url: str = DEFAULT_API_URL) -> str:
+    """Resolve a bearer token for /chat from the environment.
+
+    Uses ``EVAL_API_TOKEN`` directly when set; otherwise exchanges
+    ``EVAL_USERNAME``/``EVAL_PASSWORD`` for a token via ``POST /auth/token``.
+
+    Args:
+        client: Async HTTP client.
+        api_url: API base URL.
+
+    Returns:
+        A bearer token string.
+
+    Raises:
+        EvalAuthError: if no credentials are configured or the exchange fails.
+    """
+    explicit = os.getenv("EVAL_API_TOKEN")
+    if explicit:
+        return explicit
+
+    username = os.getenv("EVAL_USERNAME")
+    password = os.getenv("EVAL_PASSWORD")
+    if not username or not password:
+        raise EvalAuthError(
+            "No evaluation credentials configured. Set EVAL_API_TOKEN, or "
+            "EVAL_USERNAME and EVAL_PASSWORD, to authenticate against /chat."
+        )
+
+    try:
+        response = await client.post(
+            f"{api_url}/auth/token",
+            data={"username": username, "password": password},
+            timeout=AUTH_TIMEOUT,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        raise EvalAuthError(
+            f"Authentication failed (HTTP {e.response.status_code}). "
+            "Check EVAL_USERNAME/EVAL_PASSWORD for a registered evaluation user."
+        ) from e
+    except httpx.RequestError as e:
+        raise EvalAuthError(f"Could not reach {api_url}/auth/token to authenticate: {e}") from e
+
+    return response.json()["access_token"]
 
 
 async def call_chat_api(
     client: httpx.AsyncClient,
     question: str,
     api_url: str = DEFAULT_API_URL,
+    *,
+    token: str,
 ) -> dict:
     """
     Make a single call to the POST /chat endpoint.
@@ -55,6 +109,7 @@ async def call_chat_api(
         client: Async HTTP client
         question: Question text
         api_url: API base URL
+        token: Bearer token sent in the Authorization header
 
     Returns:
         API response or an error dict
@@ -71,6 +126,7 @@ async def call_chat_api(
         response = await client.post(
             f"{api_url}/chat",
             json=payload,
+            headers={"Authorization": f"Bearer {token}"},
             timeout=DEFAULT_TIMEOUT,
         )
         response.raise_for_status()
@@ -169,12 +225,13 @@ async def run_evaluation_async(
 
     semaphore = asyncio.Semaphore(concurrent)
 
-    async def process_question(question_obj: dict, client: httpx.AsyncClient) -> dict:
+    async def process_question(question_obj: dict, client: httpx.AsyncClient, token: str) -> dict:
         async with semaphore:
             result = await call_chat_api(
                 client,
                 question_obj["question"],
                 api_url,
+                token=token,
             )
             return {
                 "question_id": question_obj["question_id"],
@@ -187,6 +244,11 @@ async def run_evaluation_async(
             }
 
     async with httpx.AsyncClient() as client:
+        # Authenticate before any /chat work; abort fast (EvalAuthError) when
+        # credentials are missing or rejected, so a run never silently produces
+        # 401-only results.
+        token = await resolve_token(client, api_url)
+
         # Check that the API is available
         try:
             health = await client.get(f"{api_url}/health", timeout=5.0)
@@ -197,7 +259,7 @@ async def run_evaluation_async(
             return results
 
         # Process questions with a progress bar
-        tasks = [process_question(q, client) for q in pending]
+        tasks = [process_question(q, client, token) for q in pending]
         new_since_checkpoint = 0
 
         for task in tqdm(
@@ -339,13 +401,17 @@ def main() -> int:
         return 1
 
     # Run evaluation
-    result = run_evaluation(
-        input_path=args.input,
-        output_path=args.output,
-        api_url=args.api_url,
-        concurrent=args.concurrent,
-        checkpoint_path=args.checkpoint,
-    )
+    try:
+        result = run_evaluation(
+            input_path=args.input,
+            output_path=args.output,
+            api_url=args.api_url,
+            concurrent=args.concurrent,
+            checkpoint_path=args.checkpoint,
+        )
+    except EvalAuthError as e:
+        print(f"Error: {e}")
+        return 1
 
     return 0 if result else 1
 

@@ -11,9 +11,13 @@ via `monkeypatch`.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import random
+import sys
+from unittest.mock import AsyncMock, Mock
 
+import httpx
 import pytest
 
 from eval._utils import (
@@ -29,7 +33,14 @@ from eval.report import (
     generate_score_distribution,
     generate_verdict_stats,
 )
-from eval.run_evaluation import load_checkpoint, save_checkpoint
+from eval.run_evaluation import (
+    EvalAuthError,
+    call_chat_api,
+    load_checkpoint,
+    main,
+    resolve_token,
+    save_checkpoint,
+)
 
 # ============================================================================
 # _utils
@@ -634,3 +645,116 @@ class TestPipelineSmoke:
         assert report_path.exists()
         content = report_path.read_text(encoding="utf-8")
         assert "# Evaluation Report - SB100" in content
+
+
+# ============================================================================
+# run_evaluation: authentication of /chat (#90)
+# ============================================================================
+
+
+def _raise_for_status_error(status_code: int) -> Mock:
+    """A response Mock whose raise_for_status raises an HTTPStatusError."""
+    response = Mock()
+    response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        str(status_code), request=Mock(), response=Mock(status_code=status_code)
+    )
+    return response
+
+
+class TestEvalAuth:
+    @staticmethod
+    def _clear_credentials(monkeypatch) -> None:
+        for var in ("EVAL_API_TOKEN", "EVAL_USERNAME", "EVAL_PASSWORD"):
+            monkeypatch.delenv(var, raising=False)
+
+    def test_explicit_token_is_used_directly(self, monkeypatch) -> None:
+        self._clear_credentials(monkeypatch)
+        monkeypatch.setenv("EVAL_API_TOKEN", "DIRECT-TOKEN")
+        client = Mock()
+        client.post = AsyncMock()
+
+        token = asyncio.run(resolve_token(client, "http://test"))
+
+        assert token == "DIRECT-TOKEN"
+        client.post.assert_not_called()  # no /auth/token exchange
+
+    def test_username_password_exchanged_for_token(self, monkeypatch) -> None:
+        self._clear_credentials(monkeypatch)
+        monkeypatch.setenv("EVAL_USERNAME", "evaluator")
+        monkeypatch.setenv("EVAL_PASSWORD", "s3cret-pass")
+        response = Mock()
+        response.raise_for_status = Mock()
+        response.json.return_value = {"access_token": "JWT-FROM-LOGIN", "token_type": "bearer"}
+        client = Mock()
+        client.post = AsyncMock(return_value=response)
+
+        token = asyncio.run(resolve_token(client, "http://test"))
+
+        assert token == "JWT-FROM-LOGIN"
+        assert client.post.call_args[0][0] == "http://test/auth/token"
+        # OAuth2 password flow uses a form body, not JSON.
+        assert client.post.call_args[1]["data"] == {
+            "username": "evaluator",
+            "password": "s3cret-pass",
+        }
+
+    def test_missing_credentials_aborts_before_any_request(self, monkeypatch) -> None:
+        self._clear_credentials(monkeypatch)
+        client = Mock()
+        client.post = AsyncMock()
+
+        with pytest.raises(EvalAuthError):
+            asyncio.run(resolve_token(client, "http://test"))
+        client.post.assert_not_called()
+
+    def test_token_exchange_failure_aborts_early(self, monkeypatch) -> None:
+        self._clear_credentials(monkeypatch)
+        monkeypatch.setenv("EVAL_USERNAME", "evaluator")
+        monkeypatch.setenv("EVAL_PASSWORD", "wrong")
+        client = Mock()
+        client.post = AsyncMock(return_value=_raise_for_status_error(401))
+
+        with pytest.raises(EvalAuthError):
+            asyncio.run(resolve_token(client, "http://test"))
+
+    def test_call_chat_api_sends_bearer_token(self) -> None:
+        response = Mock()
+        response.raise_for_status = Mock()
+        response.json.return_value = {"answer": "ok", "hallucination_score": 0.1}
+        client = Mock()
+        client.post = AsyncMock(return_value=response)
+
+        result = asyncio.run(call_chat_api(client, "question?", "http://test", token="TOK-XYZ"))
+
+        assert result["success"] is True
+        assert client.post.call_args[1]["headers"]["Authorization"] == "Bearer TOK-XYZ"
+
+    def test_main_exits_nonzero_when_credentials_missing(self, tmp_path, monkeypatch) -> None:
+        self._clear_credentials(monkeypatch)
+        dataset = {
+            "metadata": {},
+            "questions": [
+                {
+                    "question_id": "q1",
+                    "question": "A valid evaluation question of sufficient length?",
+                    "reference_answers": [],
+                }
+            ],
+        }
+        input_path = tmp_path / "refs.json"
+        input_path.write_text(json.dumps(dataset), encoding="utf-8")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "run_evaluation.py",
+                "--input",
+                str(input_path),
+                "--output",
+                str(tmp_path / "out.json"),
+                "--checkpoint",
+                str(tmp_path / "ck.json"),
+            ],
+        )
+        # Missing credentials abort before any network call, so main exits non-zero.
+        assert main() == 1

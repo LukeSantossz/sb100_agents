@@ -28,6 +28,9 @@ eval/
 - Project dependencies (`pip install -e .`)
 - **For Groq API**: `GROQ_API_KEY` variable set
 - **For Ollama**: Ollama server running with models installed
+- **For `run_evaluation.py`**: evaluation credentials, since `POST /chat` is
+  authenticated — `EVAL_API_TOKEN`, or `EVAL_USERNAME`/`EVAL_PASSWORD` for a
+  user registered via `POST /auth/register`
 
 ## Full Run
 
@@ -65,12 +68,19 @@ python eval/collect_references.py --models llama3:8b,qwen2:7b --provider ollama
 
 ### 3. Run the SB100 Evaluation
 
-Runs every question against the `POST /chat` endpoint:
+Runs every question against the authenticated `POST /chat` endpoint. Set
+evaluation credentials first — either `EVAL_API_TOKEN`, or `EVAL_USERNAME` and
+`EVAL_PASSWORD` for a user already registered via `POST /auth/register`. Without
+them the run aborts immediately (it would otherwise only collect 401s):
 
 ```bash
 # Make sure the SB100 is running
 # Start the API: .venv\Scripts\python.exe -m uvicorn api.main:app --reload
 # Or use: .\start.bat (Windows)
+
+# Authenticate the evaluation (registered user) — or set EVAL_API_TOKEN directly
+export EVAL_USERNAME=your_eval_user
+export EVAL_PASSWORD=your_eval_password
 
 # In another terminal, run the evaluation
 python eval/run_evaluation.py
