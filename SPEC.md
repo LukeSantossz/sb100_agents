@@ -30,7 +30,7 @@ Apply slowapi's `@limiter.limit` to `chat()` with a **per-user** key derived fro
 ## Reproducibility
 
 - Versions: Python 3.12, slowapi (already a dependency), on the dev host.
-- Unit (no infra): `uv run pytest tests/test_auth.py tests/test_integration.py -v` — assert `_rate_limit_key` on a crafted token; drive `TestClient` against `/chat` (external services mocked, `verify_token` overridden) with a low `chat_rate_limit` and assert the (limit+1)-th call returns 429.
+- Unit (no infra): `uv run pytest tests/test_chat_rate_limit.py tests/test_auth.py tests/test_integration.py -v` — assert `_rate_limit_key` on a crafted token; drive `TestClient` against `/chat` (external services mocked, `verify_token` overridden) with a low `chat_rate_limit` and assert the (limit+1)-th call returns 429.
 
 ## Risks and Assumptions
 
