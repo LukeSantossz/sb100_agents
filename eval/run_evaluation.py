@@ -16,6 +16,7 @@ Usage:
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import sys
@@ -47,6 +48,36 @@ AUTH_TIMEOUT = 30.0  # Timeout for the one-time /auth/token exchange
 
 class EvalAuthError(Exception):
     """Raised when evaluation credentials are missing or rejected."""
+
+
+class EvalAbortError(Exception):
+    """Raised when a run must abort without destroying resume state.
+
+    Propagates to main() as a non-zero exit; the checkpoint is preserved and no
+    final output is written.
+    """
+
+
+def dataset_fingerprint(questions: list[dict]) -> str:
+    """Stable SHA-256 over the sorted question_ids of a dataset.
+
+    Binds a checkpoint to the dataset that produced it, so a regenerated dataset
+    never resumes from orphan records.
+    """
+    joined = "\n".join(sorted(str(q["question_id"]) for q in questions))
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()
+
+
+def merge_results(existing: list[dict], new: list[dict]) -> list[dict]:
+    """Merge result records by question_id (new replaces old), sorted by id.
+
+    Guarantees a single record per question — a retried question's fresh result
+    replaces its earlier (failed) record.
+    """
+    by_id: dict[str, dict] = {r["question_id"]: r for r in existing}
+    for record in new:
+        by_id[record["question_id"]] = record
+    return sorted(by_id.values(), key=lambda r: r["question_id"])
 
 
 async def resolve_token(client: httpx.AsyncClient, api_url: str = DEFAULT_API_URL) -> str:
@@ -153,35 +184,58 @@ async def call_chat_api(
         }
 
 
-def load_checkpoint(checkpoint_path: Path) -> list[dict]:
-    """Load partial results from a checkpoint, if it exists.
+def load_checkpoint(
+    checkpoint_path: Path,
+    *,
+    dataset_fingerprint: str | None = None,
+    question_ids: set[str] | None = None,
+) -> list[dict]:
+    """Load partial results from a checkpoint, if it exists and matches.
 
-    Returns an empty list if the checkpoint is missing or corrupted.
+    Returns an empty list if the checkpoint is missing or corrupted. When a
+    ``dataset_fingerprint`` is given, the stored fingerprint must match — an
+    absent or different fingerprint is treated as a fresh start; results are
+    additionally filtered to ``question_ids`` when provided.
     """
     if not checkpoint_path.exists():
         return []
     try:
         with open(checkpoint_path, encoding="utf-8") as f:
             data = json.load(f)
-        results = data.get("results", [])
-        if isinstance(results, list):
-            return [r for r in results if isinstance(r, dict) and "question_id" in r]
-        return []
     except (OSError, json.JSONDecodeError) as e:
         print(f"Warning: corrupted checkpoint ({e}); ignoring")
         return []
 
+    if dataset_fingerprint is not None and data.get("dataset_fingerprint") != dataset_fingerprint:
+        print("Warning: checkpoint belongs to a different dataset; starting fresh")
+        return []
 
-def save_checkpoint(checkpoint_path: Path, results: list[dict]) -> None:
-    """Persist partial results atomically.
+    results = data.get("results", [])
+    if not isinstance(results, list):
+        return []
+    records = [r for r in results if isinstance(r, dict) and "question_id" in r]
+    if question_ids is not None:
+        records = [r for r in records if r["question_id"] in question_ids]
+    return records
+
+
+def save_checkpoint(
+    checkpoint_path: Path, results: list[dict], *, dataset_fingerprint: str | None = None
+) -> None:
+    """Persist partial results atomically, tagged with the dataset fingerprint.
 
     Writes to `.tmp` and renames, preventing corruption if interrupted
-    mid-write.
+    mid-write. The fingerprint binds the checkpoint to its dataset.
     """
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = checkpoint_path.with_suffix(checkpoint_path.suffix + ".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump({"results": results}, f, ensure_ascii=False, indent=2)
+        json.dump(
+            {"dataset_fingerprint": dataset_fingerprint, "results": results},
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
     tmp.replace(checkpoint_path)
 
 
@@ -206,22 +260,28 @@ async def run_evaluation_async(
     Returns:
         List of results (existing from checkpoint + new)
     """
-    existing = load_checkpoint(checkpoint_path)
-    completed_ids = {r["question_id"] for r in existing}
+    fingerprint = dataset_fingerprint(questions)
+    all_ids = {q["question_id"] for q in questions}
+
+    existing = load_checkpoint(
+        checkpoint_path, dataset_fingerprint=fingerprint, question_ids=all_ids
+    )
+    # Only successful results count as complete; failed/absent are retried.
+    completed_ids = {r["question_id"] for r in existing if r.get("sb100_success")}
     pending = [q for q in questions if q["question_id"] not in completed_ids]
 
     if existing:
         print(
             f"Checkpoint found at {checkpoint_path}: "
-            f"{len(existing)} results already processed; "
-            f"resuming {len(pending)} pending"
+            f"{len(completed_ids)} successful; resuming {len(pending)} pending"
         )
 
-    results: list[dict] = list(existing)
+    # Replace-by-question_id: a retried question's new record overwrites the old.
+    results_by_id: dict[str, dict] = {r["question_id"]: r for r in existing}
 
     if not pending:
         print("No pending questions.")
-        return results
+        return merge_results(list(results_by_id.values()), [])
 
     semaphore = asyncio.Semaphore(concurrent)
 
@@ -243,20 +303,26 @@ async def run_evaluation_async(
                 "sb100_success": result["success"],
             }
 
+    def _persist() -> None:
+        # The checkpoint holds only successful results for the current dataset.
+        successful = [r for r in results_by_id.values() if r.get("sb100_success")]
+        save_checkpoint(checkpoint_path, successful, dataset_fingerprint=fingerprint)
+
     async with httpx.AsyncClient() as client:
         # Authenticate before any /chat work; abort fast (EvalAuthError) when
         # credentials are missing or rejected, so a run never silently produces
         # 401-only results.
         token = await resolve_token(client, api_url)
 
-        # Check that the API is available
+        # Check that the API is available. A failure here must NOT destroy resume
+        # state: abort (EvalAbortError) without writing output or deleting the
+        # checkpoint.
         try:
             health = await client.get(f"{api_url}/health", timeout=5.0)
             health.raise_for_status()
             print(f"API available: {api_url}")
         except Exception as e:
-            print(f"Error: API not available at {api_url}: {e}")
-            return results
+            raise EvalAbortError(f"API not available at {api_url}: {e}") from e
 
         # Process questions with a progress bar
         tasks = [process_question(q, client, token) for q in pending]
@@ -268,17 +334,14 @@ async def run_evaluation_async(
             desc="Running evaluation",
         ):
             result = await task
-            results.append(result)
+            results_by_id[result["question_id"]] = result
             new_since_checkpoint += 1
 
             if new_since_checkpoint >= checkpoint_every:
-                save_checkpoint(checkpoint_path, results)
+                _persist()
                 new_since_checkpoint = 0
 
-    # Sort by question_id to keep the original order
-    results.sort(key=lambda x: x["question_id"])
-
-    return results
+    return merge_results(list(results_by_id.values()), [])
 
 
 def run_evaluation(
@@ -347,8 +410,11 @@ def run_evaluation(
     with open(output, "w", encoding="utf-8") as f:
         json.dump(results_dataset, f, ensure_ascii=False, indent=2)
 
-    # Remove checkpoint on successful completion
-    if checkpoint.exists():
+    # Remove the checkpoint only when every dataset question succeeded; otherwise
+    # keep it so the next run retries the remaining failures.
+    successful_ids = {r["question_id"] for r in results if r["sb100_success"]}
+    all_ids = {q["question_id"] for q in questions}
+    if checkpoint.exists() and successful_ids >= all_ids:
         checkpoint.unlink()
 
     print(f"\nResults saved to: {output}")
@@ -409,7 +475,7 @@ def main() -> int:
             concurrent=args.concurrent,
             checkpoint_path=args.checkpoint,
         )
-    except EvalAuthError as e:
+    except (EvalAuthError, EvalAbortError) as e:
         print(f"Error: {e}")
         return 1
 

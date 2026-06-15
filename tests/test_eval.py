@@ -874,14 +874,18 @@ class TestCheckpointIntegrity:
         assert ck.exists()  # checkpoint preserved on abort
 
     def test_abort_preserves_checkpoint_and_writes_no_output(self, tmp_path, monkeypatch) -> None:
-        ds = {"metadata": {}, "questions": [{"question_id": "q1", "question": "Q1?", "reference_answers": []}]}
+        ds = {
+            "metadata": {},
+            "questions": [{"question_id": "q1", "question": "Q1?", "reference_answers": []}],
+        }
         inp = tmp_path / "refs.json"
         inp.write_text(json.dumps(ds), encoding="utf-8")
         out = tmp_path / "out.json"
         ck = tmp_path / "ck.json"
         ck.write_text(json.dumps({"dataset_fingerprint": "x", "results": []}), encoding="utf-8")
         monkeypatch.setattr(
-            "eval.run_evaluation.run_evaluation_async", Mock(side_effect=EvalAbortError("health down"))
+            "eval.run_evaluation.run_evaluation_async",
+            Mock(side_effect=EvalAbortError("health down")),
         )
         with pytest.raises(EvalAbortError):
             run_evaluation(input_path=str(inp), output_path=str(out), checkpoint_path=str(ck))
@@ -889,11 +893,15 @@ class TestCheckpointIntegrity:
         assert not out.exists()  # no final output written
 
     def test_main_exits_nonzero_on_abort(self, tmp_path, monkeypatch) -> None:
-        ds = {"metadata": {}, "questions": [{"question_id": "q1", "question": "Q1?", "reference_answers": []}]}
+        ds = {
+            "metadata": {},
+            "questions": [{"question_id": "q1", "question": "Q1?", "reference_answers": []}],
+        }
         inp = tmp_path / "refs.json"
         inp.write_text(json.dumps(ds), encoding="utf-8")
         monkeypatch.setattr(
-            "eval.run_evaluation.run_evaluation_async", Mock(side_effect=EvalAbortError("health down"))
+            "eval.run_evaluation.run_evaluation_async",
+            Mock(side_effect=EvalAbortError("health down")),
         )
         monkeypatch.setattr(
             sys,
