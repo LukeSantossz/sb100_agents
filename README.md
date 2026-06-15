@@ -246,7 +246,7 @@ curl http://localhost:8000/health            # API: {"status":"ok"}
 ### Tests
 
 ```bash
-pytest tests/ -v --ignore=tests/test_integration.py   # unit suite (CI default)
+pytest tests/ -m "not requires_infra"   # full suite, infra-bound tests excluded (CI default)
 ruff check .                                           # lint
 mypy retrieval/ generation/ memory/ --strict          # type check
 ```
