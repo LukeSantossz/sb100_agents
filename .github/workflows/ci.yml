@@ -89,7 +89,7 @@ jobs:
 
       - name: Run unit tests with coverage
         run: |
-          pytest tests/ --ignore=tests/test_integration.py
+          pytest tests/ -m "not requires_infra"
         env:
           QDRANT_URL: "http://localhost:6333"
           CHAT_MODEL: "llama3.2:3b"
