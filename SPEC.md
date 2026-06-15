@@ -1,39 +1,39 @@
-# SPEC: fix(chat): rate-limit POST /chat per authenticated user (DoS / cost amplification)
+# SPEC: fix(chat): scope the session buffer to the authenticated user (IDOR)
 
 ## Problem
 
-`POST /chat` — the system's most expensive endpoint (each call fans out to Ollama generations plus, by default, multiple paid Groq/OpenRouter verification calls) — has no rate limit, while `/auth/*` already use slowapi; a 7-day token lets one authenticated user loop `/chat` and exhaust the paid quota and saturate local inference (OWASP A04 / CWE-770).
+The in-memory session cache `_sessions` (`api/routes/chat.py:41`) is keyed only by the client-supplied `req.session_id`, so any authenticated user who sends another user's `session_id` shares that user's `ConversationBuffer` — reading their history (it enters the LLM context via `buffer.to_messages()`) and writing into it (poisoning via `buffer.add`) — a Broken Access Control / IDOR (OWASP A01).
 
 ## Design Decision
 
-Apply slowapi's `@limiter.limit` to `chat()` with a **per-user** key derived from the authenticated request, not the client IP. A module-level `_rate_limit_key(request)` reads the bearer token from the `Authorization` header and returns its JWT `sub` (username); it falls back to `get_remote_address` when no valid token is present (those requests are 401'd by `verify_token` anyway). The limit is configurable via a new `chat_rate_limit` setting (default `"30/minute"`); exceeding it returns 429 (slowapi's handler is already registered for `/auth`). `chat()` gains the `request: Request` parameter slowapi requires.
+Namespace the cache by the authenticated identity: thread `current_user` into `_get_or_create_buffer` and key the cache by the composite `f"{current_user.id}:{session_id}"`. Each user gets a disjoint session space, so passing another user's `session_id` only ever resolves to the caller's own (empty) buffer — never the victim's. A composite key is chosen over an owner-check-with-403 because it leaks nothing (no existence oracle) and is the minimal change. The public `session_id` field and the `ChatRequest`/`ChatResponse` contract are unchanged.
 
 ## Alternatives Considered
 
-1. **Per-IP limit (slowapi's default `get_remote_address`).** Rejected: many users behind one NAT share a limit and one user across IPs evades it; the expensive resource is per-identity, so the key must be the user.
-2. **A daily paid-provider call budget / shedding the entropy gate under load.** Deferred (not this PR): a global cost-budget is a larger quota subsystem; the surgical, high-value fix is the per-user request rate limit. Recorded as future hardening.
-3. **Shorten the token TTL to bound abuse.** Rejected: wrong layer (auth lifetime ≠ request throttling) and it would not bound burst cost within a single session.
+1. **Store the owner with the buffer and raise 403/404 on mismatch.** Rejected: heavier, and a 403-vs-404 distinction is an existence oracle for other users' `session_id`s; namespacing closes the vector without leaking.
+2. **Require a server-assigned, unguessable `session_id`.** Rejected: it does not enforce isolation (a stolen/guessed id still works) and pushes security to the client; the server must scope by identity.
+3. **Persist every turn to the per-user `Conversation`/`Message` tables now and drop the in-memory cache.** Rejected: that is the larger #130/#98 work (schema migration, rehydration); the IDOR must be closed surgically first.
 
 ## Scope
 
-- **Includes:** a per-user `@limiter.limit` on `POST /chat` keyed by the JWT subject (IP fallback); the `request: Request` parameter on the handler; a configurable `chat_rate_limit` setting documented in `.env.example`; 429 on exceed. Changes confined to `api/routes/chat.py`, `core/config.py`, `.env.example`.
-- **Does NOT include:** the IDOR per-user session scoping (#108); a daily/global paid-provider budget or load-shedding of the entropy gate (future hardening, no dedicated issue); any change to token TTL or the `/auth` limits; async cancellation of timed-out work (related to #99).
+- **Includes:** pass `current_user` to `_get_or_create_buffer`; key `_sessions` by `f"{current_user.id}:{session_id}"`; changes confined to `api/routes/chat.py`.
+- **Does NOT include:** rate-limiting `/chat` (#110); the LRU-eviction-order bug (#97); whitespace/atomic buffer-add (#95); persisting history to SQLite (#98, #130); any change to the `session_id` schema or the request/response contract.
 
 ## Acceptance Criteria
 
-- `rate_limit_key_returns_jwt_subject` — `_rate_limit_key` returns the token's `sub` for an authenticated request; two users yield different keys, the same user the same key.
-- `rate_limit_key_falls_back_to_ip_without_token` — with a missing/invalid `Authorization` header, the key is the client address (no exception).
-- `chat_is_decorated_with_a_per_user_limit` — `POST /chat` enforces `settings.chat_rate_limit` rather than the default IP limiter.
-- `exceeding_the_limit_returns_429` — the (N+1)-th request within the window returns 429.
+- `same_session_id_different_users_get_independent_buffers` — two users with the same `session_id` resolve to different `ConversationBuffer` instances.
+- `same_user_same_session_id_reuses_buffer` — the same user + `session_id` resolves to the same buffer (multi-turn continuity preserved).
+- `cache_key_includes_authenticated_identity` — the `_sessions` key carries `current_user.id`, not just `session_id`.
+- `cross_user_access_does_not_leak_history` — a user sending the victim's `session_id` gets an empty buffer (no victim turns in `to_messages()`), and the attacker's writes never appear in the victim's buffer.
 - No regression: existing tests pass (`pytest tests/ --ignore=tests/test_integration.py`).
 
 ## Reproducibility
 
-- Versions: Python 3.12, slowapi (already a dependency), on the dev host.
-- Unit (no infra): `uv run pytest tests/test_chat_rate_limit.py tests/test_auth.py tests/test_integration.py -v` — assert `_rate_limit_key` on a crafted token; drive `TestClient` against `/chat` (external services mocked, `verify_token` overridden) with a low `chat_rate_limit` and assert the (limit+1)-th call returns 429.
+- Versions: Python 3.12, on the dev host.
+- Unit (no infra): `uv run pytest tests/test_chat_concurrency.py tests/test_integration.py -v` — call `_get_or_create_buffer` with two distinct user ids and the same `session_id` and assert distinct, isolated buffers; an endpoint-level test (with `verify_token` overridden per user) asserts a second user cannot read the first user's history.
 
 ## Risks and Assumptions
 
-- Assumption: the slowapi `limiter` and its 429 handler are app-wired (confirmed — `/auth` uses `@limiter.limit`, `api/dependencies.py:27`); only a newly decorated route is added.
-- Assumption: decoding the JWT in the key function uses the same `settings.jwt_secret_key`/`ALGORITHM` as `verify_token`; an invalid token falls back to IP rather than raising inside the limiter.
-- Risk: slowapi's default in-memory storage is per-process, so in a multi-worker deployment the limit is per worker; acceptable for the current single-process target, with a shared store (e.g. Redis) as a future scaling concern.
+- Assumption: `current_user.id` is the stable primary key (`database/models.py`); it is used as the namespace. `username` would also work, but `id` is the stable PK.
+- Assumption: `chat()` already receives `current_user` via `Depends(verify_token)` (confirmed, `api/routes/chat.py:92`) — only the cache key changes.
+- Risk: sessions cached under the old key scheme become unreachable after deploy (the cache is in-memory and volatile) — acceptable; nothing persistent is lost.
