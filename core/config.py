@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     verification_chat_model: str = ""  # Empty = use provider default
     entropy_num_samples: int = Field(default=2, ge=2)
     entropy_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
-    ollama_timeout: float = Field(default=120.0, ge=1.0, le=600.0)
+    ollama_timeout: float = Field(default=240.0, ge=1.0, le=600.0)
     ollama_embed_timeout: float = Field(default=5.0, ge=1.0, le=120.0)
     chat_timeout: float = Field(default=600.0, ge=1.0, le=3600.0)
     groq_api_key: str | None = None

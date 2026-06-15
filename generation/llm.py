@@ -12,6 +12,7 @@ import re
 import time
 from typing import cast
 
+import httpx
 import ollama
 
 from core.config import settings
@@ -188,8 +189,7 @@ def generate(
     except (
         ollama.RequestError,
         ollama.ResponseError,
-        TimeoutError,
-        ConnectionError,
+        httpx.RequestError,
     ) as exc:
         logger.exception(
             "generation.llm.failure",
