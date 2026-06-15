@@ -19,9 +19,12 @@ import threading
 import time
 from collections import OrderedDict
 
-from fastapi import APIRouter, Depends, HTTPException
+import jwt
+from fastapi import APIRouter, Depends, HTTPException, Request
+from jwt.exceptions import InvalidTokenError
+from slowapi.util import get_remote_address
 
-from api.dependencies import verify_token
+from api.dependencies import ALGORITHM, limiter, verify_token
 from core.config import settings
 from core.schemas import ChatRequest, ChatResponse
 from database.models import User
@@ -86,8 +89,42 @@ def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
         return buffer
 
 
+def _rate_limit_key(request: Request) -> str:
+    """Rate-limit bucket for POST /chat: the authenticated user, IP as fallback.
+
+    The expensive resource (Ollama generation plus paid verification calls) is
+    consumed per identity, so the limit is keyed on the JWT ``sub`` rather than
+    the client IP: users behind one NAT must not share a budget, and one user
+    must not evade it by rotating IPs. A request whose bearer token is missing
+    or undecodable falls back to the client address — ``verify_token`` rejects
+    it with 401 before the handler body runs anyway.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    scheme, _, token = auth_header.partition(" ")
+    if scheme.lower() == "bearer" and token:
+        try:
+            payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[ALGORITHM])
+        except InvalidTokenError:
+            return str(get_remote_address(request))
+        subject = payload.get("sub")
+        if isinstance(subject, str) and subject:
+            return subject
+    return str(get_remote_address(request))
+
+
+def _chat_rate_limit() -> str:
+    """Per-user limit for POST /chat, read at request time.
+
+    Provided as a callable so the value tracks ``settings.chat_rate_limit``
+    instead of being frozen at import time (e.g. when reconfigured in tests).
+    """
+    return settings.chat_rate_limit
+
+
 @router.post("", response_model=ChatResponse)
+@limiter.limit(_chat_rate_limit, key_func=_rate_limit_key)
 def chat(
+    request: Request,
     req: ChatRequest,
     current_user: User = Depends(verify_token),
 ) -> ChatResponse:
@@ -101,6 +138,7 @@ def chat(
     5. Update the conversation history.
 
     Args:
+        request: HTTP request (required by the slowapi per-user rate limit).
         req: Request containing session_id, question and profile.
         current_user: Authenticated user (injected by ``verify_token``).
 
@@ -109,6 +147,7 @@ def chat(
 
     Raises:
         HTTPException(401): If the JWT is missing, invalid or expired.
+        HTTPException(429): If the per-user rate limit is exceeded.
         HTTPException(503): If Ollama or Qdrant are unavailable.
     """
     logger.info(

@@ -13,6 +13,7 @@ Usage example:
 
 from enum import StrEnum
 
+from limits import parse_many
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -61,9 +62,29 @@ class Settings(BaseSettings):
     ollama_timeout: float = Field(default=240.0, ge=1.0, le=600.0)
     ollama_embed_timeout: float = Field(default=5.0, ge=1.0, le=120.0)
     chat_timeout: float = Field(default=600.0, ge=1.0, le=3600.0)
+    # slowapi limit string enforced per authenticated user on POST /chat.
+    chat_rate_limit: str = "30/minute"
     groq_api_key: str | None = None
     openrouter_api_key: str | None = None
     jwt_secret_key: str = ""
+
+    @field_validator("chat_rate_limit")
+    @classmethod
+    def _validate_chat_rate_limit(cls, value: str) -> str:
+        """Reject an empty or malformed rate-limit string at startup.
+
+        slowapi parses this lazily on the first request, so an invalid
+        ``CHAT_RATE_LIMIT`` would otherwise surface as a 500 on every ``/chat``
+        call instead of a fail-loud boot error. Validating the slowapi format
+        here (via the same ``limits`` parser slowapi uses) catches it early.
+        """
+        try:
+            parse_many(value)
+        except ValueError as exc:
+            raise ValueError(
+                f"CHAT_RATE_LIMIT must be a slowapi limit string like '30/minute' (got {value!r})"
+            ) from exc
+        return value
 
     @field_validator("jwt_secret_key")
     @classmethod
