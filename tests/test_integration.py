@@ -292,3 +292,57 @@ def test_chat_access_log_emits_username_and_session_id(
     record = access_records[0]
     assert getattr(record, "username", None) == "testuser"
     assert getattr(record, "session_id", None) == "log-session-42"
+
+
+def test_cross_user_session_id_does_not_leak_history_via_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Endpoint-level (#108): a second user reusing a session_id gets no history.
+
+    Two users hit POST /chat with the SAME session_id; the second must never see
+    the first user's turns in the history handed to ``generate`` (IDOR closed).
+    """
+    from api.dependencies import limiter
+    from api.routes import chat as chat_module
+
+    captured_histories: list[list[dict[str, str]]] = []
+
+    def _capture_generate(question, context, history, profile):  # type: ignore[no-untyped-def]
+        captured_histories.append(list(history))
+        return f"answer to {question}"
+
+    monkeypatch.setattr(chat_module.settings, "verification_enabled", False)
+    monkeypatch.setattr(chat_module, "generate_embedding", lambda _q: [0.1] * 768)
+    monkeypatch.setattr(chat_module, "search_context", lambda _emb: ["chunk"])
+    monkeypatch.setattr(chat_module, "generate", _capture_generate)
+
+    user_a = User(id=1, username="alice", hashed_password="x", created_at=datetime.now(UTC))
+    user_b = User(id=2, username="bob", hashed_password="x", created_at=datetime.now(UTC))
+    current = {"user": user_a}
+    limiter.reset()
+    app.dependency_overrides[verify_token] = lambda: current["user"]
+    try:
+        client = TestClient(app)
+
+        def _post(question: str) -> int:
+            return client.post(
+                "/chat",
+                json={
+                    "session_id": "victim-session",
+                    "question": question,
+                    "profile": {"name": "u", "expertise": "beginner"},
+                },
+            ).status_code
+
+        assert _post("alice-1") == 200
+        assert _post("alice-2") == 200
+        current["user"] = user_b
+        assert _post("bob-1") == 200
+    finally:
+        app.dependency_overrides.clear()
+        limiter.reset()
+
+    # Bob's request (last) saw an empty history — Alice's turns never leaked.
+    assert captured_histories[-1] == []
+    # Sanity: Alice's second turn did see her own first turn.
+    assert len(captured_histories[1]) > 0
