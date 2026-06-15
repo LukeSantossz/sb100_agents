@@ -45,8 +45,13 @@ _sessions: OrderedDict[str, tuple[ConversationBuffer, float]] = OrderedDict()
 _sessions_lock = threading.Lock()
 
 
-def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
-    """Get or create the conversation buffer for the session.
+def _get_or_create_buffer(current_user: User, session_id: str) -> ConversationBuffer:
+    """Get or create the conversation buffer for the authenticated user's session.
+
+    The cache is namespaced by the authenticated identity — the key is
+    ``f"{current_user.id}:{session_id}"`` — so a client-supplied ``session_id``
+    only ever resolves to the caller's own buffer. Sending another user's
+    ``session_id`` cannot read or poison their history (closes the IDOR, #108).
 
     Implements an LRU cache with TTL to manage session memory.
     Lazily cleans up expired sessions (up to 10 per call).
@@ -55,11 +60,13 @@ def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
     ``_sessions_lock`` to avoid race conditions in FastAPI's thread pool.
 
     Args:
-        session_id: Unique session identifier.
+        current_user: Authenticated user; its ``id`` namespaces the cache key.
+        session_id: Client-supplied session identifier (scoped to the user).
 
     Returns:
-        Conversation buffer associated with the session.
+        Conversation buffer associated with this user's session.
     """
+    key = f"{current_user.id}:{session_id}"
     now = time.time()
 
     with _sessions_lock:
@@ -78,14 +85,14 @@ def _get_or_create_buffer(session_id: str) -> ConversationBuffer:
             _sessions.popitem(last=False)
 
         # Get or create
-        existing = _sessions.pop(session_id, None)
+        existing = _sessions.pop(key, None)
         if existing is not None:
             buffer, _ = existing
-            _sessions[session_id] = (buffer, now)
+            _sessions[key] = (buffer, now)
             return buffer
 
         buffer = ConversationBuffer(maxlen=settings.buffer_maxlen)
-        _sessions[session_id] = (buffer, now)
+        _sessions[key] = (buffer, now)
         return buffer
 
 
@@ -154,7 +161,7 @@ def chat(
         "chat.access",
         extra={"username": current_user.username, "session_id": req.session_id},
     )
-    buffer = _get_or_create_buffer(req.session_id)
+    buffer = _get_or_create_buffer(current_user, req.session_id)
 
     try:
         embedding = generate_embedding(req.question)
