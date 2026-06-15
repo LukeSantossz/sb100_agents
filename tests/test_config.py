@@ -190,3 +190,22 @@ def test_ollama_timeout_rejects_over_max() -> None:
     # The le=600.0 bound (headroom under chat_timeout) stays enforced.
     with pytest.raises(ValidationError):
         Settings(**_kwargs(ollama_timeout=601.0))
+
+
+# ----------------------------- chat_rate_limit (#110) -----------------------------
+
+
+def test_chat_rate_limit_rejects_empty() -> None:
+    # An empty CHAT_RATE_LIMIT must fail at startup, not on the first /chat call.
+    with pytest.raises(ValidationError):
+        Settings(**_kwargs(chat_rate_limit=""))
+
+
+def test_chat_rate_limit_rejects_malformed() -> None:
+    with pytest.raises(ValidationError):
+        Settings(**_kwargs(chat_rate_limit="not-a-limit"))
+
+
+def test_chat_rate_limit_accepts_valid_slowapi_format() -> None:
+    s = Settings(**_kwargs(chat_rate_limit="10/second"))
+    assert s.chat_rate_limit == "10/second"
