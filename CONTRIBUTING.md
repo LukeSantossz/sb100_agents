@@ -62,8 +62,8 @@ design (a typo, a one-line fix).
 ### 6. Run tests
 
 ```bash
-# Unit tests
-pytest tests/ -v --ignore=tests/test_integration.py
+# Test suite (infra-bound tests excluded via the requires_infra marker)
+pytest tests/ -m "not requires_infra"
 
 # Lint
 ruff check .

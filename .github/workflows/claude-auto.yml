@@ -55,7 +55,7 @@ jobs:
             1. Read CLAUDE.md at the repository root for project conventions.
             2. Implement the solution following existing patterns and architecture.
             3. Use Conventional Commits: type(scope): subject (single line, no body, no co-authored-by).
-            4. Run tests: pytest tests/ -v --ignore=tests/test_integration.py
+            4. Run tests: pytest tests/ -m "not requires_infra"
             5. Run lint: ruff check . && ruff format --check .
             6. Fix any failures before finishing.
             7. Keep changes minimal — only modify what is necessary.

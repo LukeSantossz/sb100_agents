@@ -110,6 +110,9 @@ addopts = [
     "--cov-report=xml",
     "--cov-fail-under=23",  # Adjusted after T45 multi-provider entropy (79 stmts, 0% covered)
 ]
+markers = [
+    "requires_infra: test needs a live external service (Ollama/Qdrant); excluded from the default CI selection via -m 'not requires_infra'",
+]
 
 # ============================================================================
 # Coverage Configuration
