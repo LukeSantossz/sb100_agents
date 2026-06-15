@@ -15,7 +15,7 @@ import asyncio
 import json
 import random
 import sys
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import httpx
 import pytest
@@ -34,11 +34,16 @@ from eval.report import (
     generate_verdict_stats,
 )
 from eval.run_evaluation import (
+    EvalAbortError,
     EvalAuthError,
     call_chat_api,
+    dataset_fingerprint,
     load_checkpoint,
     main,
+    merge_results,
     resolve_token,
+    run_evaluation,
+    run_evaluation_async,
     save_checkpoint,
 )
 
@@ -758,3 +763,180 @@ class TestEvalAuth:
         )
         # Missing credentials abort before any network call, so main exits non-zero.
         assert main() == 1
+
+
+# ============================================================================
+# run_evaluation: checkpoint integrity (#94, #103, #107)
+# ============================================================================
+
+
+def _mock_async_client(monkeypatch, *, health_exc: Exception | None = None) -> None:
+    """Patch httpx.AsyncClient so `async with httpx.AsyncClient()` yields a client
+    whose GET /health succeeds (or raises ``health_exc``). POST is unused here
+    because tests patch call_chat_api directly.
+    """
+    client = Mock()
+    if health_exc is not None:
+        client.get = AsyncMock(side_effect=health_exc)
+    else:
+        client.get = AsyncMock(return_value=Mock(raise_for_status=Mock()))
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=client)
+    cm.__aexit__ = AsyncMock(return_value=False)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: cm)
+
+
+def _result(question_id: str, *, success: bool) -> dict:
+    return {
+        "question_id": question_id,
+        "question": f"{question_id}?",
+        "reference_answers": [],
+        "sb100_answer": "ok" if success else "[HTTP 503]",
+        "sb100_hallucination_score": 0.1 if success else None,
+        "sb100_session_id": "s",
+        "sb100_success": success,
+    }
+
+
+class TestCheckpointIntegrity:
+    def test_checkpoint_stores_dataset_fingerprint(self, tmp_path) -> None:
+        ck = tmp_path / "ck.json"
+        save_checkpoint(ck, [{"question_id": "q1"}], dataset_fingerprint="abc123")
+        payload = json.loads(ck.read_text(encoding="utf-8"))
+        assert payload["dataset_fingerprint"] == "abc123"
+
+    def test_mismatched_or_absent_fingerprint_is_ignored(self, tmp_path) -> None:
+        ck = tmp_path / "ck.json"
+        save_checkpoint(ck, [_result("q1", success=True)], dataset_fingerprint="AAA")
+        # Mismatch → fresh start.
+        assert load_checkpoint(ck, dataset_fingerprint="BBB") == []
+        # Absent fingerprint (legacy payload) → fresh start.
+        ck.write_text(json.dumps({"results": [{"question_id": "q1"}]}), encoding="utf-8")
+        assert load_checkpoint(ck, dataset_fingerprint="AAA") == []
+
+    def test_matching_fingerprint_loads_results(self, tmp_path) -> None:
+        ck = tmp_path / "ck.json"
+        records = [_result("q1", success=True)]
+        save_checkpoint(ck, records, dataset_fingerprint="MATCH")
+        assert load_checkpoint(ck, dataset_fingerprint="MATCH") == records
+
+    def test_dataset_fingerprint_is_order_independent(self) -> None:
+        a = dataset_fingerprint([{"question_id": "q1"}, {"question_id": "q2"}])
+        b = dataset_fingerprint([{"question_id": "q2"}, {"question_id": "q1"}])
+        c = dataset_fingerprint([{"question_id": "q1"}, {"question_id": "q3"}])
+        assert a == b
+        assert a != c
+
+    def test_merge_results_replaces_by_question_id_keeping_latest(self) -> None:
+        existing = [_result("q1", success=False)]
+        new = [_result("q1", success=True)]
+        merged = merge_results(existing, new)
+        assert len(merged) == 1
+        assert merged[0]["sb100_success"] is True
+        assert merged[0]["sb100_answer"] == "ok"
+
+    def test_failed_result_is_retried_and_replaces(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("EVAL_API_TOKEN", "tok")
+        questions = [{"question_id": "q1", "question": "Q1?", "reference_answers": []}]
+        fp = dataset_fingerprint(questions)
+        ck = tmp_path / "ck.json"
+        # A prior transient failure is recorded; it must NOT be treated as complete.
+        save_checkpoint(ck, [_result("q1", success=False)], dataset_fingerprint=fp)
+        _mock_async_client(monkeypatch)
+        monkeypatch.setattr(
+            "eval.run_evaluation.call_chat_api",
+            AsyncMock(
+                return_value={
+                    "success": True,
+                    "answer": "ok",
+                    "hallucination_score": 0.1,
+                    "session_id": "s1",
+                }
+            ),
+        )
+        results = asyncio.run(run_evaluation_async(questions, checkpoint_path=ck))
+        q1 = [r for r in results if r["question_id"] == "q1"]
+        assert len(q1) == 1  # no duplicate
+        assert q1[0]["sb100_success"] is True  # retried and replaced
+        assert q1[0]["sb100_answer"] == "ok"
+
+    def test_health_failure_raises_abort_and_preserves_checkpoint(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("EVAL_API_TOKEN", "tok")
+        questions = [{"question_id": "q1", "question": "Q1?", "reference_answers": []}]
+        fp = dataset_fingerprint(questions)
+        ck = tmp_path / "ck.json"
+        save_checkpoint(ck, [], dataset_fingerprint=fp)
+        _mock_async_client(monkeypatch, health_exc=httpx.ConnectError("down"))
+        with pytest.raises(EvalAbortError):
+            asyncio.run(run_evaluation_async(questions, checkpoint_path=ck))
+        assert ck.exists()  # checkpoint preserved on abort
+
+    def test_abort_preserves_checkpoint_and_writes_no_output(self, tmp_path, monkeypatch) -> None:
+        ds = {"metadata": {}, "questions": [{"question_id": "q1", "question": "Q1?", "reference_answers": []}]}
+        inp = tmp_path / "refs.json"
+        inp.write_text(json.dumps(ds), encoding="utf-8")
+        out = tmp_path / "out.json"
+        ck = tmp_path / "ck.json"
+        ck.write_text(json.dumps({"dataset_fingerprint": "x", "results": []}), encoding="utf-8")
+        monkeypatch.setattr(
+            "eval.run_evaluation.run_evaluation_async", Mock(side_effect=EvalAbortError("health down"))
+        )
+        with pytest.raises(EvalAbortError):
+            run_evaluation(input_path=str(inp), output_path=str(out), checkpoint_path=str(ck))
+        assert ck.exists()  # not deleted
+        assert not out.exists()  # no final output written
+
+    def test_main_exits_nonzero_on_abort(self, tmp_path, monkeypatch) -> None:
+        ds = {"metadata": {}, "questions": [{"question_id": "q1", "question": "Q1?", "reference_answers": []}]}
+        inp = tmp_path / "refs.json"
+        inp.write_text(json.dumps(ds), encoding="utf-8")
+        monkeypatch.setattr(
+            "eval.run_evaluation.run_evaluation_async", Mock(side_effect=EvalAbortError("health down"))
+        )
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "run_evaluation.py",
+                "--input",
+                str(inp),
+                "--output",
+                str(tmp_path / "o.json"),
+                "--checkpoint",
+                str(tmp_path / "c.json"),
+            ],
+        )
+        assert main() == 1
+
+    def test_checkpoint_deleted_only_when_all_successful(self, tmp_path, monkeypatch) -> None:
+        ds = {
+            "metadata": {},
+            "questions": [
+                {"question_id": "q1", "question": "Q1?", "reference_answers": []},
+                {"question_id": "q2", "question": "Q2?", "reference_answers": []},
+            ],
+        }
+        inp = tmp_path / "refs.json"
+        inp.write_text(json.dumps(ds), encoding="utf-8")
+        out = tmp_path / "out.json"
+        ck = tmp_path / "ck.json"
+
+        # All successful → checkpoint removed.
+        ck.write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(
+            "eval.run_evaluation.run_evaluation_async",
+            AsyncMock(return_value=[_result("q1", success=True), _result("q2", success=True)]),
+        )
+        run_evaluation(input_path=str(inp), output_path=str(out), checkpoint_path=str(ck))
+        assert not ck.exists()
+
+        # One failure remains → checkpoint kept for the next resume.
+        ck.write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(
+            "eval.run_evaluation.run_evaluation_async",
+            AsyncMock(return_value=[_result("q1", success=True), _result("q2", success=False)]),
+        )
+        run_evaluation(input_path=str(inp), output_path=str(out), checkpoint_path=str(ck))
+        assert ck.exists()
