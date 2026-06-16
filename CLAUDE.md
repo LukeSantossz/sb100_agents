@@ -7,13 +7,18 @@ and the documents it lists. Treat them as binding:
 
 - Specify before building: produce a `SPEC.md` per `.standards/docs/standards/spec_method.md`
   and pass the Spec Gate before writing code for any non-trivial change.
-- Follow `.standards/docs/standards/code_conventions.md`, including its precedence order.
+- Follow `.standards/docs/standards/code_conventions.md`, including its precedence order, which
+  is authoritative for resolving any conflict between rules.
 - Write tests before implementation (red-green-refactor), per the Testing section of `code_conventions.md`.
 - Follow `.standards/docs/standards/ai_guidelines.md` for self-review and the Review Composition
   hierarchy (R1 internal, R2 cross-provider, R3 automated PR).
-- Follow `.standards/docs/standards/github.md` for Conventional Commits, branch naming, and templates.
-  No co-author or AI-attribution lines in commits.
-- Token economy per `.standards/docs/standards/token_economy.md`.
+- Follow `.standards/docs/standards/github.md` for Conventional Commits, branch naming, and the
+  PR, Issue, and README templates. No co-author or AI-attribution lines in commits.
+- Record durable design decisions as ADRs under `docs/adr/`, promoted at the Spec Gate per
+  `.standards/docs/standards/spec_method.md`; the README Engineering Decisions section indexes them.
+- Token economy per `.standards/docs/standards/token_economy.md`: terse mode is allowed in
+  conversation but never in `SPEC.md`, PR, Issue, or commit artifacts; it never overrides Safety
+  or Correctness.
 - All output in English.
 
 ## Project Adoption Notes
@@ -26,6 +31,13 @@ How the framework's generic rules instantiate in this repository:
 - Ephemeral `SPEC.md`: the spec lives at the repository root on the feature branch and
   is removed as the branch's final commit before merge. The PR's Spec Link points to the
   `SPEC.md` blob at a branch commit (or the content is pasted in the PR description).
-- Review composition: no second-provider Reviewer (R2) is available in this project.
-  R1 internal review plus the human CRURA review stand in for R2; record this in every
-  PR's Self-Review Checklist. R3 (automated PR review) is not configured.
+- Review composition: the framework now ships the Codex R2 cross-provider pre-push gate
+  (`.standards/docs/standards/codex_review.md`), but it is not activated here — no second-provider
+  Reviewer is configured. R1 internal review plus the human CRURA review stand in for R2; record
+  this in every PR's Review Checklist. Activating the gate is a local opt-in
+  (`git config core.hooksPath .standards/.githooks`) once a second provider is available. R3
+  (automated PR review) is not configured.
+- Domain docs: the project's ubiquitous language lives in `CONTEXT.md` at the repository root, and
+  durable decisions live in `docs/adr/` (indexed by the README Engineering Decisions section). The
+  framework's own process vocabulary — Developer, Author, Reviewer, SPEC, ADR, CRURA — is defined
+  in `.standards/CONTEXT.md`.
