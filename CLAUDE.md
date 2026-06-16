@@ -13,7 +13,7 @@ and the documents it lists. Treat them as binding:
   hierarchy (R1 internal, R2 cross-provider, R3 automated PR).
 - Follow `.standards/docs/standards/github.md` for Conventional Commits, branch naming, and templates.
   No co-author or AI-attribution lines in commits.
-- Token economy per `.standards/token_economy.md`.
+- Token economy per `.standards/docs/standards/token_economy.md`.
 - All output in English.
 
 ## Project Adoption Notes
