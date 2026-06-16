@@ -99,14 +99,15 @@ the Neutral Score — not a 503 — when verification itself fails.
 _Avoid_: validator, checker, filter.
 
 **Provider**:
-The backend serving a model for verification sampling — Ollama (local, default), Groq, or
-OpenRouter. A SmartB100 runtime concept; distinct from the framework's model-vendor Provider
-in `.standards/CONTEXT.md`.
+The backend serving a model for verification sampling — Groq (the default), OpenRouter, or
+Ollama (the offline option, no API key required). A SmartB100 runtime concept; distinct from the
+framework's model-vendor Provider in `.standards/CONTEXT.md`.
 _Avoid_: backend, vendor, service.
 
 **Neutral Score**:
-The `0.5` Hallucination Score returned when verification cannot run (missing key, provider
-failure). A declared degraded path, not an error.
+The `0.5` Hallucination Score the Verification Gate returns when the entropy computation raises (a
+provider or runtime failure). A missing API key instead short-circuits to `0.0`, skipping
+verification — not the Neutral Score. A declared degraded path, not an error.
 _Avoid_: default score, error score, fallback (reserve for the fallback answer).
 
 **Threshold**:

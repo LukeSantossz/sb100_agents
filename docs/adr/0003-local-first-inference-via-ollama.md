@@ -20,7 +20,9 @@ Accepted.
 
 ## Consequences
 
-- The whole core pipeline, including the Ollama verification path, runs offline and free.
+- The core pipeline — embeddings and chat — runs offline and free. Verification can also run
+  offline, but only when the Ollama Provider is selected; the default verification Provider is the
+  hosted Groq (see ADR-0004).
 - CPU inference latency is high (minutes per answer on CPU-only hosts), mitigated by a
   configurable `CHAT_TIMEOUT` and transient-error retries. A GPU or hosted provider removes
   this limitation.

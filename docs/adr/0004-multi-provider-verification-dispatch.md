@@ -1,8 +1,8 @@
 # Multi-provider verification dispatch
 
 The hallucination check should not hard-depend on one paid API. The Verification Gate dispatches
-candidate-answer sampling across a selectable Provider — Ollama (local default), Groq, or
-OpenRouter — behind a single interface.
+candidate-answer sampling across a selectable Provider — Groq (the default), OpenRouter, or
+Ollama (the offline option) — behind a single interface.
 
 ## Status
 
@@ -17,8 +17,11 @@ Accepted.
 
 ## Consequences
 
-- Verification runs offline through the Ollama Provider; Groq and OpenRouter are opt-in for
-  speed or quality.
+- Selecting the Ollama Provider keeps verification fully offline; Groq (the default) and
+  OpenRouter are hosted options chosen for speed or quality.
+- The default Provider is the hosted Groq, so with no `GROQ_API_KEY` set, verification
+  short-circuits to a `0.0` score (skipped) rather than failing. Running verification offline by
+  default requires selecting the Ollama Provider.
 - Each Provider's SDK quirks (parameter names, client construction) live behind the dispatch;
   adding a Provider means encoding its quirks there.
 - A misconfigured or invalid model id for a hosted Provider degrades silently to the Neutral
