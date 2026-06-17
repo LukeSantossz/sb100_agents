@@ -181,16 +181,18 @@ The first two diagrams are *logical* (what runs); the last is *topological* (whe
 
 ## Engineering Decisions
 
-| Decision | Alternative considered | Why this approach |
+A curated index of the most significant decisions; each row links the [ADR](./docs/adr/) that
+holds the full rationale, alternatives, and consequences.
+
+| Decision | Alternative considered | Rationale |
 | --- | --- | --- |
-| **Modular monolith** | Microservice per RAG step | The pipeline steps share one `ChatRequest`/`ChatResponse` model and run synchronously per request; splitting them would add network latency and contract-versioning overhead with no scaling benefit at current load. See [§ Architectural Style](#architectural-style). |
-| **Semantic entropy for hallucination scoring** | Binary classifier / LLM-as-judge flag | Clustering N candidate answers by similarity and computing Shannon entropy yields a continuous `0.0–1.0` score with no labeled training data — disagreement between candidates *is* the signal. |
-| **Ollama for all embeddings** | Hosted provider embeddings (Groq / OpenRouter) | Keeps the embedding space stable regardless of the generation provider, runs free and offline, and removes a paid API dependency from the verification path. |
-| **Multi-provider verification dispatch** | OpenAI-only verification | Removes the hard dependency on a paid API; the Ollama provider keeps the entire hallucination check runnable offline. |
-| **Sync `/chat` handler** | `async def chat()` | FastAPI runs sync handlers in a thread pool, freeing the event loop for `/health` and concurrent requests while the LLM blocks — an `async` handler would block the loop on the synchronous Ollama call. |
-| **bcrypt + JWT gate on `/chat`** | Session cookies / static API keys | Stateless, timing-safe auth that fits a stateless API; the accepted cost is one DB lookup per request in exchange for instant revocation when a user is deleted. **Breaking:** pre-gate SHA-256 users must re-register. |
-| **SQLite for persistence** | PostgreSQL | Zero-ops single-node storage matches current scale; the Windows bind-mount pitfall is documented and the API fails loudly (`RuntimeError`) instead of silently. Postgres is the migration path once writes contend. |
-| **Local `llama3.2:3b` on CPU** | Larger hosted model | Keeps the system fully offline and free to run; the accepted trade-off is higher latency, mitigated by a configurable `CHAT_TIMEOUT` and transient-error retries. |
+| Modular monolith | Microservice per RAG step | Shared request model, synchronous pipeline — [ADR-0001](./docs/adr/0001-modular-monolith.md) |
+| Semantic entropy for the hallucination score | Binary classifier / LLM-as-judge | Continuous `0.0–1.0` score with no labeled data — [ADR-0002](./docs/adr/0002-semantic-entropy-hallucination-score.md) |
+| Local-first inference via Ollama | Hosted embeddings / larger hosted model | Offline, free, stable embedding space — [ADR-0003](./docs/adr/0003-local-first-inference-via-ollama.md) |
+| Multi-provider verification dispatch | OpenAI-only verification | Removes the hard paid dependency — [ADR-0004](./docs/adr/0004-multi-provider-verification-dispatch.md) |
+| Synchronous `/chat` handler | `async def` handler | Threadpool keeps the event loop free — [ADR-0005](./docs/adr/0005-synchronous-chat-handler.md) |
+| bcrypt + JWT gate on `/chat` | Session cookies / static API keys | Stateless, instantly revocable auth — [ADR-0006](./docs/adr/0006-bcrypt-jwt-auth-gate.md) |
+| SQLite for persistence | PostgreSQL | Zero-ops at single-node scale — [ADR-0007](./docs/adr/0007-sqlite-persistence.md) |
 
 ## Getting Started
 
