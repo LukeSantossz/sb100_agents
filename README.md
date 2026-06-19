@@ -193,6 +193,8 @@ holds the full rationale, alternatives, and consequences.
 | Synchronous `/chat` handler | `async def` handler | Threadpool keeps the event loop free — [ADR-0005](./docs/adr/0005-synchronous-chat-handler.md) |
 | bcrypt + JWT gate on `/chat` | Session cookies / static API keys | Stateless, instantly revocable auth — [ADR-0006](./docs/adr/0006-bcrypt-jwt-auth-gate.md) |
 | SQLite for persistence | PostgreSQL | Zero-ops at single-node scale — [ADR-0007](./docs/adr/0007-sqlite-persistence.md) |
+| Deepagents on LangGraph as the agent substrate | Raw LangGraph / hand-rolled loop | Built-in planning, sub-agents, filesystem; isolated behind `agent/` — [ADR-0008](./docs/adr/0008-deepagents-orchestration-substrate.md) |
+| Hosted Groq (GPT-OSS) for the agent reasoning tier | Larger local model / Claude | No local GPU; reuses the default verification provider; reliable tool-calling — [ADR-0009](./docs/adr/0009-groq-agent-model.md) |
 
 ## Getting Started
 
