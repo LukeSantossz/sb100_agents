@@ -41,3 +41,25 @@ def test_test_job_checks_out_submodules() -> None:
         "ci.yml `test` job must check out submodules so the standards path "
         f"guard runs in CI; got submodules={submodules!r}"
     )
+
+
+def test_all_checkout_steps_disable_credential_persistence() -> None:
+    """Every ``actions/checkout`` step sets ``persist-credentials: false``.
+
+    The checkout default persists the GitHub token in ``.git/config``, which can
+    leak through uploaded artifacts (zizmor ``artipacked``); the ``test`` job
+    uploads ``coverage.xml``. Pinning it off on every checkout step keeps the
+    token from outliving the action.
+    """
+    workflow = yaml.safe_load(_CI_WORKFLOW.read_text(encoding="utf-8"))
+    offenders = [
+        job_name
+        for job_name, job in workflow["jobs"].items()
+        for step in job.get("steps", [])
+        if str(step.get("uses", "")).startswith("actions/checkout")
+        and step.get("with", {}).get("persist-credentials") is not False
+    ]
+    assert not offenders, (
+        "actions/checkout steps must set persist-credentials: false "
+        f"(artipacked); missing in jobs: {offenders}"
+    )
