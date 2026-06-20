@@ -42,7 +42,7 @@ class Settings(BaseSettings):
         - ``jwt_secret_key``: required, length >= 32
     """
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # GPU: ~10-30s | CPU-only: ~160-200s (llama3.2:3b) per response
     chat_model: str = "llama3.2:3b"
