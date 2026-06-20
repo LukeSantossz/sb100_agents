@@ -339,6 +339,8 @@ sb100_agents/
 - [ ] Claim verification (atomic decomposition + RAG fact-checking)
 - [ ] Streaming responses (SSE)
 
+The pending work is sequenced into delivery Waves in the [agentic migration roadmap](./docs/roadmap.md).
+
 ## Known Issues & Limitations
 
 - **CPU inference latency** — `llama3.2:3b` with RAG context can take minutes per answer on CPU-only hosts. A configurable `CHAT_TIMEOUT` (default 600s) plus transient-error retries exist for this reason; the limitation disappears with a GPU or a hosted provider.
