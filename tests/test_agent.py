@@ -2,6 +2,10 @@
 
 from unittest.mock import patch
 
+from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+from langgraph.graph.state import CompiledStateGraph
+
+from agent.factory import create_agent, default_model
 from agent.tools import search_corpus
 
 
@@ -28,12 +32,6 @@ def test_search_corpus_degrades_on_retrieval_error() -> None:
     with patch("agent.tools.generate_embedding", side_effect=RuntimeError("ollama down")):
         result = search_corpus.invoke({"query": "x"})
     assert "retrieval error" in result.lower()
-
-
-from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
-from langgraph.graph.state import CompiledStateGraph
-
-from agent.factory import create_agent, default_model
 
 
 def test_create_agent_compiles_graph_with_injected_model() -> None:
