@@ -209,3 +209,46 @@ def test_chat_rate_limit_rejects_malformed() -> None:
 def test_chat_rate_limit_accepts_valid_slowapi_format() -> None:
     s = Settings(**_kwargs(chat_rate_limit="10/second"))
     assert s.chat_rate_limit == "10/second"
+
+
+# ----------------------------- unknown .env keys (#166) -----------------------------
+
+
+def test_settings_loads_when_env_has_unknown_keys(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A .env carrying keys not declared on Settings must not abort startup.
+
+    `.env.example` ships `OLLAMA_HOST` (read by the `ollama` library directly) and the
+    `EVAL_*` keys (used by `eval/`), none of which are Settings fields. Settings must own
+    only its own fields and ignore the rest instead of refusing to boot.
+    """
+    monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+    monkeypatch.delenv("OLLAMA_HOST", raising=False)
+    valid_jwt = "test-jwt-secret-key-for-tests-only-32-chars-minimum"
+    (tmp_path / ".env").write_text(
+        f"JWT_SECRET_KEY={valid_jwt}\n"
+        "OLLAMA_HOST=http://host.docker.internal:11434\n"
+        "EVAL_USERNAME=foo\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    s = Settings()
+
+    assert s.jwt_secret_key == valid_jwt
+
+
+def test_settings_still_rejects_invalid_declared_field_with_unknown_keys(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ignoring unknown keys must not weaken field validation: an empty JWT still fails."""
+    monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+    (tmp_path / ".env").write_text(
+        "JWT_SECRET_KEY=\nOLLAMA_HOST=http://host.docker.internal:11434\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(ValidationError):
+        Settings()
