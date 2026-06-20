@@ -78,6 +78,7 @@ warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 module = [
+    "agent.*",
     "api.*",
     "core.*",
     "retrieval.*",
@@ -102,6 +103,7 @@ python_files = ["test_*.py"]
 pythonpath = ["."]
 addopts = [
     "-v",
+    "--cov=agent",
     "--cov=api",
     "--cov=core",
     "--cov=retrieval",
