@@ -252,3 +252,11 @@ def test_settings_still_rejects_invalid_declared_field_with_unknown_keys(
 
     with pytest.raises(ValidationError):
         Settings()
+
+
+# ----------------------------- agent_model (#170) -----------------------------
+
+
+def test_agent_model_default() -> None:
+    s = Settings(**_kwargs())
+    assert s.agent_model == "openai/gpt-oss-20b"
