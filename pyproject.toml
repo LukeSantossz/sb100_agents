@@ -38,7 +38,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["api*", "core*", "database*", "generation*", "memory*", "retrieval*", "verification*", "ui*"]
+include = ["agent*", "api*", "core*", "database*", "generation*", "memory*", "retrieval*", "verification*", "ui*"]
 exclude = ["tests*", "eval*", "scripts*"]
 
 [tool.ruff]
