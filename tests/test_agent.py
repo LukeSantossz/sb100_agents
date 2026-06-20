@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langgraph.graph.state import CompiledStateGraph
+from pydantic import SecretStr
 
 from agent.factory import create_agent, default_model
 from agent.tools import search_corpus
@@ -48,7 +49,26 @@ def test_default_model_reads_settings() -> None:
         def __init__(self, **kwargs: object) -> None:
             captured.update(kwargs)
 
-    with patch("agent.factory.ChatGroq", _FakeChatGroq):
+    with (
+        patch("agent.factory.ChatGroq", _FakeChatGroq),
+        patch("agent.factory.settings.groq_api_key", "test-groq-key"),
+    ):
         default_model()
     assert captured["model"] == "openai/gpt-oss-20b"
-    assert "api_key" in captured
+    assert isinstance(captured["api_key"], SecretStr)
+    assert captured["api_key"].get_secret_value() == "test-groq-key"
+
+
+def test_default_model_handles_none_api_key() -> None:
+    captured: dict[str, object] = {}
+
+    class _FakeChatGroq:
+        def __init__(self, **kwargs: object) -> None:
+            captured.update(kwargs)
+
+    with (
+        patch("agent.factory.ChatGroq", _FakeChatGroq),
+        patch("agent.factory.settings.groq_api_key", None),
+    ):
+        default_model()
+    assert captured["api_key"] is None
