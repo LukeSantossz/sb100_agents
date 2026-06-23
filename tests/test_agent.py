@@ -72,3 +72,54 @@ def test_default_model_handles_none_api_key() -> None:
     ):
         default_model()
     assert captured["api_key"] is None
+
+
+def test_invoke_agent_extracts_answer_and_concatenated_context() -> None:
+    from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+
+    from agent.runner import AgentOutcome, invoke_agent
+    from core.schemas import ExpertiseLevel, UserProfile
+
+    class _StubGraph:
+        def __init__(self) -> None:
+            self.received: dict[str, object] = {}
+
+        def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+            self.received = payload
+            return {
+                "messages": [
+                    HumanMessage(content="q"),
+                    ToolMessage(content="chunk A", tool_call_id="1", name="search_corpus"),
+                    ToolMessage(content="chunk B", tool_call_id="2", name="search_corpus"),
+                    AIMessage(content="final answer"),
+                ]
+            }
+
+    profile = UserProfile(name="Ana", expertise=ExpertiseLevel.expert)
+    graph = _StubGraph()
+    outcome = invoke_agent("quando plantar soja?", [], profile, graph=graph)
+
+    assert isinstance(outcome, AgentOutcome)
+    assert outcome.answer == "final answer"
+    assert "chunk A" in outcome.context
+    assert "chunk B" in outcome.context
+    # the user question reaches the graph
+    messages = graph.received["messages"]
+    assert any("quando plantar soja?" in str(getattr(m, "content", m)) for m in messages)
+
+
+def test_invoke_agent_returns_empty_context_without_tool_calls() -> None:
+    from langchain_core.messages import AIMessage
+
+    from agent.runner import invoke_agent
+    from core.schemas import ExpertiseLevel, UserProfile
+
+    class _StubGraph:
+        def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+            return {"messages": [AIMessage(content="answer without tools")]}
+
+    profile = UserProfile(name="Ana", expertise=ExpertiseLevel.beginner)
+    outcome = invoke_agent("q", [], profile, graph=_StubGraph())
+
+    assert outcome.answer == "answer without tools"
+    assert outcome.context == ""
