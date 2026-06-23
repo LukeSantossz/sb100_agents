@@ -67,6 +67,7 @@ def mock_verification_disabled():
     with patch("api.routes.chat.settings") as mock_settings:
         mock_settings.verification_enabled = False
         mock_settings.buffer_maxlen = 10
+        mock_settings.agent_enabled = False
         yield mock_settings
 
 
@@ -184,6 +185,7 @@ def mock_verification_enabled():
     with patch("api.routes.chat.settings") as mock_settings:
         mock_settings.verification_enabled = True
         mock_settings.buffer_maxlen = 10
+        mock_settings.agent_enabled = False
 
         with patch("api.routes.chat.verify_and_generate") as mock_verify:
             mock_verify.return_value = ChatResponse(
@@ -346,3 +348,66 @@ def test_cross_user_session_id_does_not_leak_history_via_endpoint(
     assert captured_histories[-1] == []
     # Sanity: Alice's second turn did see her own first turn.
     assert len(captured_histories[1]) > 0
+
+
+@pytest.fixture
+def _agent_payload() -> dict[str, object]:
+    return {
+        "session_id": "agent-session",
+        "question": "When should I plant soybeans in the Midwest?",
+        "profile": {"name": "TestUser", "expertise": "intermediate"},
+    }
+
+
+def test_chat_agent_path_returns_agent_answer_and_gate_score(client, _agent_payload):
+    from agent.runner import AgentOutcome
+
+    with (
+        patch("api.routes.chat.settings") as mock_settings,
+        patch("api.routes.chat.invoke_agent") as mock_invoke,
+        patch("api.routes.chat.score_context", return_value=0.22) as mock_score,
+    ):
+        mock_settings.agent_enabled = True
+        mock_settings.verification_enabled = True
+        mock_settings.buffer_maxlen = 10
+        mock_invoke.return_value = AgentOutcome(answer="agent answer", context="ctx")
+        response = client.post("/chat", json=_agent_payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["answer"] == "agent answer"
+    assert data["hallucination_score"] == 0.22
+    mock_score.assert_called_once()
+
+
+def test_chat_agent_path_zero_score_when_verification_disabled(client, _agent_payload):
+    from agent.runner import AgentOutcome
+
+    with (
+        patch("api.routes.chat.settings") as mock_settings,
+        patch("api.routes.chat.invoke_agent") as mock_invoke,
+        patch("api.routes.chat.score_context") as mock_score,
+    ):
+        mock_settings.agent_enabled = True
+        mock_settings.verification_enabled = False
+        mock_settings.buffer_maxlen = 10
+        mock_invoke.return_value = AgentOutcome(answer="agent answer", context="ctx")
+        response = client.post("/chat", json=_agent_payload)
+
+    assert response.status_code == 200
+    assert response.json()["hallucination_score"] == 0.0
+    mock_score.assert_not_called()
+
+
+def test_chat_agent_path_failure_returns_503_without_leaking_detail(client, _agent_payload):
+    with (
+        patch("api.routes.chat.settings") as mock_settings,
+        patch("api.routes.chat.invoke_agent", side_effect=RuntimeError("groq secret boom")),
+    ):
+        mock_settings.agent_enabled = True
+        mock_settings.verification_enabled = True
+        mock_settings.buffer_maxlen = 10
+        response = client.post("/chat", json=_agent_payload)
+
+    assert response.status_code == 503
+    assert "groq secret boom" not in response.json()["detail"]

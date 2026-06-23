@@ -32,7 +32,9 @@ from generation.llm import generate
 from memory.conversation import ConversationBuffer
 from retrieval.embedder import generate_embedding
 from retrieval.vector_store import search_context
+from agent.runner import invoke_agent
 from verification.gate import evaluate as verify_and_generate
+from verification.gate import score_context
 
 logger = logging.getLogger(__name__)
 
@@ -163,58 +165,74 @@ def chat(
     )
     buffer = _get_or_create_buffer(current_user, req.session_id)
 
-    try:
-        embedding = generate_embedding(req.question)
-    except Exception as e:
-        logger.warning(
-            "chat.embedding_failure",
-            extra={"username": current_user.username, "error": str(e)},
-        )
-        raise HTTPException(
-            status_code=503,
-            detail=f"Embedding generation failed: {str(e)}. Check that Ollama is running.",
-        ) from e
-
-    try:
-        context_chunks = search_context(embedding)
-    except Exception as e:
-        logger.warning(
-            "chat.context_failure",
-            extra={"username": current_user.username, "error": str(e)},
-        )
-        raise HTTPException(
-            status_code=503,
-            detail=f"Context search failed: {str(e)}. Check that Qdrant is running.",
-        ) from e
-
-    context_text = "\n\n".join(context_chunks) if context_chunks else ""
-    history = buffer.to_messages()
-
-    try:
-        if settings.verification_enabled:
-            response = verify_and_generate(
-                question=req.question,
-                context=context_text,
-                history=history,
-                profile=req.profile,
+    if settings.agent_enabled:
+        history = buffer.to_messages()
+        try:
+            outcome = invoke_agent(req.question, history, req.profile)
+        except Exception as e:
+            logger.warning(
+                "chat.agent_failure",
+                extra={"username": current_user.username, "error": str(e)},
             )
-        else:
-            answer = generate(
-                question=req.question,
-                context=context_text,
-                history=history,
-                profile=req.profile,
+            raise HTTPException(
+                status_code=503,
+                detail="Agent answer generation failed. Check the agent service configuration.",
+            ) from e
+        score = score_context(req.question, outcome.context) if settings.verification_enabled else 0.0
+        response = ChatResponse(answer=outcome.answer, hallucination_score=score)
+    else:
+        try:
+            embedding = generate_embedding(req.question)
+        except Exception as e:
+            logger.warning(
+                "chat.embedding_failure",
+                extra={"username": current_user.username, "error": str(e)},
             )
-            response = ChatResponse(answer=answer, hallucination_score=0.0)
-    except Exception as e:
-        logger.warning(
-            "chat.generation_failure",
-            extra={"username": current_user.username, "error": str(e)},
-        )
-        raise HTTPException(
-            status_code=503,
-            detail=f"Answer generation failed: {str(e)}. Check that Ollama is running.",
-        ) from e
+            raise HTTPException(
+                status_code=503,
+                detail=f"Embedding generation failed: {str(e)}. Check that Ollama is running.",
+            ) from e
+
+        try:
+            context_chunks = search_context(embedding)
+        except Exception as e:
+            logger.warning(
+                "chat.context_failure",
+                extra={"username": current_user.username, "error": str(e)},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=f"Context search failed: {str(e)}. Check that Qdrant is running.",
+            ) from e
+
+        context_text = "\n\n".join(context_chunks) if context_chunks else ""
+        history = buffer.to_messages()
+
+        try:
+            if settings.verification_enabled:
+                response = verify_and_generate(
+                    question=req.question,
+                    context=context_text,
+                    history=history,
+                    profile=req.profile,
+                )
+            else:
+                answer = generate(
+                    question=req.question,
+                    context=context_text,
+                    history=history,
+                    profile=req.profile,
+                )
+                response = ChatResponse(answer=answer, hallucination_score=0.0)
+        except Exception as e:
+            logger.warning(
+                "chat.generation_failure",
+                extra={"username": current_user.username, "error": str(e)},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=f"Answer generation failed: {str(e)}. Check that Ollama is running.",
+            ) from e
 
     # Update the buffer only after success
     buffer.add("user", req.question)
