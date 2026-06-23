@@ -9,6 +9,10 @@ from agent.factory import create_agent
 from agent.tools import SEARCH_CORPUS_SENTINELS
 from core.schemas import UserProfile
 
+# Reuse the generation-layer sanitizer so the agent path has the same
+# prompt-injection hardening as the legacy /chat path (parity, no duplication).
+from generation.llm import _sanitize_question
+
 
 @dataclass(frozen=True)
 class AgentOutcome:
@@ -33,8 +37,11 @@ def _build_input(
         f"User profile — name: {profile.name}, expertise: {profile.expertise.value}. "
         "Adapt the depth and tone of your answer accordingly."
     )
+    # Sanitize the user question to strip model control tokens; the preamble is
+    # system-authored and does not require sanitization.
+    sanitized_question = _sanitize_question(question)
     messages: list[dict[str, str]] = list(history)
-    messages.append({"role": "user", "content": f"{preamble}\n\n{question}"})
+    messages.append({"role": "user", "content": f"{preamble}\n\n{sanitized_question}"})
     return {"messages": messages}
 
 
