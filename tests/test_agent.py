@@ -7,7 +7,9 @@ from langgraph.graph.state import CompiledStateGraph
 from pydantic import SecretStr
 
 from agent.factory import create_agent, default_model
+from agent.prompt import AGENT_INSTRUCTIONS
 from agent.tools import search_corpus
+from generation.llm import _ANTI_INJECTION_NOTICE
 
 
 def test_search_corpus_returns_context_text() -> None:
@@ -33,6 +35,10 @@ def test_search_corpus_degrades_on_retrieval_error() -> None:
     with patch("agent.tools.generate_embedding", side_effect=RuntimeError("ollama down")):
         result = search_corpus.invoke({"query": "x"})
     assert "retrieval error" in result.lower()
+
+
+def test_agent_instructions_contain_anti_injection_notice() -> None:
+    assert _ANTI_INJECTION_NOTICE in AGENT_INSTRUCTIONS
 
 
 def test_create_agent_compiles_graph_with_injected_model() -> None:
