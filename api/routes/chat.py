@@ -170,9 +170,9 @@ def chat(
         try:
             outcome = invoke_agent(req.question, history, req.profile)
         except Exception as e:
-            logger.warning(
+            logger.exception(
                 "chat.agent_failure",
-                extra={"username": current_user.username, "error": str(e)},
+                extra={"username": current_user.username},
             )
             raise HTTPException(
                 status_code=503,
