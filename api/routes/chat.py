@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from jwt.exceptions import InvalidTokenError
 from slowapi.util import get_remote_address
 
+from agent.runner import invoke_agent
 from api.dependencies import ALGORITHM, limiter, verify_token
 from core.config import settings
 from core.schemas import ChatRequest, ChatResponse
@@ -32,7 +33,6 @@ from generation.llm import generate
 from memory.conversation import ConversationBuffer
 from retrieval.embedder import generate_embedding
 from retrieval.vector_store import search_context
-from agent.runner import invoke_agent
 from verification.gate import evaluate as verify_and_generate
 from verification.gate import score_context
 
