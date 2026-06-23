@@ -63,3 +63,18 @@ def evaluate(
             return ChatResponse(answer=answer, hallucination_score=last_score)
 
     return ChatResponse(answer=FALLBACK_MESSAGE, hallucination_score=last_score)
+
+
+def score_context(question: str, context: str) -> float:
+    """Score the trustworthiness of an answer grounded in ``context`` for the agent path.
+
+    Returns the neutral score when there is no context to verify; otherwise runs the
+    semantic-entropy score with the same neutral fallback as ``evaluate`` on verifier failure.
+    """
+    if not context.strip():
+        return NEUTRAL_SCORE
+    try:
+        return compute_entropy_score(question=question, context=context)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("verification.score_context.failure", extra={"error": str(exc)})
+        return NEUTRAL_SCORE
