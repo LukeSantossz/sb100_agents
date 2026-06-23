@@ -262,7 +262,7 @@ def test_agent_model_default() -> None:
     assert s.agent_model == "openai/gpt-oss-20b"
 
 
-def test_agent_enabled_defaults_to_false() -> None:
-    from core.config import Settings
-
-    assert Settings().agent_enabled is False
+def test_agent_enabled_defaults_to_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AGENT_ENABLED", raising=False)
+    s = Settings(**_kwargs())
+    assert s.agent_enabled is False
