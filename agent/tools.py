@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 _NO_CONTEXT = "No relevant context was found in the corpus for this query."
 _RETRIEVAL_ERROR = "The corpus could not be searched right now due to a retrieval error."
 
+SEARCH_CORPUS_SENTINELS: frozenset[str] = frozenset({_NO_CONTEXT, _RETRIEVAL_ERROR})
+
 
 @tool
 def search_corpus(query: str) -> str:

@@ -147,6 +147,28 @@ def test_invoke_agent_picks_last_ai_message_when_multiple() -> None:
     assert outcome.answer == "final answer"
 
 
+def test_invoke_agent_excludes_no_context_sentinel_from_context() -> None:
+    from langchain_core.messages import AIMessage, ToolMessage
+
+    from agent.runner import invoke_agent
+    from agent.tools import _NO_CONTEXT
+    from core.schemas import ExpertiseLevel, UserProfile
+
+    class _StubGraph:
+        def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+            return {
+                "messages": [
+                    ToolMessage(content=_NO_CONTEXT, tool_call_id="1", name="search_corpus"),
+                    AIMessage(content="answer"),
+                ]
+            }
+
+    profile = UserProfile(name="Ana", expertise=ExpertiseLevel.beginner)
+    outcome = invoke_agent("q", [], profile, graph=_StubGraph())
+
+    assert outcome.context == ""
+
+
 def test_invoke_agent_excludes_non_search_corpus_tool_messages() -> None:
     from langchain_core.messages import AIMessage, ToolMessage
 

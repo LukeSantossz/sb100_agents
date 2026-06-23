@@ -6,6 +6,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, ToolMessage
 
 from agent.factory import create_agent
+from agent.tools import SEARCH_CORPUS_SENTINELS
 from core.schemas import UserProfile
 
 
@@ -58,7 +59,9 @@ def invoke_agent(
     tool_texts = [
         _as_text(m.content)
         for m in messages
-        if isinstance(m, ToolMessage) and m.name == "search_corpus"
+        if isinstance(m, ToolMessage)
+        and m.name == "search_corpus"
+        and _as_text(m.content) not in SEARCH_CORPUS_SENTINELS
     ]
     context = "\n\n".join(t for t in tool_texts if t)
 
