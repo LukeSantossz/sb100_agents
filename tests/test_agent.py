@@ -145,3 +145,26 @@ def test_invoke_agent_picks_last_ai_message_when_multiple() -> None:
     outcome = invoke_agent("q", [], profile, graph=_StubGraph())
 
     assert outcome.answer == "final answer"
+
+
+def test_invoke_agent_excludes_non_search_corpus_tool_messages() -> None:
+    from langchain_core.messages import AIMessage, ToolMessage
+
+    from agent.runner import invoke_agent
+    from core.schemas import ExpertiseLevel, UserProfile
+
+    class _StubGraph:
+        def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+            return {
+                "messages": [
+                    ToolMessage(content="corpus chunk", tool_call_id="1", name="search_corpus"),
+                    ToolMessage(content="todo list noise", tool_call_id="2", name="write_todos"),
+                    AIMessage(content="answer"),
+                ]
+            }
+
+    profile = UserProfile(name="Ana", expertise=ExpertiseLevel.expert)
+    outcome = invoke_agent("q", [], profile, graph=_StubGraph())
+
+    assert "corpus chunk" in outcome.context
+    assert "todo list noise" not in outcome.context

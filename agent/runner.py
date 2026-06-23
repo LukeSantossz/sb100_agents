@@ -55,7 +55,11 @@ def invoke_agent(
     ai_messages = [m for m in messages if isinstance(m, AIMessage)]
     answer = _as_text(ai_messages[-1].content) if ai_messages else ""
 
-    tool_texts = [_as_text(m.content) for m in messages if isinstance(m, ToolMessage)]
+    tool_texts = [
+        _as_text(m.content)
+        for m in messages
+        if isinstance(m, ToolMessage) and m.name == "search_corpus"
+    ]
     context = "\n\n".join(t for t in tool_texts if t)
 
     return AgentOutcome(answer=answer, context=context)
