@@ -34,11 +34,12 @@ def _build_input(
 ) -> dict[str, Any]:
     """Build the graph input: prior turns plus the user question with a short profile preamble."""
     preamble = (
-        f"User profile — name: {profile.name}, expertise: {profile.expertise.value}. "
+        f"The user's expertise level is {profile.expertise.value}. "
         "Adapt the depth and tone of your answer accordingly."
     )
     # Sanitize the user question to strip model control tokens; the preamble is
-    # system-authored and does not require sanitization.
+    # system-authored and keys only on a constrained StrEnum value, so it carries
+    # no injection risk.
     sanitized_question = _sanitize_question(question)
     messages: list[dict[str, str]] = list(history)
     messages.append({"role": "user", "content": f"{preamble}\n\n{sanitized_question}"})
