@@ -24,7 +24,9 @@ def _as_text(content: Any) -> str:
     return str(content)
 
 
-def _build_input(question: str, history: list[dict[str, str]], profile: UserProfile) -> dict[str, Any]:
+def _build_input(
+    question: str, history: list[dict[str, str]], profile: UserProfile
+) -> dict[str, Any]:
     """Build the graph input: prior turns plus the user question with a short profile preamble."""
     preamble = (
         f"User profile — name: {profile.name}, expertise: {profile.expertise.value}. "

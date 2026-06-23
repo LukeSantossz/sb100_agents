@@ -411,4 +411,7 @@ def test_chat_agent_path_failure_returns_503_without_leaking_detail(client, _age
 
     assert response.status_code == 503
     assert "groq secret boom" not in response.json()["detail"]
-    assert response.json()["detail"] == "Agent answer generation failed. Check the agent service configuration."
+    assert (
+        response.json()["detail"]
+        == "Agent answer generation failed. Check the agent service configuration."
+    )

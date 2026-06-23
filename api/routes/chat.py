@@ -178,7 +178,9 @@ def chat(
                 status_code=503,
                 detail="Agent answer generation failed. Check the agent service configuration.",
             ) from e
-        score = score_context(req.question, outcome.context) if settings.verification_enabled else 0.0
+        score = (
+            score_context(req.question, outcome.context) if settings.verification_enabled else 0.0
+        )
         response = ChatResponse(answer=outcome.answer, hallucination_score=score)
     else:
         try:
