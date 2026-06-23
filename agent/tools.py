@@ -4,6 +4,7 @@ import logging
 
 from langchain_core.tools import tool
 
+from generation.llm import _sanitize_context
 from retrieval import generate_embedding, search_context
 
 logger = logging.getLogger(__name__)
@@ -32,4 +33,4 @@ def search_corpus(query: str) -> str:
     texts = [chunk for chunk in chunks if chunk]
     if not texts:
         return _NO_CONTEXT
-    return "\n\n".join(texts)
+    return _sanitize_context("\n\n".join(texts))

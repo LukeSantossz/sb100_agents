@@ -9,7 +9,7 @@ from pydantic import SecretStr
 from agent.factory import create_agent, default_model
 from agent.prompt import AGENT_INSTRUCTIONS
 from agent.tools import search_corpus
-from generation.llm import _ANTI_INJECTION_NOTICE
+from generation.llm import _ANTI_INJECTION_NOTICE, _sanitize_context
 
 
 def test_search_corpus_returns_context_text() -> None:
@@ -20,6 +20,15 @@ def test_search_corpus_returns_context_text() -> None:
         result = search_corpus.invoke({"query": "quando plantar soja?"})
     assert "chunk one" in result
     assert "chunk two" in result
+
+
+def test_search_corpus_wraps_chunks_with_sanitize_context() -> None:
+    with (
+        patch("agent.tools.generate_embedding", return_value=[0.0] * 768),
+        patch("agent.tools.search_context", return_value=["chunk one", "chunk two"]),
+    ):
+        result = search_corpus.invoke({"query": "quando plantar soja?"})
+    assert result == _sanitize_context("chunk one\n\nchunk two")
 
 
 def test_search_corpus_handles_empty_results() -> None:
