@@ -221,3 +221,33 @@ def test_gate_returns_fallback_message_when_all_retries_exceed_threshold() -> No
         result = gate_module.evaluate(question="q", context="c", history=[], profile=_profile())
     assert result.answer == gate_module.FALLBACK_MESSAGE
     assert result.hallucination_score == 0.9
+
+
+# ----------------------------- score_context tests -----------------------------
+
+
+def test_score_context_returns_neutral_when_context_empty() -> None:
+    from verification.gate import NEUTRAL_SCORE, score_context
+
+    assert score_context("q", "   ") == NEUTRAL_SCORE
+
+
+def test_score_context_returns_entropy_value() -> None:
+    from unittest.mock import patch
+
+    from verification.gate import score_context
+
+    with patch("verification.gate.compute_entropy_score", return_value=0.3) as m:
+        result = score_context("q", "some context")
+    assert result == 0.3
+    m.assert_called_once_with(question="q", context="some context")
+
+
+def test_score_context_falls_back_to_neutral_on_error() -> None:
+    from unittest.mock import patch
+
+    from verification.gate import NEUTRAL_SCORE, score_context
+
+    with patch("verification.gate.compute_entropy_score", side_effect=RuntimeError("boom")):
+        result = score_context("q", "some context")
+    assert result == NEUTRAL_SCORE

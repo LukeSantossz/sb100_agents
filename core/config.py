@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     chat_rate_limit: str = "30/minute"
     groq_api_key: str | None = None
     agent_model: str = "openai/gpt-oss-20b"
+    agent_enabled: bool = False
     openrouter_api_key: str | None = None
     jwt_secret_key: str = ""
 

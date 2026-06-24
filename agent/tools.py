@@ -4,12 +4,15 @@ import logging
 
 from langchain_core.tools import tool
 
+from generation.llm import _sanitize_context
 from retrieval import generate_embedding, search_context
 
 logger = logging.getLogger(__name__)
 
 _NO_CONTEXT = "No relevant context was found in the corpus for this query."
 _RETRIEVAL_ERROR = "The corpus could not be searched right now due to a retrieval error."
+
+SEARCH_CORPUS_SENTINELS: frozenset[str] = frozenset({_NO_CONTEXT, _RETRIEVAL_ERROR})
 
 
 @tool
@@ -30,4 +33,4 @@ def search_corpus(query: str) -> str:
     texts = [chunk for chunk in chunks if chunk]
     if not texts:
         return _NO_CONTEXT
-    return "\n\n".join(texts)
+    return _sanitize_context("\n\n".join(texts))

@@ -260,3 +260,9 @@ def test_settings_still_rejects_invalid_declared_field_with_unknown_keys(
 def test_agent_model_default() -> None:
     s = Settings(**_kwargs())
     assert s.agent_model == "openai/gpt-oss-20b"
+
+
+def test_agent_enabled_defaults_to_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AGENT_ENABLED", raising=False)
+    s = Settings(**_kwargs())
+    assert s.agent_enabled is False
