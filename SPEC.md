@@ -48,6 +48,11 @@ path is byte-unchanged.
   - `api/routes/chat.py`: branch on `settings.agent_enabled`. ON → `invoke_agent` → score
     (`score_context` when `verification_enabled`, else `0.0`) → `ChatResponse`; shared auth,
     rate-limit, and post-success buffer update. OFF → legacy path unchanged.
+  - Prompt-injection hardening parity with the legacy path on the agent path (added at the Gate after
+    an R2 finding): the agent system prompt carries the existing `_ANTI_INJECTION_NOTICE`, the user
+    question is run through the existing `_sanitize_question`, `search_corpus` output is framed as
+    delimited reference data via `_sanitize_context`, and the free-text `profile.name` is kept out of
+    the prompt (only the `expertise` enum is used). All defenses reuse `generation/llm.py` (DRY).
   - Tests covering both flag states with a stubbed agent graph and a stubbed verifier (no network).
   - Closes #171 and #174.
 - **Does NOT include:**
@@ -79,6 +84,9 @@ path is byte-unchanged.
 - `handler_remains_synchronous`: the `chat` handler is a plain `def` (no `async`), preserving ADR-0005.
 - `agent_invocation_failure_returns_503_without_leaking_internal_detail`: when `invoke_agent` raises,
   the handler returns HTTP 503 with a generic detail (no `str(e)`), logging the traceback.
+- `agent_path_preserves_injection_hardening`: the agent system prompt contains the anti-injection
+  notice; the user question is sanitized; `search_corpus` output is delimited as reference data; and
+  the free-text `profile.name` never reaches the prompt.
 
 ## Reproducibility
 
