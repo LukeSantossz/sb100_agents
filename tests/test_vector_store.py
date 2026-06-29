@@ -12,7 +12,7 @@ from qdrant_client.models import ScoredPoint
 
 from core.config import settings
 from retrieval import vector_store as vs_module
-from retrieval.vector_store import search_context
+from retrieval.vector_store import search_context, top_similarity
 
 
 @pytest.fixture(autouse=True)
@@ -72,6 +72,36 @@ def test_missing_text_logs_warning_and_returns_empty_string(
 
     assert out == [""]
     assert any("empty_or_missing_text" in record.message for record in caplog.records)
+
+
+def test_top_similarity_returns_top_point_score() -> None:
+    with patch("retrieval.vector_store.QdrantClient") as mock_cls:
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_client.query_points.return_value = MagicMock(points=[_make_point("chunk", score=0.83)])
+
+        out = top_similarity([0.1] * 768)
+
+        assert out == 0.83
+        mock_client.query_points.assert_called_once_with(
+            collection_name=settings.collection_name,
+            query=[0.1] * 768,
+            limit=1,
+        )
+
+
+def test_top_similarity_returns_none_when_no_points() -> None:
+    with patch("retrieval.vector_store.QdrantClient") as mock_cls:
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_client.query_points.return_value = MagicMock(points=[])
+
+        assert top_similarity([0.1] * 768) is None
+
+
+def test_top_similarity_rejects_wrong_dim() -> None:
+    with pytest.raises(ValueError, match="must have 768 dimensions"):
+        top_similarity([0.1] * 10)
 
 
 def test_singleton_reuses_client_across_calls() -> None:
