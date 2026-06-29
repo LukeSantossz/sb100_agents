@@ -368,6 +368,7 @@ def test_chat_agent_path_returns_agent_answer_and_gate_score(client, _agent_payl
         patch("api.routes.chat.score_context", return_value=0.22) as mock_score,
     ):
         mock_settings.agent_enabled = True
+        mock_settings.intent_filter_enabled = False
         mock_settings.verification_enabled = True
         mock_settings.buffer_maxlen = 10
         mock_invoke.return_value = AgentOutcome(answer="agent answer", context="ctx")
@@ -389,6 +390,7 @@ def test_chat_agent_path_zero_score_when_verification_disabled(client, _agent_pa
         patch("api.routes.chat.score_context") as mock_score,
     ):
         mock_settings.agent_enabled = True
+        mock_settings.intent_filter_enabled = False
         mock_settings.verification_enabled = False
         mock_settings.buffer_maxlen = 10
         mock_invoke.return_value = AgentOutcome(answer="agent answer", context="ctx")
@@ -405,6 +407,7 @@ def test_chat_agent_path_failure_returns_503_without_leaking_detail(client, _age
         patch("api.routes.chat.invoke_agent", side_effect=RuntimeError("groq secret boom")),
     ):
         mock_settings.agent_enabled = True
+        mock_settings.intent_filter_enabled = False
         mock_settings.verification_enabled = True
         mock_settings.buffer_maxlen = 10
         response = client.post("/chat", json=_agent_payload)
