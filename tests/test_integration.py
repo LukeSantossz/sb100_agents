@@ -415,3 +415,107 @@ def test_chat_agent_path_failure_returns_503_without_leaking_detail(client, _age
         response.json()["detail"]
         == "Agent answer generation failed. Check the agent service configuration."
     )
+
+
+def test_chat_agent_path_short_circuits_out_of_domain(client, _agent_payload):
+    from agent.intent import OUT_OF_DOMAIN_MESSAGE, DomainDecision
+    from api.routes.chat import _sessions
+
+    with (
+        patch("api.routes.chat.settings") as mock_settings,
+        patch(
+            "api.routes.chat.classify_domain",
+            return_value=DomainDecision(in_domain=False, score=0.05),
+        ),
+        patch("api.routes.chat.invoke_agent") as mock_invoke,
+    ):
+        mock_settings.agent_enabled = True
+        mock_settings.intent_filter_enabled = True
+        mock_settings.verification_enabled = False
+        mock_settings.buffer_maxlen = 10
+        mock_settings.intent_threshold = 0.3
+        response = client.post("/chat", json=_agent_payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["answer"] == OUT_OF_DOMAIN_MESSAGE
+    assert data["hallucination_score"] == 0.0
+    mock_invoke.assert_not_called()
+    buffer = _sessions["1:agent-session"][0]
+    assert buffer.to_messages() == [
+        {"role": "user", "content": _agent_payload["question"]},
+        {"role": "assistant", "content": OUT_OF_DOMAIN_MESSAGE},
+    ]
+
+
+def test_chat_agent_path_proceeds_when_in_domain(client, _agent_payload):
+    from agent.intent import DomainDecision
+    from agent.runner import AgentOutcome
+
+    with (
+        patch("api.routes.chat.settings") as mock_settings,
+        patch(
+            "api.routes.chat.classify_domain",
+            return_value=DomainDecision(in_domain=True, score=0.7),
+        ),
+        patch("api.routes.chat.invoke_agent") as mock_invoke,
+        patch("api.routes.chat.score_context"),
+    ):
+        mock_settings.agent_enabled = True
+        mock_settings.intent_filter_enabled = True
+        mock_settings.verification_enabled = False
+        mock_settings.buffer_maxlen = 10
+        mock_settings.intent_threshold = 0.3
+        mock_invoke.return_value = AgentOutcome(answer="agent answer", context="ctx")
+        response = client.post("/chat", json=_agent_payload)
+
+    assert response.status_code == 200
+    assert response.json()["answer"] == "agent answer"
+    mock_invoke.assert_called_once()
+
+
+def test_chat_agent_path_intent_filter_disabled_bypasses_gate(client, _agent_payload):
+    from agent.runner import AgentOutcome
+
+    with (
+        patch("api.routes.chat.settings") as mock_settings,
+        patch("api.routes.chat.classify_domain") as mock_classify,
+        patch("api.routes.chat.invoke_agent") as mock_invoke,
+        patch("api.routes.chat.score_context"),
+    ):
+        mock_settings.agent_enabled = True
+        mock_settings.intent_filter_enabled = False
+        mock_settings.verification_enabled = False
+        mock_settings.buffer_maxlen = 10
+        mock_invoke.return_value = AgentOutcome(answer="agent answer", context="ctx")
+        response = client.post("/chat", json=_agent_payload)
+
+    assert response.status_code == 200
+    mock_classify.assert_not_called()
+    mock_invoke.assert_called_once()
+
+
+def test_chat_intent_decision_emitted_as_structured_log(client, _agent_payload, caplog):
+    from agent.intent import DomainDecision
+
+    with (
+        patch("api.routes.chat.settings") as mock_settings,
+        patch(
+            "api.routes.chat.classify_domain",
+            return_value=DomainDecision(in_domain=False, score=0.05),
+        ),
+        patch("api.routes.chat.invoke_agent"),
+    ):
+        mock_settings.agent_enabled = True
+        mock_settings.intent_filter_enabled = True
+        mock_settings.verification_enabled = False
+        mock_settings.buffer_maxlen = 10
+        mock_settings.intent_threshold = 0.3
+        with caplog.at_level("INFO", logger="api.routes.chat"):
+            response = client.post("/chat", json=_agent_payload)
+
+    assert response.status_code == 200
+    intent_records = [r for r in caplog.records if "chat.intent" in r.message]
+    assert len(intent_records) >= 1
+    assert getattr(intent_records[0], "in_domain", None) is False
+    assert getattr(intent_records[0], "score", None) == 0.05
