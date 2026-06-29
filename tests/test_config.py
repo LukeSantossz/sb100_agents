@@ -271,12 +271,14 @@ def test_agent_enabled_defaults_to_false(monkeypatch: pytest.MonkeyPatch) -> Non
 # ----------------------------- intent filter (#172) -----------------------------
 
 
-def test_intent_filter_enabled_defaults_to_true() -> None:
+def test_intent_filter_enabled_defaults_to_true(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("INTENT_FILTER_ENABLED", raising=False)
     s = Settings(**_kwargs())
     assert s.intent_filter_enabled is True
 
 
-def test_intent_threshold_default_is_0_3() -> None:
+def test_intent_threshold_default_is_0_3(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("INTENT_THRESHOLD", raising=False)
     s = Settings(**_kwargs())
     assert s.intent_threshold == 0.3
 
