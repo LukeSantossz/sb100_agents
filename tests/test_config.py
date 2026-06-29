@@ -266,3 +266,31 @@ def test_agent_enabled_defaults_to_false(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.delenv("AGENT_ENABLED", raising=False)
     s = Settings(**_kwargs())
     assert s.agent_enabled is False
+
+
+# ----------------------------- intent filter (#172) -----------------------------
+
+
+def test_intent_filter_enabled_defaults_to_true() -> None:
+    s = Settings(**_kwargs())
+    assert s.intent_filter_enabled is True
+
+
+def test_intent_threshold_default_is_0_3() -> None:
+    s = Settings(**_kwargs())
+    assert s.intent_threshold == 0.3
+
+
+def test_intent_threshold_rejects_below_zero() -> None:
+    with pytest.raises(ValidationError):
+        Settings(**_kwargs(intent_threshold=-0.01))
+
+
+def test_intent_threshold_rejects_above_one() -> None:
+    with pytest.raises(ValidationError):
+        Settings(**_kwargs(intent_threshold=1.01))
+
+
+def test_intent_threshold_accepts_boundaries() -> None:
+    assert Settings(**_kwargs(intent_threshold=0.0)).intent_threshold == 0.0
+    assert Settings(**_kwargs(intent_threshold=1.0)).intent_threshold == 1.0
