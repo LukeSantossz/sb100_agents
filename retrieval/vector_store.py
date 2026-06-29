@@ -109,4 +109,8 @@ def top_similarity(embedding: list[float]) -> float | None:
     ).points
     if not results:
         return None
-    return results[0].score
+    # Coerce to a concrete float: the Qdrant client is untyped under the CI
+    # typecheck (deps not installed), so `.score` is Any there — returning it
+    # directly would trip mypy's no-any-return (mirrors search_context building
+    # a concrete list[str] rather than returning library Any).
+    return float(results[0].score)
