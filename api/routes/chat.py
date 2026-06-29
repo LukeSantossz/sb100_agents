@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from jwt.exceptions import InvalidTokenError
 from slowapi.util import get_remote_address
 
+from agent.intent import OUT_OF_DOMAIN_MESSAGE, classify_domain
 from agent.runner import invoke_agent
 from api.dependencies import ALGORITHM, limiter, verify_token
 from core.config import settings
@@ -166,22 +167,38 @@ def chat(
     buffer = _get_or_create_buffer(current_user, req.session_id)
 
     if settings.agent_enabled:
-        history = buffer.to_messages()
-        try:
-            outcome = invoke_agent(req.question, history, req.profile)
-        except Exception as e:
-            logger.exception(
-                "chat.agent_failure",
-                extra={"username": current_user.username},
+        decision = classify_domain(req.question) if settings.intent_filter_enabled else None
+        if decision is not None:
+            logger.info(
+                "chat.intent",
+                extra={
+                    "username": current_user.username,
+                    "in_domain": decision.in_domain,
+                    "score": decision.score,
+                    "threshold": settings.intent_threshold,
+                },
             )
-            raise HTTPException(
-                status_code=503,
-                detail="Agent answer generation failed. Check the agent service configuration.",
-            ) from e
-        score = (
-            score_context(req.question, outcome.context) if settings.verification_enabled else 0.0
-        )
-        response = ChatResponse(answer=outcome.answer, hallucination_score=score)
+        if decision is not None and not decision.in_domain:
+            response = ChatResponse(answer=OUT_OF_DOMAIN_MESSAGE, hallucination_score=0.0)
+        else:
+            history = buffer.to_messages()
+            try:
+                outcome = invoke_agent(req.question, history, req.profile)
+            except Exception as e:
+                logger.exception(
+                    "chat.agent_failure",
+                    extra={"username": current_user.username},
+                )
+                raise HTTPException(
+                    status_code=503,
+                    detail="Agent answer generation failed. Check the agent service configuration.",
+                ) from e
+            score = (
+                score_context(req.question, outcome.context)
+                if settings.verification_enabled
+                else 0.0
+            )
+            response = ChatResponse(answer=outcome.answer, hallucination_score=score)
     else:
         try:
             embedding = generate_embedding(req.question)

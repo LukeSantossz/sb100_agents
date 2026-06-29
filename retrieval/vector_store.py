@@ -80,3 +80,37 @@ def search_context(embedding: list[float]) -> list[str]:
         else:
             chunks.append(str(text))
     return chunks
+
+
+def top_similarity(embedding: list[float]) -> float | None:
+    """Return the highest corpus similarity score for the query vector, or None.
+
+    Runs a top-1 ANN search on the configured collection and returns the score of the
+    single nearest point. Used by the agent-path domain gate to decide whether the
+    corpus can ground an answer at all.
+
+    Args:
+        embedding: Query embedding vector (768 dimensions).
+
+    Returns:
+        The nearest point's similarity score, or ``None`` when no points are returned.
+
+    Raises:
+        ValueError: If the embedding does not have exactly 768 dimensions.
+    """
+    if len(embedding) != _EMBEDDING_DIM:
+        raise ValueError(f"embedding must have {_EMBEDDING_DIM} dimensions; got {len(embedding)}")
+
+    client = _get_client()
+    results = client.query_points(
+        collection_name=settings.collection_name,
+        query=embedding,
+        limit=1,
+    ).points
+    if not results:
+        return None
+    # Coerce to a concrete float: the Qdrant client is untyped under the CI
+    # typecheck (deps not installed), so `.score` is Any there — returning it
+    # directly would trip mypy's no-any-return (mirrors search_context building
+    # a concrete list[str] rather than returning library Any).
+    return float(results[0].score)

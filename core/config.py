@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     groq_api_key: str | None = None
     agent_model: str = "openai/gpt-oss-20b"
     agent_enabled: bool = False
+    intent_filter_enabled: bool = True
+    intent_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
     openrouter_api_key: str | None = None
     jwt_secret_key: str = ""
 

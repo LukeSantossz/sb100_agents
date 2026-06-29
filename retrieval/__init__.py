@@ -8,9 +8,10 @@ Implements the retrieval layer of the RAG pipeline:
 Exports:
     generate_embedding: Generates an embedding vector for a text.
     search_context: Searches for similar chunks in Qdrant.
+    top_similarity: Returns the top similarity score for a query vector.
 """
 
 from .embedder import generate_embedding
-from .vector_store import search_context
+from .vector_store import search_context, top_similarity
 
-__all__ = ["generate_embedding", "search_context"]
+__all__ = ["generate_embedding", "search_context", "top_similarity"]
