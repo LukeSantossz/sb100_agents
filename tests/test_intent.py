@@ -49,11 +49,15 @@ def test_classify_domain_fails_open_and_logs_when_embedding_raises(
     assert any("agent.intent.failure" in r.message for r in caplog.records)
 
 
-def test_classify_domain_fails_open_when_top_similarity_none() -> None:
+def test_classify_domain_fails_open_when_top_similarity_none(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     with (
         patch("agent.intent.generate_embedding", return_value=[0.1] * 768),
         patch("agent.intent.top_similarity", return_value=None),
+        caplog.at_level("WARNING", logger="agent.intent"),
     ):
         decision = classify_domain("q")
     assert decision.in_domain is True
     assert decision.score is None
+    assert any("agent.intent.no_score" in r.message for r in caplog.records)

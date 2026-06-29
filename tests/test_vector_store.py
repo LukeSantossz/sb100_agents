@@ -97,6 +97,11 @@ def test_top_similarity_returns_none_when_no_points() -> None:
         mock_client.query_points.return_value = MagicMock(points=[])
 
         assert top_similarity([0.1] * 768) is None
+        mock_client.query_points.assert_called_once_with(
+            collection_name=settings.collection_name,
+            query=[0.1] * 768,
+            limit=1,
+        )
 
 
 def test_top_similarity_rejects_wrong_dim() -> None:

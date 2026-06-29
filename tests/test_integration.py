@@ -522,3 +522,5 @@ def test_chat_intent_decision_emitted_as_structured_log(client, _agent_payload, 
     assert len(intent_records) >= 1
     assert getattr(intent_records[0], "in_domain", None) is False
     assert getattr(intent_records[0], "score", None) == 0.05
+    assert getattr(intent_records[0], "username", None) == "testuser"
+    assert getattr(intent_records[0], "threshold", None) == 0.3
