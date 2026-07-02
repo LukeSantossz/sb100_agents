@@ -387,9 +387,9 @@ google-genai==2.9.0 \
     --hash=sha256:2a79e2b08e8439f5f25c2b42f98e3f3e8ea4be9c9265f5d7321580dbaf2764f4 \
     --hash=sha256:a8a10e9113f460cc668c1d9deeb62ba393ad1ba704bf3166d5a0f32a434f9415
     # via langchain-google-genai
-gradio==6.13.0 \
-    --hash=sha256:23457dde02202d97f636a5c170967a846297e20f40c3152b41aa4c3460245e3b \
-    --hash=sha256:46953f88aad36db9bc369ad2d1d6c4f200274da28f232b54842b2d4942a24f8f
+gradio==6.15.0 \
+    --hash=sha256:c71bf7aeb3fd788de9a97961ae97f06bfddd6a3cc4cf1bd0bd3c62d016849fc8 \
+    --hash=sha256:dce148292c95493990cbe358ac9f2295a11fa27bff218263e0422f004693270b
     # via smartb100
 gradio-client==2.5.0 \
     --hash=sha256:4cde99bad62149595c30c90876ca2e405e3a13687ecf895474f3412cb476673d \
