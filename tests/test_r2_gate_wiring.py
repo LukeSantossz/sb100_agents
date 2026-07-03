@@ -51,8 +51,7 @@ def test_repo_root_shim_exists_and_forwards_to_submodule_runner() -> None:
 def test_submodule_runner_present() -> None:
     """The framework's actual R2 runner exists to be forwarded to."""
     assert _SUBMODULE_RUNNER.is_file(), (
-        ".standards/scripts/codex-review.sh is missing; run "
-        "`git submodule update --init`"
+        ".standards/scripts/codex-review.sh is missing; run `git submodule update --init`"
     )
 
 
