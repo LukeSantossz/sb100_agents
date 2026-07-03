@@ -38,7 +38,7 @@ How the framework's generic rules instantiate in this repository:
   repo-root shim that forwards to `.standards/scripts/codex-review.sh`; without it the hook would
   silently no-op. R2 is advisory — record the Author and Reviewer models in every PR's Review Checklist,
   and note when R2 did not run (Codex absent, skipped, or bypassed). Local activation is
-  `git config core.hooksPath .standards/.githooks` plus the shim; `.standards/scripts/setup.sh` is not
+  `git config core.hooksPath .standards/.githooks` plus the shim; the framework's `setup.sh` is not
   yet submodule-aware (it points `core.hooksPath` at a non-existent root `.githooks`), so set the path
   manually until the upstream fix lands. R3 (automated PR review) is not configured.
 - Domain docs: the project's ubiquitous language lives in `CONTEXT.md` at the repository root, and
