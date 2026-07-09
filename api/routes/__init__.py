@@ -7,6 +7,6 @@ Groups the FastAPI routers by functional domain:
 - **health**: Health check for monitoring and load balancers.
 """
 
-from api.routes import auth, chat, health
+from api.routes import auth, chat, conversations, health
 
-__all__ = ["auth", "chat", "health"]
+__all__ = ["auth", "chat", "conversations", "health"]

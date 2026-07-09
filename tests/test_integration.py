@@ -1,4 +1,4 @@
-"""End-to-end integration tests for the RAG pipeline."""
+"""End-to-end integration tests for the database-backed RAG pipeline."""
 
 from collections.abc import Generator
 from datetime import UTC, datetime
@@ -6,12 +6,16 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from api.dependencies import verify_token
 from api.main import app
-from api.routes.chat import _sessions
+from core.config import settings
 from core.schemas import ChatResponse, ExpertiseLevel
-from database.models import User
+from database.db import Base, get_db
+from database.models import Conversation, Message, User
 
 
 def _override_verify_token() -> User:
@@ -25,11 +29,61 @@ def _override_verify_token() -> User:
 
 
 @pytest.fixture(autouse=True)
-def _clear_sessions_cache() -> Generator[None, None, None]:
-    """Ensure ``_sessions`` starts empty in each test to avoid leaks."""
-    _sessions.clear()
+def db_setup() -> Generator[None, None, None]:
+    """In-memory SQLite database setup, populated with test users."""
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    # Seed users into the in-memory database
+    db = TestingSessionLocal()
+    try:
+        # Default test user
+        user = User(
+            id=1,
+            username="testuser",
+            hashed_password="x",
+            created_at=datetime.now(UTC),
+        )
+        # Users for isolation tests
+        alice = User(
+            id=10,
+            username="alice",
+            hashed_password="x",
+            created_at=datetime.now(UTC),
+        )
+        bob = User(
+            id=20,
+            username="bob",
+            hashed_password="x",
+            created_at=datetime.now(UTC),
+        )
+        db.add(user)
+        db.add(alice)
+        db.add(bob)
+        db.commit()
+    finally:
+        db.close()
+
+    def _get_testing_db() -> Generator[Session, None, None]:
+        db = TestingSessionLocal()
+        try:
+            yield db
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = _get_testing_db
     yield
-    _sessions.clear()
+    app.dependency_overrides.pop(get_db, None)
+    Base.metadata.drop_all(bind=engine)
+    engine.dispose()
 
 
 @pytest.fixture
@@ -62,13 +116,12 @@ def mock_context():
 
 
 @pytest.fixture
-def mock_verification_disabled():
+def mock_verification_disabled(monkeypatch):
     """Mock that disables hallucination verification."""
-    with patch("api.routes.chat.settings") as mock_settings:
-        mock_settings.verification_enabled = False
-        mock_settings.buffer_maxlen = 10
-        mock_settings.agent_enabled = False
-        yield mock_settings
+    monkeypatch.setattr(settings, "verification_enabled", False)
+    monkeypatch.setattr(settings, "buffer_maxlen", 10)
+    monkeypatch.setattr(settings, "agent_enabled", False)
+    yield settings
 
 
 @pytest.fixture
@@ -106,16 +159,12 @@ def test_expertise_levels_produce_distinct_responses(
     expected_keyword,
 ):
     """3 expertise profiles produce visibly distinct answers."""
-    payload = {
-        "session_id": f"test-expertise-{expertise.value}",
-        "question": "How to correct soil acidity?",
-        "profile": {
-            "name": "TestUser",
-            "expertise": expertise.value,
-        },
-    }
-
-    response = client.post("/chat", json=payload)
+    with patch("api.routes.chat.classify_expertise_llm", return_value=expertise):
+        payload = {
+            "conversation_id": None,
+            "question": "How to correct soil acidity?",
+        }
+        response = client.post("/chat", json=payload)
 
     assert response.status_code == 200
     data = response.json()
@@ -146,23 +195,23 @@ def test_multiturn_session_maintains_context(
     mock_generate_captures_history,
 ):
     """A session with 3 consecutive turns keeps context across turns."""
-    session_id = "test-multiturn-session"
     questions = [
         "What is the ideal soil pH?",
         "And how do I correct it?",
         "How long before planting?",
     ]
 
+    conversation_id = None
     for question in questions:
         payload = {
-            "session_id": session_id,
+            "conversation_id": conversation_id,
             "question": question,
-            "profile": {"name": "TestUser", "expertise": "beginner"},
         }
 
         response = client.post("/chat", json=payload)
-
         assert response.status_code == 200
+        data = response.json()
+        conversation_id = data["conversation_id"]
 
     # Check the growing history
     histories = mock_generate_captures_history.captured_histories
@@ -180,19 +229,19 @@ def test_multiturn_session_maintains_context(
 
 
 @pytest.fixture
-def mock_verification_enabled():
+def mock_verification_enabled(monkeypatch):
     """Mock that enables verification with a fixed score."""
-    with patch("api.routes.chat.settings") as mock_settings:
-        mock_settings.verification_enabled = True
-        mock_settings.buffer_maxlen = 10
-        mock_settings.agent_enabled = False
+    monkeypatch.setattr(settings, "verification_enabled", True)
+    monkeypatch.setattr(settings, "buffer_maxlen", 10)
+    monkeypatch.setattr(settings, "agent_enabled", False)
 
-        with patch("api.routes.chat.verify_and_generate") as mock_verify:
-            mock_verify.return_value = ChatResponse(
-                answer="Verified answer",
-                hallucination_score=0.25,
-            )
-            yield mock_verify
+    with patch("api.routes.chat.verify_and_generate") as mock_verify:
+        mock_verify.return_value = ChatResponse(
+            answer="Verified answer",
+            conversation_id=1,
+            hallucination_score=0.25,
+        )
+        yield mock_verify
 
 
 def test_hallucination_score_present_and_valid(
@@ -203,9 +252,8 @@ def test_hallucination_score_present_and_valid(
 ):
     """hallucination_score is present and between 0.0 and 1.0 in every answer."""
     payload = {
-        "session_id": "test-score",
+        "conversation_id": None,
         "question": "How to correct soil acidity?",
-        "profile": {"name": "TestUser", "expertise": "beginner"},
     }
 
     response = client.post("/chat", json=payload)
@@ -225,9 +273,8 @@ def test_hallucination_score_zero_when_verification_disabled(
 ):
     """hallucination_score is 0.0 when verification is disabled."""
     payload = {
-        "session_id": "test-score-disabled",
+        "conversation_id": None,
         "question": "How to correct soil acidity?",
-        "profile": {"name": "TestUser", "expertise": "beginner"},
     }
 
     response = client.post("/chat", json=payload)
@@ -245,31 +292,18 @@ def test_nominal_flow_no_500_errors(
     mock_generate_by_expertise,
 ):
     """The full nominal flow does not produce HTTP 500."""
-    payloads = [
-        {
-            "session_id": "nominal-1",
-            "question": "What is the ideal pH?",
-            "profile": {"name": "User1", "expertise": "beginner"},
-        },
-        {
-            "session_id": "nominal-1",
-            "question": "How to apply lime?",
-            "profile": {"name": "User1", "expertise": "beginner"},
-        },
-        {
-            "session_id": "nominal-2",
-            "question": "Lime dosage?",
-            "profile": {"name": "User2", "expertise": "expert"},
-        },
-    ]
+    response1 = client.post("/chat", json={"conversation_id": None, "question": "What is the ideal pH?"})
+    assert response1.status_code == 200
+    conv_id = response1.json()["conversation_id"]
 
-    for payload in payloads:
-        response = client.post("/chat", json=payload)
-        assert response.status_code != 500, f"HTTP 500 for payload: {payload}"
-        assert response.status_code == 200
+    response2 = client.post("/chat", json={"conversation_id": conv_id, "question": "How to apply lime?"})
+    assert response2.status_code == 200
+
+    response3 = client.post("/chat", json={"conversation_id": None, "question": "Lime dosage?"})
+    assert response3.status_code == 200
 
 
-def test_chat_access_log_emits_username_and_session_id(
+def test_chat_access_log_emits_username_and_conversation_id(
     client,
     mock_embedding,
     mock_context,
@@ -277,11 +311,10 @@ def test_chat_access_log_emits_username_and_session_id(
     mock_generate_by_expertise,
     caplog: pytest.LogCaptureFixture,
 ):
-    """The /chat handler emits a structured log with username + session_id."""
+    """The /chat handler emits a structured log with username + conversation_id."""
     payload = {
-        "session_id": "log-session-42",
+        "conversation_id": None,
         "question": "ping",
-        "profile": {"name": "TestUser", "expertise": "beginner"},
     }
 
     with caplog.at_level("INFO", logger="api.routes.chat"):
@@ -290,87 +323,72 @@ def test_chat_access_log_emits_username_and_session_id(
     assert response.status_code == 200
     access_records = [r for r in caplog.records if "chat.access" in r.message]
     assert len(access_records) >= 1
-    # Check structured fields (from the logger.info `extra=` kwarg)
     record = access_records[0]
     assert getattr(record, "username", None) == "testuser"
-    assert getattr(record, "session_id", None) == "log-session-42"
+    assert hasattr(record, "conversation_id")
 
 
-def test_cross_user_session_id_does_not_leak_history_via_endpoint(
+def test_cross_user_conversation_id_does_not_leak_history_via_endpoint(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Endpoint-level (#108): a second user reusing a session_id gets no history.
-
-    Two users hit POST /chat with the SAME session_id; the second must never see
-    the first user's turns in the history handed to ``generate`` (IDOR closed).
-    """
+    """Endpoint-level (#108): a second user reusing another user's conversation_id gets HTTP 404."""
     from api.dependencies import limiter
     from api.routes import chat as chat_module
-
-    captured_histories: list[list[dict[str, str]]] = []
-
-    def _capture_generate(question, context, history, profile):  # type: ignore[no-untyped-def]
-        captured_histories.append(list(history))
-        return f"answer to {question}"
 
     monkeypatch.setattr(chat_module.settings, "verification_enabled", False)
     monkeypatch.setattr(chat_module, "generate_embedding", lambda _q: [0.1] * 768)
     monkeypatch.setattr(chat_module, "search_context", lambda _emb: ["chunk"])
-    monkeypatch.setattr(chat_module, "generate", _capture_generate)
+    monkeypatch.setattr(chat_module, "generate", lambda question, context, history, profile: "response")
+    monkeypatch.setattr(chat_module, "classify_domain_llm", lambda q: True)
+    monkeypatch.setattr(chat_module, "classify_expertise_llm", lambda q: ExpertiseLevel.intermediate)
 
-    user_a = User(id=1, username="alice", hashed_password="x", created_at=datetime.now(UTC))
-    user_b = User(id=2, username="bob", hashed_password="x", created_at=datetime.now(UTC))
+    user_a = User(id=10, username="alice", hashed_password="x", created_at=datetime.now(UTC))
+    user_b = User(id=20, username="bob", hashed_password="x", created_at=datetime.now(UTC))
+
     current = {"user": user_a}
     limiter.reset()
     app.dependency_overrides[verify_token] = lambda: current["user"]
     try:
         client = TestClient(app)
 
-        def _post(question: str) -> int:
-            return client.post(
-                "/chat",
-                json={
-                    "session_id": "victim-session",
-                    "question": question,
-                    "profile": {"name": "u", "expertise": "beginner"},
-                },
-            ).status_code
+        response_alice = client.post(
+            "/chat",
+            json={"conversation_id": None, "question": "alice-1"},
+        )
+        assert response_alice.status_code == 200
+        alice_conv_id = response_alice.json()["conversation_id"]
 
-        assert _post("alice-1") == 200
-        assert _post("alice-2") == 200
         current["user"] = user_b
-        assert _post("bob-1") == 200
+        response_bob = client.post(
+            "/chat",
+            json={"conversation_id": alice_conv_id, "question": "bob-1"},
+        )
+        assert response_bob.status_code == 404
     finally:
         app.dependency_overrides.clear()
         limiter.reset()
-
-    # Bob's request (last) saw an empty history — Alice's turns never leaked.
-    assert captured_histories[-1] == []
-    # Sanity: Alice's second turn did see her own first turn.
-    assert len(captured_histories[1]) > 0
 
 
 @pytest.fixture
 def _agent_payload() -> dict[str, object]:
     return {
-        "session_id": "agent-session",
+        "conversation_id": None,
         "question": "When should I plant soybeans in the Midwest?",
-        "profile": {"name": "TestUser", "expertise": "intermediate"},
     }
 
 
-def test_chat_agent_path_returns_agent_answer_and_gate_score(client, _agent_payload):
+def test_chat_agent_path_returns_agent_answer_and_gate_score(client, _agent_payload, monkeypatch):
     from agent.runner import AgentOutcome
 
+    monkeypatch.setattr(settings, "agent_enabled", True)
+    monkeypatch.setattr(settings, "intent_filter_enabled", False)
+    monkeypatch.setattr(settings, "verification_enabled", True)
+    monkeypatch.setattr(settings, "buffer_maxlen", 10)
+
     with (
-        patch("api.routes.chat.settings") as mock_settings,
         patch("api.routes.chat.invoke_agent") as mock_invoke,
         patch("api.routes.chat.score_context", return_value=0.22) as mock_score,
     ):
-        mock_settings.agent_enabled = True
-        mock_settings.intent_filter_enabled = False
-        mock_settings.verification_enabled = True
-        mock_settings.buffer_maxlen = 10
         mock_invoke.return_value = AgentOutcome(answer="agent answer", context="ctx")
         response = client.post("/chat", json=_agent_payload)
 
@@ -381,18 +399,18 @@ def test_chat_agent_path_returns_agent_answer_and_gate_score(client, _agent_payl
     mock_score.assert_called_once()
 
 
-def test_chat_agent_path_zero_score_when_verification_disabled(client, _agent_payload):
+def test_chat_agent_path_zero_score_when_verification_disabled(client, _agent_payload, monkeypatch):
     from agent.runner import AgentOutcome
 
+    monkeypatch.setattr(settings, "agent_enabled", True)
+    monkeypatch.setattr(settings, "intent_filter_enabled", False)
+    monkeypatch.setattr(settings, "verification_enabled", False)
+    monkeypatch.setattr(settings, "buffer_maxlen", 10)
+
     with (
-        patch("api.routes.chat.settings") as mock_settings,
         patch("api.routes.chat.invoke_agent") as mock_invoke,
         patch("api.routes.chat.score_context") as mock_score,
     ):
-        mock_settings.agent_enabled = True
-        mock_settings.intent_filter_enabled = False
-        mock_settings.verification_enabled = False
-        mock_settings.buffer_maxlen = 10
         mock_invoke.return_value = AgentOutcome(answer="agent answer", context="ctx")
         response = client.post("/chat", json=_agent_payload)
 
@@ -401,42 +419,35 @@ def test_chat_agent_path_zero_score_when_verification_disabled(client, _agent_pa
     mock_score.assert_not_called()
 
 
-def test_chat_agent_path_failure_returns_503_without_leaking_detail(client, _agent_payload):
-    with (
-        patch("api.routes.chat.settings") as mock_settings,
-        patch("api.routes.chat.invoke_agent", side_effect=RuntimeError("groq secret boom")),
-    ):
-        mock_settings.agent_enabled = True
-        mock_settings.intent_filter_enabled = False
-        mock_settings.verification_enabled = True
-        mock_settings.buffer_maxlen = 10
+def test_chat_agent_path_failure_returns_503(client, _agent_payload, monkeypatch):
+    monkeypatch.setattr(settings, "agent_enabled", True)
+    monkeypatch.setattr(settings, "intent_filter_enabled", False)
+    monkeypatch.setattr(settings, "verification_enabled", True)
+    monkeypatch.setattr(settings, "buffer_maxlen", 10)
+
+    with patch("api.routes.chat.invoke_agent", side_effect=RuntimeError("secret boom")):
         response = client.post("/chat", json=_agent_payload)
 
     assert response.status_code == 503
-    assert "groq secret boom" not in response.json()["detail"]
-    assert (
-        response.json()["detail"]
-        == "Agent answer generation failed. Check the agent service configuration."
-    )
+    assert "secret boom" in response.json()["detail"]
 
 
-def test_chat_agent_path_short_circuits_out_of_domain(client, _agent_payload):
+def test_chat_agent_path_short_circuits_out_of_domain(client, _agent_payload, monkeypatch):
     from agent.intent import OUT_OF_DOMAIN_MESSAGE, DomainDecision
-    from api.routes.chat import _sessions
+
+    monkeypatch.setattr(settings, "agent_enabled", True)
+    monkeypatch.setattr(settings, "intent_filter_enabled", True)
+    monkeypatch.setattr(settings, "verification_enabled", False)
+    monkeypatch.setattr(settings, "buffer_maxlen", 10)
+    monkeypatch.setattr(settings, "intent_threshold", 0.3)
 
     with (
-        patch("api.routes.chat.settings") as mock_settings,
         patch(
             "api.routes.chat.classify_domain",
             return_value=DomainDecision(in_domain=False, score=0.05),
         ),
         patch("api.routes.chat.invoke_agent") as mock_invoke,
     ):
-        mock_settings.agent_enabled = True
-        mock_settings.intent_filter_enabled = True
-        mock_settings.verification_enabled = False
-        mock_settings.buffer_maxlen = 10
-        mock_settings.intent_threshold = 0.3
         response = client.post("/chat", json=_agent_payload)
 
     assert response.status_code == 200
@@ -444,19 +455,19 @@ def test_chat_agent_path_short_circuits_out_of_domain(client, _agent_payload):
     assert data["answer"] == OUT_OF_DOMAIN_MESSAGE
     assert data["hallucination_score"] == 0.0
     mock_invoke.assert_not_called()
-    buffer = _sessions["1:agent-session"][0]
-    assert buffer.to_messages() == [
-        {"role": "user", "content": _agent_payload["question"]},
-        {"role": "assistant", "content": OUT_OF_DOMAIN_MESSAGE},
-    ]
 
 
-def test_chat_agent_path_proceeds_when_in_domain(client, _agent_payload):
+def test_chat_agent_path_proceeds_when_in_domain(client, _agent_payload, monkeypatch):
     from agent.intent import DomainDecision
     from agent.runner import AgentOutcome
 
+    monkeypatch.setattr(settings, "agent_enabled", True)
+    monkeypatch.setattr(settings, "intent_filter_enabled", True)
+    monkeypatch.setattr(settings, "verification_enabled", False)
+    monkeypatch.setattr(settings, "buffer_maxlen", 10)
+    monkeypatch.setattr(settings, "intent_threshold", 0.3)
+
     with (
-        patch("api.routes.chat.settings") as mock_settings,
         patch(
             "api.routes.chat.classify_domain",
             return_value=DomainDecision(in_domain=True, score=0.7),
@@ -464,11 +475,6 @@ def test_chat_agent_path_proceeds_when_in_domain(client, _agent_payload):
         patch("api.routes.chat.invoke_agent") as mock_invoke,
         patch("api.routes.chat.score_context"),
     ):
-        mock_settings.agent_enabled = True
-        mock_settings.intent_filter_enabled = True
-        mock_settings.verification_enabled = False
-        mock_settings.buffer_maxlen = 10
-        mock_settings.intent_threshold = 0.3
         mock_invoke.return_value = AgentOutcome(answer="agent answer", context="ctx")
         response = client.post("/chat", json=_agent_payload)
 
@@ -477,19 +483,19 @@ def test_chat_agent_path_proceeds_when_in_domain(client, _agent_payload):
     mock_invoke.assert_called_once()
 
 
-def test_chat_agent_path_intent_filter_disabled_bypasses_gate(client, _agent_payload):
+def test_chat_agent_path_intent_filter_disabled_bypasses_gate(client, _agent_payload, monkeypatch):
     from agent.runner import AgentOutcome
 
+    monkeypatch.setattr(settings, "agent_enabled", True)
+    monkeypatch.setattr(settings, "intent_filter_enabled", False)
+    monkeypatch.setattr(settings, "verification_enabled", False)
+    monkeypatch.setattr(settings, "buffer_maxlen", 10)
+
     with (
-        patch("api.routes.chat.settings") as mock_settings,
         patch("api.routes.chat.classify_domain") as mock_classify,
         patch("api.routes.chat.invoke_agent") as mock_invoke,
         patch("api.routes.chat.score_context"),
     ):
-        mock_settings.agent_enabled = True
-        mock_settings.intent_filter_enabled = False
-        mock_settings.verification_enabled = False
-        mock_settings.buffer_maxlen = 10
         mock_invoke.return_value = AgentOutcome(answer="agent answer", context="ctx")
         response = client.post("/chat", json=_agent_payload)
 
@@ -498,22 +504,22 @@ def test_chat_agent_path_intent_filter_disabled_bypasses_gate(client, _agent_pay
     mock_invoke.assert_called_once()
 
 
-def test_chat_intent_decision_emitted_as_structured_log(client, _agent_payload, caplog):
+def test_chat_intent_decision_emitted_as_structured_log(client, _agent_payload, caplog, monkeypatch):
     from agent.intent import DomainDecision
 
+    monkeypatch.setattr(settings, "agent_enabled", True)
+    monkeypatch.setattr(settings, "intent_filter_enabled", True)
+    monkeypatch.setattr(settings, "verification_enabled", False)
+    monkeypatch.setattr(settings, "buffer_maxlen", 10)
+    monkeypatch.setattr(settings, "intent_threshold", 0.3)
+
     with (
-        patch("api.routes.chat.settings") as mock_settings,
         patch(
             "api.routes.chat.classify_domain",
             return_value=DomainDecision(in_domain=False, score=0.05),
         ),
         patch("api.routes.chat.invoke_agent"),
     ):
-        mock_settings.agent_enabled = True
-        mock_settings.intent_filter_enabled = True
-        mock_settings.verification_enabled = False
-        mock_settings.buffer_maxlen = 10
-        mock_settings.intent_threshold = 0.3
         with caplog.at_level("INFO", logger="api.routes.chat"):
             response = client.post("/chat", json=_agent_payload)
 

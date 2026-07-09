@@ -38,7 +38,7 @@ def get_chat_client() -> OllamaClient:
     if _chat_client is None:
         with _chat_client_lock:
             if _chat_client is None:
-                _chat_client = OllamaClient(timeout=settings.ollama_timeout)
+                _chat_client = OllamaClient(host=settings.ollama_host, timeout=settings.ollama_timeout)
     return _chat_client
 
 
@@ -51,7 +51,7 @@ def get_embed_client() -> OllamaClient:
     if _embed_client is None:
         with _embed_client_lock:
             if _embed_client is None:
-                _embed_client = OllamaClient(timeout=settings.ollama_embed_timeout)
+                _embed_client = OllamaClient(host=settings.ollama_host, timeout=settings.ollama_embed_timeout)
     return _embed_client
 
 

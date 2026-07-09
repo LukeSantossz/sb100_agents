@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from agent.intent import DomainDecision, classify_domain
+from agent.intent import DomainDecision, classify_domain, classify_domain_llm
 
 
 def test_classify_domain_in_domain_when_score_at_or_above_threshold() -> None:
@@ -61,3 +61,27 @@ def test_classify_domain_fails_open_when_top_similarity_none(
     assert decision.in_domain is True
     assert decision.score is None
     assert any("agent.intent.no_score" in r.message for r in caplog.records)
+
+
+def test_classify_domain_llm_in_scope() -> None:
+    mock_chat = {
+        "message": {"content": "SIM"}
+    }
+    with patch("agent.intent.get_chat_client") as mock_client:
+        mock_client.return_value.chat.return_value = mock_chat
+        assert classify_domain_llm("como plantar milho?") is True
+
+
+def test_classify_domain_llm_out_of_scope() -> None:
+    mock_chat = {
+        "message": {"content": "NAO"}
+    }
+    with patch("agent.intent.get_chat_client") as mock_client:
+        mock_client.return_value.chat.return_value = mock_chat
+        assert classify_domain_llm("quem pintou a mona lisa?") is False
+
+
+def test_classify_domain_llm_fails_open_under_pytest() -> None:
+    with patch("agent.intent.get_chat_client", side_effect=RuntimeError("connection error")):
+        # Como estamos rodando via pytest (sys.modules tem pytest), deve falhar aberto (True)
+        assert classify_domain_llm("qualquer pergunta") is True

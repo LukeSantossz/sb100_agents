@@ -14,7 +14,7 @@ Usage example:
 from enum import StrEnum
 
 from limits import parse_many
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -49,7 +49,15 @@ class Settings(BaseSettings):
     embed_model: str = "nomic-embed-text"
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str | None = None
-    collection_name: str = "archives_v2"
+    collection_name: str = Field(
+        default="archives_v2",
+        validation_alias=AliasChoices(
+            "collection_name",
+            "qdrant_collection",
+            "COLLECTION_NAME",
+            "QDRANT_COLLECTION",
+        ),
+    )
     top_k: int = Field(default=3, ge=1, le=100)
     buffer_maxlen: int = Field(default=10, ge=1, le=100)
     llm_max_tokens: int = Field(default=256, ge=1, le=4096)
@@ -59,6 +67,9 @@ class Settings(BaseSettings):
     verification_chat_model: str = ""  # Empty = use provider default
     entropy_num_samples: int = Field(default=2, ge=2)
     entropy_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    embed_dim: int = Field(default=768, ge=1, le=4096)
+    qdrant_vector_name: str | None = None
+    ollama_host: str = "http://localhost:11434"
     ollama_timeout: float = Field(default=240.0, ge=1.0, le=600.0)
     ollama_embed_timeout: float = Field(default=5.0, ge=1.0, le=120.0)
     chat_timeout: float = Field(default=600.0, ge=1.0, le=3600.0)

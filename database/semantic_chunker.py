@@ -13,6 +13,7 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 from tqdm import tqdm
 
 from retrieval.ollama_embeddings import embed_text
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +21,11 @@ logger = logging.getLogger(__name__)
 # Global settings
 # ─────────────────────────────────────────────
 
-OLLAMA_MODEL = "nomic-embed-text"  # embeddings model via Ollama
+OLLAMA_MODEL = settings.embed_model  # embeddings model via Ollama
 EMBED_DIM = 768  # nomic-embed-text dimension
-QDRANT_URL = "http://localhost:6333"
-QDRANT_API_KEY: str | None = None  # for authenticated Qdrant servers
-COLLECTION_NAME = "archives_v2"
+QDRANT_URL = settings.qdrant_url
+QDRANT_API_KEY = settings.qdrant_api_key  # for authenticated Qdrant servers
+COLLECTION_NAME = settings.collection_name
 
 # Semantic chunking thresholds
 SIMILARITY_THRESHOLD = 0.75  # below this → new chunk

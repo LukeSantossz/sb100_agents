@@ -12,39 +12,37 @@ def _profile() -> UserProfile:
 
 def test_chat_request_rejects_empty_question() -> None:
     with pytest.raises(ValidationError):
-        ChatRequest(session_id="s1", question="", profile=_profile())
+        ChatRequest(conversation_id=1, question="")
 
 
 def test_chat_request_rejects_oversized_question() -> None:
     with pytest.raises(ValidationError):
-        ChatRequest(session_id="s1", question="x" * 2001, profile=_profile())
+        ChatRequest(conversation_id=1, question="x" * 2001)
 
 
 def test_chat_request_accepts_question_at_upper_boundary() -> None:
-    req = ChatRequest(session_id="s1", question="x" * 2000, profile=_profile())
+    req = ChatRequest(conversation_id=1, question="x" * 2000)
     assert len(req.question) == 2000
 
 
 def test_chat_request_accepts_typical_question() -> None:
     req = ChatRequest(
-        session_id="s1",
+        conversation_id=1,
         question="How to grow soybeans in the Cerrado?",
-        profile=_profile(),
     )
     assert req.question == "How to grow soybeans in the Cerrado?"
+    assert req.conversation_id == 1
+
+
+def test_chat_request_accepts_none_conversation_id() -> None:
+    req = ChatRequest(
+        conversation_id=None,
+        question="How to grow soybeans?",
+    )
+    assert req.conversation_id is None
 
 
 # ----------------------------- additional bounds ---------------------------
-
-
-def test_chat_request_rejects_empty_session_id() -> None:
-    with pytest.raises(ValidationError):
-        ChatRequest(session_id="", question="q", profile=_profile())
-
-
-def test_chat_request_rejects_oversized_session_id() -> None:
-    with pytest.raises(ValidationError):
-        ChatRequest(session_id="x" * 256, question="q", profile=_profile())
 
 
 def test_user_profile_rejects_empty_name() -> None:

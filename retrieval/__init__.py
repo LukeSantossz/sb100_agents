@@ -12,6 +12,6 @@ Exports:
 """
 
 from .embedder import generate_embedding
-from .vector_store import search_context, top_similarity
+from .vector_store import search_context, search_context_rich, top_similarity
 
-__all__ = ["generate_embedding", "search_context", "top_similarity"]
+__all__ = ["generate_embedding", "search_context", "search_context_rich", "top_similarity"]

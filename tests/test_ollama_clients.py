@@ -30,7 +30,7 @@ def test_get_chat_client_returns_singleton() -> None:
 
         assert first is sentinel
         assert first is second
-        mock_cls.assert_called_once_with(timeout=settings.ollama_timeout)
+        mock_cls.assert_called_once_with(host=settings.ollama_host, timeout=settings.ollama_timeout)
 
 
 def test_get_embed_client_returns_singleton() -> None:
@@ -43,7 +43,7 @@ def test_get_embed_client_returns_singleton() -> None:
 
         assert first is sentinel
         assert first is second
-        mock_cls.assert_called_once_with(timeout=settings.ollama_embed_timeout)
+        mock_cls.assert_called_once_with(host=settings.ollama_host, timeout=settings.ollama_embed_timeout)
 
 
 def test_chat_client_uses_settings_ollama_timeout() -> None:
@@ -53,6 +53,7 @@ def test_chat_client_uses_settings_ollama_timeout() -> None:
 
         _, kwargs = mock_cls.call_args
         assert kwargs["timeout"] == settings.ollama_timeout
+        assert kwargs["host"] == settings.ollama_host
 
 
 def test_embed_client_uses_settings_ollama_embed_timeout() -> None:
@@ -62,6 +63,7 @@ def test_embed_client_uses_settings_ollama_embed_timeout() -> None:
 
         _, kwargs = mock_cls.call_args
         assert kwargs["timeout"] == settings.ollama_embed_timeout
+        assert kwargs["host"] == settings.ollama_host
 
 
 def test_reset_clients_forces_reinstantiation() -> None:
@@ -90,9 +92,11 @@ def test_chat_and_embed_clients_are_independent() -> None:
         embed_inst = ollama_clients.get_embed_client()
 
         assert chat_inst is not embed_inst
-        # Distinct calls for chat and embed, each with its own timeout
+        # Distinct calls for chat and embed, each with its own timeout and host
         assert mock_cls.call_count == 2
         chat_call_kwargs = mock_cls.call_args_list[0].kwargs
         embed_call_kwargs = mock_cls.call_args_list[1].kwargs
         assert chat_call_kwargs["timeout"] == settings.ollama_timeout
+        assert chat_call_kwargs["host"] == settings.ollama_host
         assert embed_call_kwargs["timeout"] == settings.ollama_embed_timeout
+        assert embed_call_kwargs["host"] == settings.ollama_host

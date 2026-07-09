@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from database.db import Base, get_db
-from database.models import Conversation, Message, User
+from database.models import Conversation, Message, RagResponse, RagSource, User
 
 
 @pytest.fixture
@@ -196,3 +196,96 @@ def test_get_db_closes_on_success() -> None:
         mock_session.rollback.assert_not_called()
     finally:
         db_module.SessionLocal = original
+
+
+def test_message_deletion_cascades_rag_response(db_session: Session) -> None:
+    user = User(username="jack", hashed_password="x")
+    db_session.add(user)
+    db_session.commit()
+
+    conv = Conversation(user_id=user.id, title="c1")
+    db_session.add(conv)
+    db_session.commit()
+
+    msg = Message(conversation_id=conv.id, role="assistant", content="hi")
+    db_session.add(msg)
+    db_session.commit()
+
+    rag_resp = RagResponse(
+        message_id=msg.id,
+        system_response="hi",
+        hallucination_score=0.1,
+        model_name="llama3.2:3b",
+    )
+    db_session.add(rag_resp)
+    db_session.commit()
+
+    db_session.delete(msg)
+    db_session.commit()
+
+    assert db_session.query(Message).count() == 0
+    assert db_session.query(RagResponse).count() == 0
+
+
+def test_rag_response_deletion_cascades_rag_sources(db_session: Session) -> None:
+    user = User(username="kate", hashed_password="x")
+    db_session.add(user)
+    db_session.commit()
+
+    conv = Conversation(user_id=user.id, title="c1")
+    db_session.add(conv)
+    db_session.commit()
+
+    msg = Message(conversation_id=conv.id, role="assistant", content="hi")
+    db_session.add(msg)
+    db_session.commit()
+
+    rag_resp = RagResponse(
+        message_id=msg.id,
+        system_response="hi",
+        hallucination_score=0.1,
+        model_name="llama3.2:3b",
+    )
+    db_session.add(rag_resp)
+    db_session.commit()
+
+    source = RagSource(
+        rag_response_id=rag_resp.id,
+        content="source content",
+        document_id="doc-123",
+        chunk_id="chunk-456",
+        similarity_score=0.85,
+    )
+    db_session.add(source)
+    db_session.commit()
+
+    db_session.delete(rag_resp)
+    db_session.commit()
+
+    assert db_session.query(RagResponse).count() == 0
+    assert db_session.query(RagSource).count() == 0
+
+
+def test_rag_response_rejects_null_system_response(db_session: Session) -> None:
+    user = User(username="sawyer", hashed_password="x")
+    db_session.add(user)
+    db_session.commit()
+
+    conv = Conversation(user_id=user.id, title="c1")
+    db_session.add(conv)
+    db_session.commit()
+
+    msg = Message(conversation_id=conv.id, role="assistant", content="hi")
+    db_session.add(msg)
+    db_session.commit()
+
+    db_session.add(
+        RagResponse(
+            message_id=msg.id,
+            system_response=None,
+            hallucination_score=0.1,
+            model_name="llama3.2:3b",
+        )
+    )
+    with pytest.raises(IntegrityError):
+        db_session.commit()

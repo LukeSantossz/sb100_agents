@@ -12,12 +12,16 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 from starlette.requests import Request
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from api.dependencies import limiter, verify_token
 from api.main import app
 from api.routes.auth import create_access_token
 from api.routes.chat import _rate_limit_key, _sessions
 from core.config import settings
+from database.db import Base, get_db
 from database.models import User
 
 CLIENT_IP = "203.0.113.7"
@@ -76,6 +80,45 @@ def _override_verify_token() -> User:
 
 
 @pytest.fixture(autouse=True)
+def db_setup() -> Generator[None, None, None]:
+    """In-memory SQLite setup for rate limit testing, seeded with users."""
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    TestingSessionLocal = sessionmaker(bind=engine)
+    db = TestingSessionLocal()
+    try:
+        # Seed users to prevent foreign key errors
+        testuser = User(id=1, username="testuser", hashed_password="x", created_at=datetime.now(UTC))
+        heavy = User(id=2, username="heavy-user", hashed_password="x", created_at=datetime.now(UTC))
+        usera = User(id=3, username="user-a", hashed_password="x", created_at=datetime.now(UTC))
+        userb = User(id=4, username="user-b", hashed_password="x", created_at=datetime.now(UTC))
+        db.add(testuser)
+        db.add(heavy)
+        db.add(usera)
+        db.add(userb)
+        db.commit()
+    finally:
+        db.close()
+
+    def _get_testing_db() -> Generator[Session, None, None]:
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = _get_testing_db
+    yield
+    app.dependency_overrides.pop(get_db, None)
+    Base.metadata.drop_all(bind=engine)
+    engine.dispose()
+
+
+@pytest.fixture(autouse=True)
 def _reset_state() -> Generator[None, None, None]:
     """Start each test with an empty session cache and clean limiter storage."""
     _sessions.clear()
@@ -108,15 +151,18 @@ def chat_client() -> Generator[TestClient, None, None]:
 
 
 _PAYLOAD = {
-    "session_id": "rl-session",
+    "conversation_id": None,
     "question": "How to correct soil acidity?",
-    "profile": {"name": "TestUser", "expertise": "beginner"},
 }
 
 
 def test_exceeding_the_limit_returns_429(chat_client: TestClient, low_chat_limit: None) -> None:
     """The (limit + 1)-th request from one user within the window returns 429."""
     headers = _bearer("heavy-user")
+
+    # Mock dynamic verify_token to return the user that matches the JWT sub to keep DB integrity
+    heavy_user_model = User(id=2, username="heavy-user", hashed_password="x", created_at=datetime.now(UTC))
+    app.dependency_overrides[verify_token] = lambda: heavy_user_model
 
     for _ in range(3):
         allowed = chat_client.post("/chat", json=_PAYLOAD, headers=headers)
@@ -128,12 +174,16 @@ def test_exceeding_the_limit_returns_429(chat_client: TestClient, low_chat_limit
 
 def test_limit_is_per_user_not_per_ip(chat_client: TestClient, low_chat_limit: None) -> None:
     """One user exhausting the budget does not throttle another (same client IP)."""
+    user_a_model = User(id=3, username="user-a", hashed_password="x", created_at=datetime.now(UTC))
+    user_b_model = User(id=4, username="user-b", hashed_password="x", created_at=datetime.now(UTC))
+
+    app.dependency_overrides[verify_token] = lambda: user_a_model
     for _ in range(3):
         assert (
             chat_client.post("/chat", json=_PAYLOAD, headers=_bearer("user-a")).status_code == 200
         )
     assert chat_client.post("/chat", json=_PAYLOAD, headers=_bearer("user-a")).status_code == 429
 
-    # A different identity from the same TestClient host keeps a full budget,
-    # which a per-IP limit would not allow.
+    # A different identity from the same TestClient host keeps a full budget
+    app.dependency_overrides[verify_token] = lambda: user_b_model
     assert chat_client.post("/chat", json=_PAYLOAD, headers=_bearer("user-b")).status_code == 200
