@@ -259,7 +259,34 @@ def test_settings_still_rejects_invalid_declared_field_with_unknown_keys(
 
 def test_agent_model_default() -> None:
     s = Settings(**_kwargs())
+    assert s.agent_model == "qwen2.5:7b"
+
+
+def test_agent_provider_defaults_to_ollama() -> None:
+    s = Settings(**_kwargs())
+    assert s.agent_provider == "ollama"
+
+
+def test_agent_model_defaults_to_groq_model_when_provider_is_groq() -> None:
+    s = Settings(**_kwargs(agent_provider="groq"))
     assert s.agent_model == "openai/gpt-oss-20b"
+
+
+def test_explicit_agent_model_overrides_the_provider_default() -> None:
+    s = Settings(**_kwargs(agent_provider="groq", agent_model="llama-3.1-8b-instant"))
+    assert s.agent_model == "llama-3.1-8b-instant"
+
+
+def test_agent_num_ctx_default_exceeds_the_deep_agent_prompt() -> None:
+    # The deep-agent call is ~9.8k tokens (deepagents scaffolding); the default local context
+    # window must be comfortably larger so Ollama does not truncate the system/tool prompt.
+    s = Settings(**_kwargs())
+    assert s.agent_num_ctx >= 12288
+
+
+def test_agent_provider_rejects_unknown_value() -> None:
+    with pytest.raises(ValidationError):
+        Settings(**_kwargs(agent_provider="bogus"))
 
 
 def test_agent_enabled_defaults_to_false(monkeypatch: pytest.MonkeyPatch) -> None:
