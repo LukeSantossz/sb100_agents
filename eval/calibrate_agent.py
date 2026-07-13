@@ -522,8 +522,14 @@ def main() -> int:
     completed = [r for r in evidence.runs if not r.hit_recursion_limit]
     expected_runs = min(args.num_agent_runs, args.num_questions)
     problems: list[str] = []
-    if n_pos == 0 or n_neg == 0:
-        problems.append(f"need both classes scored (got {n_pos} positive, {n_neg} negative)")
+    if n_pos != args.num_questions:
+        problems.append(
+            f"scored {n_pos} in-domain, expected {args.num_questions} (generation/scoring lost some)"
+        )
+    if n_neg != args.num_negatives:
+        problems.append(
+            f"scored {n_neg} out-of-domain, expected {args.num_negatives} (generation/scoring lost some)"
+        )
     if len(evidence.runs) < expected_runs:
         problems.append(
             f"{expected_runs - len(evidence.runs)} of {expected_runs} agent run(s) dropped"
