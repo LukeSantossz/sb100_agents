@@ -1,5 +1,6 @@
 """Factory for the SmartB100 deep agent (deepagents + Groq), isolated behind agent/."""
 
+import threading
 from typing import Any
 
 from deepagents import create_deep_agent
@@ -32,3 +33,33 @@ def create_agent(model: BaseChatModel | None = None) -> CompiledStateGraph[Any, 
         tools=[search_corpus],
         system_prompt=AGENT_INSTRUCTIONS,
     )
+
+
+_cached_graph: CompiledStateGraph[Any, Any, Any, Any] | None = None
+_graph_lock = threading.Lock()
+
+
+def get_agent() -> CompiledStateGraph[Any, Any, Any, Any]:
+    """Return the process-wide compiled agent graph, building it once (lazy, thread-safe).
+
+    The compiled graph (and its `ChatGroq` client) is expensive to build, so it is cached and
+    reused across requests. Double-checked locking mirrors the ``_sessions_lock`` pattern in
+    ``api/routes/chat.py`` so concurrent first requests on the FastAPI threadpool do not
+    double-build. Tests bypass this by injecting a graph into ``invoke_agent``.
+    """
+    global _cached_graph
+    graph = _cached_graph
+    if graph is None:
+        with _graph_lock:
+            graph = _cached_graph
+            if graph is None:
+                graph = create_agent()
+                _cached_graph = graph
+    return graph
+
+
+def reset_agent_cache() -> None:
+    """Clear the cached graph so the next ``get_agent()`` rebuilds it (reconfiguration / tests)."""
+    global _cached_graph
+    with _graph_lock:
+        _cached_graph = None
