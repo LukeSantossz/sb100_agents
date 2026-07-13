@@ -13,7 +13,11 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - ./qdrant_storage:/qdrant/storage
+      # Named volume (native ext4 in the WSL2 VM), NOT a host bind mount: a Windows-path
+      # bind mount is exposed to the container as FUSE/virtiofs, which stalls Qdrant's
+      # mmap/fsync I/O and wedges vector search and shutdown (worse under OneDrive sync).
+      # See docs/adr/0014.
+      - qdrant_storage:/qdrant/storage
     restart: unless-stopped
     networks:
       - smartb100_net
@@ -104,3 +108,6 @@ services:
 networks:
   smartb100_net:
     driver: bridge
+
+volumes:
+  qdrant_storage:
