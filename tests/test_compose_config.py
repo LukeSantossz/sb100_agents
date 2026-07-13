@@ -93,6 +93,27 @@ def test_compose_config_gradio_environment_contains_jwt_secret():
     assert gradio_environment.get("JWT_SECRET_KEY") == VALID_SECRET
 
 
+def test_compose_qdrant_storage_is_a_named_volume_not_a_host_bind():
+    """Qdrant storage must be a named volume, never a host bind mount.
+
+    A Windows/OneDrive host bind mount is exposed to the container as FUSE in WSL2 and stalls
+    Qdrant's mmap I/O, hanging vector search and container shutdown (ADR-0014).
+    """
+    env = _env_without_secret()
+    env["JWT_SECRET_KEY"] = VALID_SECRET
+    result = _run_compose_config(env, "infra")
+    assert result.returncode == 0, result.stderr
+    rendered = json.loads(result.stdout)
+    storage_mounts = [
+        volume
+        for volume in rendered["services"]["qdrant"]["volumes"]
+        if volume.get("target") == "/qdrant/storage"
+    ]
+    assert storage_mounts, "no volume mounted at /qdrant/storage"
+    assert all(mount.get("type") == "volume" for mount in storage_mounts), storage_mounts
+    assert not any(mount.get("type") == "bind" for mount in storage_mounts), storage_mounts
+
+
 def test_compose_config_fails_when_jwt_secret_unset():
     """Compose config fails fast with the :? message when the secret is unset."""
     # Both profiles are activated so the only reason config can fail is the

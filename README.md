@@ -199,6 +199,7 @@ holds the full rationale, alternatives, and consequences.
 | Untrusted input isolated in agentic CI | Inline escape / remove workflow | No template injection, least privilege, human-merge barrier — [ADR-0011](./docs/adr/0011-untrusted-input-in-agentic-ci.md) |
 | Bound the agent loop (recursion limit + soft token budget) | Per-call `max_tokens` / step limit only | Native step bound plus a callback-counted per-run token cap, both failing into a graceful fallback — [ADR-0012](./docs/adr/0012-bound-agent-loop.md) |
 | Configurable agent provider, local Ollama default | Hosted Groq only / paid Groq tier | Free-tier Groq can't fit the deep-agent call (TPM); local `qwen2.5:7b` runs tool-calling with no rate limit — [ADR-0013](./docs/adr/0013-configurable-agent-provider-local-default.md) |
+| Qdrant storage on a named Docker volume | Host bind mount to the project dir | Windows/OneDrive bind mount is FUSE in WSL2 and stalls Qdrant's mmap I/O (hangs search + shutdown) — [ADR-0014](./docs/adr/0014-qdrant-storage-named-volume.md) |
 
 ## Getting Started
 
