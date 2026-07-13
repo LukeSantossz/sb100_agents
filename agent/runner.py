@@ -9,7 +9,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.errors import GraphRecursionError
 
-from agent.factory import create_agent
+from agent.factory import get_agent
 from agent.limits import TokenBudgetExceededError, TokenBudgetHandler
 from agent.tools import SEARCH_CORPUS_SENTINELS
 from core.config import settings
@@ -69,10 +69,10 @@ def invoke_agent(
 ) -> AgentOutcome:
     """Run the deep agent once and return its final answer plus retrieved context.
 
-    ``graph`` defaults to a freshly built agent; inject a stub in tests to run without network.
+    ``graph`` defaults to the process-wide cached agent; inject a stub in tests to run without network.
     """
     if graph is None:
-        graph = create_agent()
+        graph = get_agent()
     # Bound the run (ADR-0012): a native recursion/step limit plus a per-run token budget
     # enforced by an accumulating callback. Either bound terminates gracefully with a fallback.
     handler = TokenBudgetHandler(settings.agent_token_budget)
