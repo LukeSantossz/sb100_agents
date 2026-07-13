@@ -31,5 +31,5 @@
 - [ ] New dependencies work without breaking the build.
 - [ ] Review layers recorded:
   - R1 (internal review): <!-- ran / did not run; Author model -->
-  - R2 (cross-provider review): not available in this project — human CRURA review stands in.
+  - R2 (cross-provider review): Codex `gpt-5.5`/high pre-push gate (advisory) — record the Reviewer model, or note when it did not run.
   - R3 (automated PR review): not configured.
