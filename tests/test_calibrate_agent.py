@@ -38,31 +38,47 @@ def _frozen_scored() -> list[ScoredQuestion]:
     ]
 
 
-def test_intent_threshold_default_separates_the_frozen_evidence_within_targets() -> None:
+def _shipped_settings(monkeypatch: pytest.MonkeyPatch):
+    """A fresh Settings built from the shipped defaults, with the calibrated knobs cleared from the
+    environment so the guards test the committed defaults, not a developer/CI override."""
+    from core.config import Settings
+
+    for var in ("INTENT_THRESHOLD", "AGENT_RECURSION_LIMIT", "AGENT_TOKEN_BUDGET"):
+        monkeypatch.delenv(var, raising=False)
+    # _env_file=None skips the on-disk .env too, so only cleared env + shipped defaults apply.
+    return Settings(
+        jwt_secret_key="test-jwt-secret-key-for-tests-only-32-chars-minimum", _env_file=None
+    )
+
+
+def test_intent_threshold_default_separates_the_frozen_evidence_within_targets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # The calibrated intent_threshold must admit >= 90% of in-domain questions while leaking
     # <= 5% of out-of-domain ones on the frozen evidence (ADR-0010 operating point).
-    from core.config import settings
-
+    settings = _shipped_settings(monkeypatch)
     metrics = threshold_metrics(_frozen_scored(), settings.intent_threshold)
     assert metrics.tpr >= 0.90, metrics
     assert metrics.fpr <= 0.05, metrics
 
 
-def test_recursion_limit_default_is_at_least_frozen_p95_and_max_steps() -> None:
+def test_recursion_limit_default_is_at_least_frozen_p95_and_max_steps(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import numpy as np
 
-    from core.config import settings
-
+    settings = _shipped_settings(monkeypatch)
     steps = [run["steps"] for run in _frozen_evidence()["runs"]]
     assert settings.agent_recursion_limit >= float(np.percentile(steps, 95))
     assert settings.agent_recursion_limit >= max(steps)
 
 
-def test_token_budget_default_is_at_least_frozen_p95_and_max_tokens() -> None:
+def test_token_budget_default_is_at_least_frozen_p95_and_max_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import numpy as np
 
-    from core.config import settings
-
+    settings = _shipped_settings(monkeypatch)
     tokens = [run["total_tokens"] for run in _frozen_evidence()["runs"]]
     assert settings.agent_token_budget >= float(np.percentile(tokens, 95))
     assert settings.agent_token_budget >= max(tokens)
