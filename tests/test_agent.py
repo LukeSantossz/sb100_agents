@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+import pytest
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import SecretStr
@@ -99,7 +100,9 @@ def test_invoke_agent_extracts_answer_and_concatenated_context() -> None:
         def __init__(self) -> None:
             self.received: dict[str, object] = {}
 
-        def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
             self.received = payload
             return {
                 "messages": [
@@ -130,7 +133,9 @@ def test_invoke_agent_returns_empty_context_without_tool_calls() -> None:
     from core.schemas import ExpertiseLevel, UserProfile
 
     class _StubGraph:
-        def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
             return {"messages": [AIMessage(content="answer without tools")]}
 
     profile = UserProfile(name="Ana", expertise=ExpertiseLevel.beginner)
@@ -147,7 +152,9 @@ def test_invoke_agent_picks_last_ai_message_when_multiple() -> None:
     from core.schemas import ExpertiseLevel, UserProfile
 
     class _StubGraph:
-        def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
             return {
                 "messages": [
                     AIMessage(content="intermediate answer"),
@@ -170,7 +177,9 @@ def test_invoke_agent_excludes_no_context_sentinel_from_context() -> None:
     from core.schemas import ExpertiseLevel, UserProfile
 
     class _StubGraph:
-        def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
             return {
                 "messages": [
                     ToolMessage(content=_NO_CONTEXT, tool_call_id="1", name="search_corpus"),
@@ -191,7 +200,9 @@ def test_invoke_agent_excludes_non_search_corpus_tool_messages() -> None:
     from core.schemas import ExpertiseLevel, UserProfile
 
     class _StubGraph:
-        def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
             return {
                 "messages": [
                     ToolMessage(content="corpus chunk", tool_call_id="1", name="search_corpus"),
@@ -217,7 +228,9 @@ def test_invoke_agent_sanitizes_control_tokens_from_user_question() -> None:
         def __init__(self) -> None:
             self.received: dict[str, object] = {}
 
-        def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
             self.received = payload
             return {"messages": [AIMessage(content="answer")]}
 
@@ -247,7 +260,9 @@ def test_invoke_agent_profile_name_never_reaches_prompt() -> None:
         def __init__(self) -> None:
             self.received: dict[str, object] = {}
 
-        def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
             self.received = payload
             return {"messages": [AIMessage(content="answer")]}
 
@@ -259,3 +274,83 @@ def test_invoke_agent_profile_name_never_reaches_prompt() -> None:
     user_content = str(next(m["content"] for m in messages if m["role"] == "user"))  # type: ignore[index]
     assert "[SYSTEM]" not in user_content
     assert "ignore everything" not in user_content
+
+
+def test_invoke_agent_passes_recursion_limit_from_settings_to_graph_config() -> None:
+    from langchain_core.messages import AIMessage
+
+    from agent.runner import invoke_agent
+    from core.config import settings
+    from core.schemas import ExpertiseLevel, UserProfile
+
+    class _StubGraph:
+        def __init__(self) -> None:
+            self.config: dict[str, object] | None = None
+
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
+            self.config = config
+            return {"messages": [AIMessage(content="ok")]}
+
+    profile = UserProfile(name="Ana", expertise=ExpertiseLevel.expert)
+    stub = _StubGraph()
+    invoke_agent("q", [], profile, graph=stub)
+
+    assert stub.config is not None
+    assert stub.config["recursion_limit"] == settings.agent_recursion_limit
+
+
+def test_invoke_agent_returns_fallback_answer_on_graph_recursion_error() -> None:
+    from langgraph.errors import GraphRecursionError
+
+    from agent.runner import AGENT_BOUND_FALLBACK, invoke_agent
+    from core.schemas import ExpertiseLevel, UserProfile
+
+    class _StubGraph:
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
+            raise GraphRecursionError("recursion limit reached")
+
+    profile = UserProfile(name="Ana", expertise=ExpertiseLevel.beginner)
+    outcome = invoke_agent("q", [], profile, graph=_StubGraph())
+
+    assert outcome.answer == AGENT_BOUND_FALLBACK
+    assert outcome.context == ""
+
+
+def test_invoke_agent_returns_fallback_answer_when_token_budget_exceeded() -> None:
+    from agent.limits import TokenBudgetExceededError
+    from agent.runner import AGENT_BOUND_FALLBACK, invoke_agent
+    from core.schemas import ExpertiseLevel, UserProfile
+
+    class _StubGraph:
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
+            raise TokenBudgetExceededError(used=200, budget=100)
+
+    profile = UserProfile(name="Ana", expertise=ExpertiseLevel.expert)
+    outcome = invoke_agent("q", [], profile, graph=_StubGraph())
+
+    assert outcome.answer == AGENT_BOUND_FALLBACK
+    assert outcome.context == ""
+
+
+def test_settings_reject_out_of_bounds_recursion_limit() -> None:
+    from pydantic import ValidationError
+
+    from core.config import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(jwt_secret_key="x" * 32, agent_recursion_limit=0)
+
+
+def test_settings_reject_non_positive_token_budget() -> None:
+    from pydantic import ValidationError
+
+    from core.config import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(jwt_secret_key="x" * 32, agent_token_budget=0)
