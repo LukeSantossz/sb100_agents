@@ -65,29 +65,26 @@ def test_cluster_responses_caches_embeddings_per_unique_text() -> None:
 # ----------------------------- missing API key warns -----------------------------
 
 
-def test_compute_entropy_score_warns_when_groq_key_missing(
+def test_compute_entropy_score_raises_when_groq_key_missing(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     with (
         patch.object(entropy_module.settings, "verification_provider", "groq"),
         patch.object(entropy_module.settings, "groq_api_key", None),
         caplog.at_level("WARNING", logger="verification.entropy"),
+        pytest.raises(entropy_module.MissingVerifierKeyError),
     ):
-        score = compute_entropy_score("q", "c")
-    assert score == 0.0
+        compute_entropy_score("q", "c")
     assert any("missing_api_key" in record.message for record in caplog.records)
 
 
-def test_compute_entropy_score_warns_when_openrouter_key_missing(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
+def test_compute_entropy_score_raises_when_openrouter_key_missing() -> None:
     with (
         patch.object(entropy_module.settings, "verification_provider", "openrouter"),
         patch.object(entropy_module.settings, "openrouter_api_key", None),
-        caplog.at_level("WARNING", logger="verification.entropy"),
+        pytest.raises(entropy_module.MissingVerifierKeyError),
     ):
-        score = compute_entropy_score("q", "c")
-    assert score == 0.0
+        compute_entropy_score("q", "c")
 
 
 # ----------------------------- unknown provider raises -----------------------------
@@ -251,3 +248,44 @@ def test_score_context_falls_back_to_neutral_on_error() -> None:
     with patch("verification.gate.compute_entropy_score", side_effect=RuntimeError("boom")):
         result = score_context("q", "some context")
     assert result == NEUTRAL_SCORE
+
+
+# ------------------------ missing verifier key degrades to neutral ------------------------
+
+
+def test_evaluate_returns_neutral_when_verifier_key_missing() -> None:
+    """A missing verifier API key degrades to neutral 0.5, not a confident 0.0."""
+    with (
+        patch.object(gate_module, "generate", return_value="answer"),
+        patch.object(gate_module.settings, "verification_provider", "groq"),
+        patch.object(gate_module.settings, "groq_api_key", None),
+    ):
+        result = gate_module.evaluate(question="q", context="c", history=[], profile=_profile())
+    assert result.answer == "answer"
+    assert result.hallucination_score == gate_module.NEUTRAL_SCORE
+
+
+def test_score_context_returns_neutral_when_verifier_key_missing() -> None:
+    with (
+        patch.object(gate_module.settings, "verification_provider", "groq"),
+        patch.object(gate_module.settings, "groq_api_key", None),
+    ):
+        result = gate_module.score_context("q", "some context")
+    assert result == gate_module.NEUTRAL_SCORE
+
+
+def test_gate_logs_warning_not_traceback_when_verifier_key_missing(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The missing-key degrade is a config state: a warning, not an ERROR with a traceback."""
+    with (
+        patch.object(gate_module, "generate", return_value="answer"),
+        patch.object(gate_module.settings, "verification_provider", "groq"),
+        patch.object(gate_module.settings, "groq_api_key", None),
+        caplog.at_level("WARNING", logger="verification.gate"),
+    ):
+        gate_module.evaluate(question="q", context="c", history=[], profile=_profile())
+    gate_records = [r for r in caplog.records if r.name == "verification.gate"]
+    assert gate_records, "gate must log the missing-key degrade"
+    assert all(r.levelname == "WARNING" for r in gate_records)
+    assert all(r.exc_info is None for r in gate_records)
