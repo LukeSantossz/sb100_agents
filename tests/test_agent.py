@@ -87,10 +87,13 @@ def test_default_model_builds_chatollama_when_provider_is_ollama() -> None:
     with (
         patch("agent.factory.settings.agent_provider", "ollama"),
         patch("agent.factory.settings.agent_model", "qwen2.5:7b"),
+        patch("agent.factory.settings.ollama_timeout", 99.0),
         patch("agent.factory.ChatOllama", _FakeChatOllama),
     ):
         default_model()
     assert captured["model"] == "qwen2.5:7b"
+    # the configured Ollama timeout reaches the client (slow local generation)
+    assert captured["client_kwargs"] == {"timeout": 99.0}
 
 
 def test_default_model_handles_none_api_key() -> None:
