@@ -31,7 +31,9 @@ logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _ARCHIVES_DIR = _PROJECT_ROOT / "archives"
-_DEFAULT_EVIDENCE_PATH = _PROJECT_ROOT / "eval" / "results" / "calibration_evidence.json"
+# Default to the committed guard-test fixture so a recalibration updates the very evidence the
+# guard tests and config defaults are checked against, not a gitignored scratch file.
+_DEFAULT_EVIDENCE_PATH = _PROJECT_ROOT / "tests" / "fixtures" / "calibration_evidence.json"
 
 _DEFAULT_SEED = 42
 _QUESTIONS_PER_CHUNK = 10
