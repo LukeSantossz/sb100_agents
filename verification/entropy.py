@@ -35,6 +35,14 @@ DEFAULT_VERIFICATION_MODELS = {
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
+class MissingVerifierKeyError(RuntimeError):
+    """Raised when the configured verifier provider has no API key, so verification cannot run.
+
+    The gate treats this like any other verifier failure: it degrades to the neutral score rather
+    than reporting a confident 0.0.
+    """
+
+
 def _build_messages(question: str, context: str) -> list[dict[str, str]]:
     """Builds the message list for sampling."""
     prompt = f"Context:\n{context}\n\nQuestion: {question}" if context else question
@@ -205,12 +213,12 @@ def compute_entropy_score(question: str, context: str) -> float:
     High entropy indicates uncertainty/possible hallucination.
 
     Returns:
-        Score in the range [0.0, 1.0]. Returns 0.0 when the provider has no
-        API key (logs a warning) or when all samples fail and the caller
-        decides to proceed.
+        Score in the range [0.0, 1.0].
 
     Raises:
-        KeyError: If ``settings.verification_provider`` is not in
+        MissingVerifierKeyError: When the configured provider (groq/openrouter) has no API key,
+            so the gate degrades to the neutral score instead of a confident 0.0.
+        ValueError: If ``settings.verification_provider`` is not in
             :data:`DEFAULT_VERIFICATION_MODELS` (should not happen with the enum).
     """
     provider = str(settings.verification_provider)
@@ -224,10 +232,10 @@ def compute_entropy_score(question: str, context: str) -> float:
 
     if provider == "groq" and not settings.groq_api_key:
         logger.warning("verification.entropy.missing_api_key", extra={"provider": provider})
-        return 0.0
+        raise MissingVerifierKeyError(provider)
     if provider == "openrouter" and not settings.openrouter_api_key:
         logger.warning("verification.entropy.missing_api_key", extra={"provider": provider})
-        return 0.0
+        raise MissingVerifierKeyError(provider)
 
     model = settings.verification_chat_model or DEFAULT_VERIFICATION_MODELS[provider]
     samples = _generate_samples(provider, question, context, model, settings.entropy_num_samples)

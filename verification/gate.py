@@ -10,7 +10,7 @@ import logging
 from core.config import settings
 from core.schemas import ChatResponse, UserProfile
 from generation.llm import generate
-from verification.entropy import compute_entropy_score
+from verification.entropy import MissingVerifierKeyError, compute_entropy_score
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,13 @@ def evaluate(
                 question=question,
                 context=context,
             )
+        except MissingVerifierKeyError:
+            # A config state, not a crash: degrade to neutral without a traceback.
+            logger.warning(
+                "verification.gate.verifier_key_missing",
+                extra={"attempt": attempt},
+            )
+            return ChatResponse(answer=answer, hallucination_score=NEUTRAL_SCORE)
         except Exception as exc:  # noqa: BLE001
             logger.exception(
                 "verification.gate.entropy_failure",
@@ -75,6 +82,9 @@ def score_context(question: str, context: str) -> float:
         return NEUTRAL_SCORE
     try:
         return compute_entropy_score(question=question, context=context)
+    except MissingVerifierKeyError:
+        logger.warning("verification.score_context.verifier_key_missing")
+        return NEUTRAL_SCORE
     except Exception as exc:  # noqa: BLE001
         logger.exception("verification.score_context.failure", extra={"error": str(exc)})
         return NEUTRAL_SCORE
