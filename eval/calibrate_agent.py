@@ -538,6 +538,17 @@ def main() -> int:
         problems.append(f"{len(evidence.runs) - len(completed)} run(s) hit the recursion ceiling")
     if not completed:
         problems.append("no completed agent runs")
+    if n_pos and n_neg:
+        # Fail (per the spec's escalation criterion) rather than overwrite the fixture with evidence
+        # the gate can no longer separate: if the best threshold at FPR<=0.05 still misses TPR>=0.90,
+        # the score gate is inadequate and the ADR-0010 classifier escalation applies.
+        best_threshold = threshold_at_max_fpr(evidence.scored, max_fpr=0.05)
+        best = threshold_metrics(evidence.scored, best_threshold)
+        if best.tpr < 0.90:
+            problems.append(
+                f"no threshold meets TPR>=0.90 at FPR<=0.05 (best TPR={best.tpr:.3f}); the score gate "
+                "no longer separates — consider the ADR-0010 classifier escalation"
+            )
     if problems:
         print("ERROR: calibration evidence is invalid; the fixture was NOT overwritten:")
         for problem in problems:
