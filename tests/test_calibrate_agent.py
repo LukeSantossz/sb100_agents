@@ -12,7 +12,7 @@ import pytest
 
 from eval.calibrate_agent import (
     ScoredQuestion,
-    probe_groq_token_report,
+    probe_agent_token_report,
     run_calibration,
     select_threshold_youden,
     threshold_at_max_fpr,
@@ -102,11 +102,11 @@ def test_extract_total_tokens_reads_the_real_groq_shape() -> None:
 
 
 @pytest.mark.requires_infra
-def test_groq_probe_reports_total_tokens_as_positive_int() -> None:
-    # The token budget (ADR-0012) is inert unless Groq reports total_tokens where the
-    # runtime extractor reads it. The probe makes one real ChatGroq call and reports the
-    # count the budget would actually see; a non-positive value means the budget is inert.
-    result = probe_groq_token_report()
+def test_agent_probe_reports_total_tokens_as_positive_int() -> None:
+    # The token budget (ADR-0012) is inert unless the configured provider reports total_tokens
+    # where the runtime extractor reads it. The probe makes one real call to the agent model
+    # (local Ollama by default) and reports the count the budget would see; non-positive = inert.
+    result = probe_agent_token_report()
     assert isinstance(result.total_tokens_via_runtime, int)
     assert result.total_tokens_via_runtime > 0
 

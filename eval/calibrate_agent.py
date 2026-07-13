@@ -9,11 +9,14 @@ guessed defaults and gate whether ``agent_enabled`` can be turned on:
 - ``agent_recursion_limit`` and ``agent_token_budget`` (ADR-0012): measured by running
   the real compiled agent over the in-domain questions.
 
-A Groq probe first confirms whether ``total_tokens`` is reported in ``on_llm_end`` where
-``agent/limits.py`` reads it — the token budget is inert otherwise.
+A token-report probe first confirms the configured provider reports ``total_tokens`` where
+``agent/limits.py`` reads it (``llm_output`` for Groq, message ``usage_metadata`` for Ollama,
+per ADR-0013) — the token budget is inert otherwise. The agent runs on whatever
+``agent_provider`` selects; the default local Ollama model has no rate limit, so runs are
+paced only by local inference.
 
 This module keeps its pure, deterministic math (threshold metrics and selection) free of
-heavy or networked imports so the guard tests can exercise it without Qdrant or Groq.
+heavy or networked imports so the guard tests can exercise it without Qdrant or a model.
 Live-measurement functions import their dependencies lazily, inside the function body.
 """
 
@@ -23,10 +26,6 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
-# langchain_core is a lightweight library import (no network, no client construction), so the
-# callback base can live at module level; the genuinely heavy/networked imports stay lazy.
-from langchain_core.callbacks import BaseCallbackHandler
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +38,6 @@ _QUESTIONS_PER_CHUNK = 10
 _NEGATIVE_BATCH = 15
 # A generous default safety factor over the observed p95 for the loop bounds.
 _BOUND_SAFETY_FACTOR = 1.5
-# Seconds to space consecutive agent model calls so each lands in a fresh Groq per-minute
-# token window; the free-tier TPM fits one ~10k-token deep-agent call but not two per minute.
-_TPM_SPACING_SECONDS = 60.0
 
 _OUT_OF_DOMAIN_PROMPT = """You are writing test questions for a DELIBERATELY NON-agricultural domain.
 Generate {num_questions} clear, natural questions in Portuguese (pt-BR) about everyday topics that have
@@ -123,7 +119,11 @@ def select_threshold_youden(scored: list[ScoredQuestion]) -> float:
     for candidate in _candidate_thresholds(scored):
         metrics = threshold_metrics(scored, candidate)
         youden_j = metrics.tpr - metrics.fpr
-        if best_j is None or youden_j > best_j or (youden_j == best_j and candidate > best_threshold):
+        if (
+            best_j is None
+            or youden_j > best_j
+            or (youden_j == best_j and candidate > best_threshold)
+        ):
             best_j = youden_j
             best_threshold = candidate
     return best_threshold
@@ -146,7 +146,11 @@ def threshold_at_max_fpr(scored: list[ScoredQuestion], max_fpr: float) -> float:
         if (
             best_tpr is None
             or metrics.tpr > best_tpr
-            or (metrics.tpr == best_tpr and best_threshold is not None and candidate < best_threshold)
+            or (
+                metrics.tpr == best_tpr
+                and best_threshold is not None
+                and candidate < best_threshold
+            )
         ):
             best_tpr = metrics.tpr
             best_threshold = candidate
@@ -156,15 +160,15 @@ def threshold_at_max_fpr(scored: list[ScoredQuestion], max_fpr: float) -> float:
 
 
 # --------------------------------------------------------------------------------------
-# Live measurement. These functions reach the network (Groq) and the vector store
-# (Qdrant); their heavy dependencies are imported lazily so the pure math above stays
-# importable in CI without those services.
+# Live measurement. These functions reach the configured model provider (Groq or local
+# Ollama) and the vector store (Qdrant); their heavy dependencies are imported lazily so
+# the pure math above stays importable in CI without those services.
 # --------------------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
-class GroqProbeResult:
-    """What a single real Groq call reports about token usage.
+class AgentProbeResult:
+    """What a single real call to the configured agent model reports about token usage.
 
     ``total_tokens_via_runtime`` is the count the live ``TokenBudgetHandler`` would
     accumulate from this call — the number the budget actually enforces against. A
@@ -177,12 +181,13 @@ class GroqProbeResult:
     usage_metadata: dict[str, Any] | None
 
 
-def probe_groq_token_report() -> GroqProbeResult:
-    """Make one real Groq call and report the token total the runtime budget would see.
+def probe_agent_token_report() -> AgentProbeResult:
+    """Make one real call to the configured agent model and report the token total the budget sees.
 
-    Reuses ``TokenBudgetHandler`` as the meter (a budget large enough never to fire), so
-    the measured total is exactly what the runtime accumulates in ``on_llm_end`` — not a
-    parallel reimplementation that could read a different field.
+    Uses ``default_model()`` so it probes whatever ``agent_provider`` selects, and reuses
+    ``TokenBudgetHandler`` as the meter (a budget large enough never to fire), so the measured
+    total is exactly what the runtime accumulates in ``on_llm_end`` — not a parallel
+    reimplementation that could read a different field.
     """
     from langchain_core.callbacks import BaseCallbackHandler
     from langchain_core.outputs import LLMResult
@@ -206,7 +211,7 @@ def probe_groq_token_report() -> GroqProbeResult:
     meter = TokenBudgetHandler(budget=10**12)
     if result is not None:
         meter.on_llm_end(result)
-    return GroqProbeResult(
+    return AgentProbeResult(
         total_tokens_via_runtime=meter.total,
         llm_output=result.llm_output if result is not None else None,
         usage_metadata=getattr(message, "usage_metadata", None),
@@ -294,7 +299,9 @@ def generate_out_of_domain_questions(num: int, *, model: str | None = None) -> l
         want = min(_NEGATIVE_BATCH, num - len(questions))
         response = client.chat.completions.create(
             model=model,
-            messages=[{"role": "user", "content": _OUT_OF_DOMAIN_PROMPT.format(num_questions=want)}],
+            messages=[
+                {"role": "user", "content": _OUT_OF_DOMAIN_PROMPT.format(num_questions=want)}
+            ],
             temperature=0.7,
             max_tokens=2000,
         )
@@ -334,38 +341,13 @@ def score_questions(questions: list[str], *, in_domain: bool) -> list[ScoredQues
     return scored
 
 
-class _TpmSpacingHandler(BaseCallbackHandler):
-    """Space consecutive chat-model calls so each lands in a fresh Groq per-minute window.
-
-    The free-tier TPM (~12000 for llama-3.3-70b) fits one ~10k-token deep-agent call but not
-    two in the same minute, so a multi-step run 413s on its second call. Sleeping until
-    ``min_seconds`` have elapsed since the previous call's start gives each call a fresh window.
-    Pacing does not distort the token measurement: a call rejected before execution costs nothing.
-    """
-
-    def __init__(self, min_seconds: float) -> None:
-        self.min_seconds = min_seconds
-        self._last_start: float | None = None
-
-    def on_chat_model_start(self, serialized: Any, messages: Any, **kwargs: Any) -> None:
-        import time
-
-        if self._last_start is not None:
-            elapsed = time.time() - self._last_start
-            if elapsed < self.min_seconds:
-                time.sleep(self.min_seconds - elapsed)
-        self._last_start = time.time()
-
-
-def measure_agent_run(
-    question: str, *, recursion_ceiling: int, pacer: _TpmSpacingHandler | None = None
-) -> AgentRunMeasurement:
+def measure_agent_run(question: str, *, recursion_ceiling: int) -> AgentRunMeasurement:
     """Run the real agent once and record super-steps (stream updates) and total tokens.
 
     Reuses the runtime's own input builder and token accounting so the measurement matches
     what the deployed ``invoke_agent`` path consumes. A generous ``recursion_ceiling`` lets a
     run reveal its true step need; a run that still hits it is flagged rather than silently
-    truncating the evidence. A shared ``pacer`` spaces calls to respect the provider's TPM.
+    truncating the evidence.
     """
     from langgraph.errors import GraphRecursionError
 
@@ -377,10 +359,7 @@ def measure_agent_run(
     graph = get_agent()
     meter = TokenBudgetHandler(budget=10**12)
     profile = UserProfile(name="calibration", expertise=ExpertiseLevel.intermediate)
-    handlers: list[BaseCallbackHandler] = [meter]
-    if pacer is not None:
-        handlers.append(pacer)
-    config = {"recursion_limit": recursion_ceiling, "callbacks": handlers}
+    config = {"recursion_limit": recursion_ceiling, "callbacks": [meter]}
     graph_input = _build_input(question, [], profile)
 
     steps = 0
@@ -406,37 +385,30 @@ def run_calibration(
     num_agent_runs: int | None = None,
     seed: int = _DEFAULT_SEED,
 ) -> CalibrationEvidence:
-    """Probe Groq, score both question classes, and measure the agent over the positives.
+    """Probe the agent model, score both question classes, and measure the agent over the positives.
 
-    ``num_agent_runs`` bounds how many in-domain questions feed the (TPM-paced, slow) agent
-    measurement; ``None`` measures every positive. The intent sweep always scores all questions.
+    ``num_agent_runs`` bounds how many in-domain questions feed the agent measurement; ``None``
+    measures every positive. The intent sweep always scores all questions.
     """
-    from groq import APIStatusError
-
     from core.config import settings
 
-    probe = probe_groq_token_report()
+    probe = probe_agent_token_report()
     positives = generate_in_domain_questions(num_positives, seed=seed)
     negatives = generate_out_of_domain_questions(num_negatives)
     _warm_embedder()
-    scored = score_questions(positives, in_domain=True) + score_questions(negatives, in_domain=False)
+    scored = score_questions(positives, in_domain=True) + score_questions(
+        negatives, in_domain=False
+    )
 
     to_measure = positives if num_agent_runs is None else positives[:num_agent_runs]
-    pacer = _TpmSpacingHandler(min_seconds=_TPM_SPACING_SECONDS)
     runs: list[AgentRunMeasurement] = []
-    if to_measure:
-        # Question generation above spent Groq tokens in the current TPM window; wait it out so
-        # the first agent call gets a fresh window instead of a 413.
-        import time
-
-        time.sleep(_TPM_SPACING_SECONDS)
     for index, question in enumerate(to_measure):
         try:
-            runs.append(measure_agent_run(question, recursion_ceiling=recursion_ceiling, pacer=pacer))
+            runs.append(measure_agent_run(question, recursion_ceiling=recursion_ceiling))
             logger.info("calibrate.agent_run.done", extra={"index": index, "of": len(to_measure)})
-        except APIStatusError as exc:
-            # A throttled run yields no valid step/token sample; drop it, but log it so the
-            # dropped count is visible rather than silently shrinking the evidence.
+        except Exception as exc:
+            # A failed run (e.g. a transient local-model load error) yields no valid sample;
+            # drop it but log it so the dropped count stays visible, not silently shrinking evidence.
             logger.warning("calibrate.agent_run.dropped", extra={"index": index, "error": str(exc)})
 
     return CalibrationEvidence(
@@ -486,18 +458,34 @@ def _recommend_bound(values: list[int]) -> tuple[int, int, int]:
 def main() -> int:
     import argparse
     import json
+    import sys
+
+    # Make the project packages (core, agent, retrieval) importable when run as a standalone
+    # script; pytest adds the root via pythonpath, but `python eval/calibrate_agent.py` does not.
+    if str(_PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(_PROJECT_ROOT))
 
     from dotenv import load_dotenv
 
     load_dotenv(_PROJECT_ROOT / ".env")
 
     parser = argparse.ArgumentParser(description="Calibrate the agent domain gate and loop bounds")
-    parser.add_argument("--num-questions", type=int, default=60, help="in-domain positives to sample")
-    parser.add_argument("--num-negatives", type=int, default=60, help="out-of-domain negatives to generate")
-    parser.add_argument("--num-agent-runs", type=int, default=12, help="in-domain questions fed to the paced agent")
-    parser.add_argument("--recursion-ceiling", type=int, default=30, help="generous step ceiling for measurement")
+    parser.add_argument(
+        "--num-questions", type=int, default=60, help="in-domain positives to sample"
+    )
+    parser.add_argument(
+        "--num-negatives", type=int, default=60, help="out-of-domain negatives to generate"
+    )
+    parser.add_argument(
+        "--num-agent-runs", type=int, default=12, help="in-domain questions fed to the agent"
+    )
+    parser.add_argument(
+        "--recursion-ceiling", type=int, default=30, help="generous step ceiling for measurement"
+    )
     parser.add_argument("--seed", type=int, default=_DEFAULT_SEED, help="seed for chunk sampling")
-    parser.add_argument("--output", default=str(_DEFAULT_EVIDENCE_PATH), help="evidence artifact path")
+    parser.add_argument(
+        "--output", default=str(_DEFAULT_EVIDENCE_PATH), help="evidence artifact path"
+    )
     args = parser.parse_args()
 
     evidence = run_calibration(
@@ -524,10 +512,16 @@ def main() -> int:
     hit = sum(1 for r in evidence.runs if r.hit_recursion_limit)
 
     print(f"\nEvidence written to: {output_path}")
-    print(f"scored: {n_pos} positives, {n_neg} negatives | agent runs: {len(evidence.runs)} ({hit} hit the ceiling)")
+    print(
+        f"scored: {n_pos} positives, {n_neg} negatives | agent runs: {len(evidence.runs)} ({hit} hit the ceiling)"
+    )
     print("\n--- intent_threshold ---")
-    print(f"  Youden's J:              {youden:.4f}  -> {threshold_metrics(evidence.scored, youden)}")
-    print(f"  max leakage FPR <= 0.05: {capped:.4f}  -> {threshold_metrics(evidence.scored, capped)}")
+    print(
+        f"  Youden's J:              {youden:.4f}  -> {threshold_metrics(evidence.scored, youden)}"
+    )
+    print(
+        f"  max leakage FPR <= 0.05: {capped:.4f}  -> {threshold_metrics(evidence.scored, capped)}"
+    )
     print("\n--- agent_recursion_limit ---")
     print(f"  steps p95={steps_p95} max={steps_max} -> recommended {recursion_limit}")
     print("\n--- agent_token_budget ---")
