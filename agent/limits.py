@@ -32,7 +32,13 @@ class TokenBudgetHandler(BaseCallbackHandler):
     total exceeds ``budget`` the handler raises :class:`TokenBudgetExceededError`, which propagates out
     of ``graph.invoke`` and is caught by the runner. When a response carries no usage, zero is
     counted and a warning is logged (fail-open), so a provider that omits usage never blocks a run.
+
+    ``raise_error = True`` is required: LangChain's callback manager swallows and logs handler
+    exceptions by default (``BaseCallbackHandler.raise_error`` is ``False``), which would silently
+    discard the budget abort during a real model run.
     """
+
+    raise_error = True
 
     def __init__(self, budget: int) -> None:
         self.budget = budget
