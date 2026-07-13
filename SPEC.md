@@ -12,7 +12,7 @@ Bound the run at two levels, both configured from `settings` and both terminatin
 (1) Recursion/step limit: `invoke_agent` passes `config={"recursion_limit": settings.agent_recursion_limit}`
 to `graph.invoke`; a `langgraph.errors.GraphRecursionError` is caught and converted to a fallback
 `AgentOutcome`. (2) Per-run token budget: a LangChain callback handler accumulates per-call token
-usage (`on_llm_end`) and raises `TokenBudgetExceeded` once the cumulative count crosses
+usage (`on_llm_end`) and raises `TokenBudgetExceededError` once the cumulative count crosses
 `settings.agent_token_budget`; `invoke_agent` passes it via `config={"callbacks": [handler]}` and
 catches the raise into the same fallback. The token cap is a post-call soft cap (it stops the next
 step; it cannot preempt an in-flight call).
@@ -31,9 +31,9 @@ step; it cannot preempt an in-flight call).
 - Includes:
   - `core/config.py`: `agent_recursion_limit` (int, bounded) and `agent_token_budget` (int, bounded).
   - `agent/runner.py`: pass `recursion_limit` + `callbacks` in the `graph.invoke` config; catch
-    `GraphRecursionError` and `TokenBudgetExceeded`, return a fallback `AgentOutcome`
+    `GraphRecursionError` and `TokenBudgetExceededError`, return a fallback `AgentOutcome`
     (`answer=AGENT_BOUND_FALLBACK`, `context=""`).
-  - New module `agent/limits.py`: `TokenBudgetExceeded` exception + the accumulating callback handler.
+  - New module `agent/limits.py`: `TokenBudgetExceededError` exception + the accumulating callback handler.
   - Update the existing `invoke_agent` stub tests so their `.invoke` accepts the new `config` argument.
 - Does NOT include:
   - Any change to `api/routes/chat.py` structure (it already maps `AgentOutcome` to `ChatResponse`).
