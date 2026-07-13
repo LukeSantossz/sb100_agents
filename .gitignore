@@ -52,4 +52,10 @@ coverage.xml
 # Runtime data - do not version
 /qdrant_storage/
 
+# Eval pipeline working artifacts (regenerable; frozen calibration evidence lives in tests/fixtures/)
+/eval/results/*
+!/eval/results/.gitkeep
+/eval/dataset/*
+!/eval/dataset/.gitkeep
+
 

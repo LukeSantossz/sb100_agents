@@ -81,14 +81,18 @@ class Settings(BaseSettings):
     agent_provider: AgentProvider = AgentProvider.ollama
     agent_model: str = ""  # Empty = use the provider default (see _apply_agent_model_default)
     agent_enabled: bool = False
-    agent_recursion_limit: int = Field(default=25, ge=1, le=100)
-    agent_token_budget: int = Field(default=100_000, ge=1)
+    # Loop bounds calibrated on qwen2.5:7b (ADR-0015): observed max 9 super-steps / 19.7k tokens
+    # per run; defaults set to ~1.5x the observed max as a runaway backstop with headroom.
+    agent_recursion_limit: int = Field(default=15, ge=1, le=100)
+    agent_token_budget: int = Field(default=30_000, ge=1)
     # Local (Ollama) context window for the agent. Must exceed the ~9.8k-token deep-agent
     # prompt (deepagents scaffolding) so the system/tool prompt is not truncated; only used
     # when agent_provider is ollama.
     agent_num_ctx: int = Field(default=16384, ge=2048, le=131072)
     intent_filter_enabled: bool = True
-    intent_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
+    # Domain-gate cutoff calibrated on the corpus (ADR-0015): 0.80 admits 96.7% of in-domain
+    # questions while leaking 3.3% of out-of-domain ones (nomic-embed-text similarity scale).
+    intent_threshold: float = Field(default=0.80, ge=0.0, le=1.0)
     openrouter_api_key: str | None = None
     jwt_secret_key: str = ""
 
