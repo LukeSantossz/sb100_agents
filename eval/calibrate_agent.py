@@ -279,8 +279,15 @@ def _split_chunks(text: str) -> list[str]:
     return split_into_chunks(text)
 
 
-def generate_out_of_domain_questions(num: int, *, model: str | None = None) -> list[str]:
-    """Generate ``num`` deliberately non-agricultural questions via Groq (reproducible negatives)."""
+def generate_out_of_domain_questions(
+    num: int, *, model: str | None = None, seed: int | None = None
+) -> list[str]:
+    """Generate ``num`` deliberately non-agricultural questions via Groq.
+
+    ``seed`` (when set) is passed to Groq for best-effort determinism, varied per batch so the
+    batches differ. LLM generation is not guaranteed reproducible, so the frozen fixture — not a
+    live regeneration — is the authoritative calibration evidence.
+    """
     import os
 
     from groq import Groq
@@ -293,7 +300,7 @@ def generate_out_of_domain_questions(num: int, *, model: str | None = None) -> l
     questions: list[str] = []
     seen: set[str] = set()
     max_rounds = (num // _NEGATIVE_BATCH) + 4
-    for _ in range(max_rounds):
+    for round_index in range(max_rounds):
         if len(questions) >= num:
             break
         want = min(_NEGATIVE_BATCH, num - len(questions))
@@ -304,6 +311,7 @@ def generate_out_of_domain_questions(num: int, *, model: str | None = None) -> l
             ],
             temperature=0.7,
             max_tokens=2000,
+            seed=None if seed is None else seed + round_index,
         )
         content = (response.choices[0].message.content or "").strip()
         for question in parse_questions_json(content):
@@ -393,8 +401,15 @@ def run_calibration(
     from core.config import settings
 
     probe = probe_agent_token_report()
+    if probe.total_tokens_via_runtime <= 0:
+        # Fail before spending the agent runs: a zero here means the same extractor would read
+        # zero for every run, so agent_token_budget would be "calibrated" from inert accounting.
+        raise RuntimeError(
+            "token accounting is inert: the agent model reported no total_tokens where the runtime "
+            "budget reads it. Fix the provider or _extract_total_tokens before calibrating."
+        )
     positives = generate_in_domain_questions(num_positives, seed=seed)
-    negatives = generate_out_of_domain_questions(num_negatives)
+    negatives = generate_out_of_domain_questions(num_negatives, seed=seed)
     _warm_embedder()
     scored = score_questions(positives, in_domain=True) + score_questions(
         negatives, in_domain=False
@@ -503,17 +518,26 @@ def main() -> int:
 
     youden = select_threshold_youden(evidence.scored)
     capped = threshold_at_max_fpr(evidence.scored, max_fpr=0.05)
-    steps = [r.steps for r in evidence.runs]
-    tokens = [r.total_tokens for r in evidence.runs]
+    # Runs that hit the recursion ceiling are censored (steps/tokens truncated at the ceiling), so
+    # they under-report the true need; exclude them from the bound recommendations.
+    completed = [r for r in evidence.runs if not r.hit_recursion_limit]
+    hit = len(evidence.runs) - len(completed)
+    if not completed:
+        print(
+            f"ERROR: all {hit} agent run(s) hit the recursion ceiling; raise --recursion-ceiling."
+        )
+        return 1
+    steps = [r.steps for r in completed]
+    tokens = [r.total_tokens for r in completed]
     steps_p95, steps_max, recursion_limit = _recommend_bound(steps)
     tokens_p95, tokens_max, token_budget = _recommend_bound(tokens)
     n_pos = sum(1 for s in evidence.scored if s.in_domain)
     n_neg = sum(1 for s in evidence.scored if not s.in_domain)
-    hit = sum(1 for r in evidence.runs if r.hit_recursion_limit)
 
     print(f"\nEvidence written to: {output_path}")
     print(
-        f"scored: {n_pos} positives, {n_neg} negatives | agent runs: {len(evidence.runs)} ({hit} hit the ceiling)"
+        f"scored: {n_pos} positives, {n_neg} negatives | agent runs: {len(evidence.runs)} "
+        f"({hit} censored, bounds from {len(completed)})"
     )
     print("\n--- intent_threshold ---")
     print(
