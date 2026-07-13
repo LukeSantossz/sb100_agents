@@ -7,7 +7,7 @@ fallback answer rather than an error. A recursion/step limit is passed to LangGr
 `graph.invoke(input, config={"recursion_limit": settings.agent_recursion_limit})`; exceeding it
 raises `langgraph.errors.GraphRecursionError`, which `invoke_agent` catches. A per-run token budget is
 enforced by a LangChain callback handler that accumulates per-call token usage on `on_llm_end` and
-raises `TokenBudgetExceeded` once the cumulative total crosses `settings.agent_token_budget`; the
+raises `TokenBudgetExceededError` once the cumulative total crosses `settings.agent_token_budget`; the
 handler is passed through the same `graph.invoke` config. Both bounds resolve to the same graceful
 `AgentOutcome` fallback. The token cap is a post-call soft cap: it stops the run before the next step
 but cannot preempt an in-flight model call.
