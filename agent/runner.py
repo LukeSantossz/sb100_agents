@@ -1,17 +1,32 @@
 """Synchronous runner for the SmartB100 deep agent, isolated behind agent/ (ADR-0008)."""
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
+from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.runnables import RunnableConfig
+from langgraph.errors import GraphRecursionError
 
 from agent.factory import create_agent
+from agent.limits import TokenBudgetExceededError, TokenBudgetHandler
 from agent.tools import SEARCH_CORPUS_SENTINELS
+from core.config import settings
 from core.schemas import UserProfile
 
 # Reuse the generation-layer sanitizer so the agent path has the same
 # prompt-injection hardening as the legacy /chat path (parity, no duplication).
 from generation.llm import _sanitize_question
+
+logger = logging.getLogger(__name__)
+
+# Graceful answer returned when a run hits a configured bound (ADR-0012). A bounded run
+# is a normal ChatResponse carrying this text, not a 503.
+AGENT_BOUND_FALLBACK = (
+    "Não consegui concluir a resposta dentro dos limites de processamento definidos. "
+    "Tente reformular ou detalhar melhor a pergunta."
+)
 
 
 @dataclass(frozen=True)
@@ -58,7 +73,19 @@ def invoke_agent(
     """
     if graph is None:
         graph = create_agent()
-    result = graph.invoke(_build_input(question, history, profile))
+    # Bound the run (ADR-0012): a native recursion/step limit plus a per-run token budget
+    # enforced by an accumulating callback. Either bound terminates gracefully with a fallback.
+    handler = TokenBudgetHandler(settings.agent_token_budget)
+    callbacks: list[BaseCallbackHandler] = [handler]
+    config: RunnableConfig = {
+        "recursion_limit": settings.agent_recursion_limit,
+        "callbacks": callbacks,
+    }
+    try:
+        result = graph.invoke(_build_input(question, history, profile), config)
+    except (GraphRecursionError, TokenBudgetExceededError) as exc:
+        logger.warning("agent.bound_exceeded", extra={"bound": type(exc).__name__})
+        return AgentOutcome(answer=AGENT_BOUND_FALLBACK, context="")
     messages = result["messages"]
 
     ai_messages = [m for m in messages if isinstance(m, AIMessage)]

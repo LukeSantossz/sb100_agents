@@ -197,6 +197,7 @@ holds the full rationale, alternatives, and consequences.
 | Hosted Groq (GPT-OSS) for the agent reasoning tier | Larger local model / Claude | No local GPU; reuses the default verification provider; reliable tool-calling — [ADR-0009](./docs/adr/0009-groq-agent-model.md) |
 | Agricultural domain gate via corpus retrieval score | Few-shot topic classifier / LLM judge | Cheap corpus-derived coverage proxy before the agent loop, staged escalation — [ADR-0010](./docs/adr/0010-domain-gate-retrieval-score.md) |
 | Untrusted input isolated in agentic CI | Inline escape / remove workflow | No template injection, least privilege, human-merge barrier — [ADR-0011](./docs/adr/0011-untrusted-input-in-agentic-ci.md) |
+| Bound the agent loop (recursion limit + soft token budget) | Per-call `max_tokens` / step limit only | Native step bound plus a callback-counted per-run token cap, both failing into a graceful fallback — [ADR-0012](./docs/adr/0012-bound-agent-loop.md) |
 
 ## Getting Started
 
