@@ -59,3 +59,7 @@ running offline in CI with no live services.
 - The loop bounds are calibrated for `qwen2.5:7b`; a different agent model needs a fresh run. On the
   local provider tokens are free, so `agent_token_budget` is a runaway/time backstop rather than a
   cost cap; both bounds stay configurable and terminate into the ADR-0012 graceful fallback.
+- The bounds were measured on single-turn runs (empty history); a real `/chat` request carries up to
+  `buffer_maxlen` prior turns, which add tokens beyond the ~19.7k observed max. The 1.5x factor leaves
+  headroom, but a long multi-turn session can approach `agent_token_budget` sooner — acceptable given
+  the graceful fallback and that the value is configurable (`AGENT_TOKEN_BUDGET`).
