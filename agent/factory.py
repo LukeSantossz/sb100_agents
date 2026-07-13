@@ -6,16 +6,30 @@ from typing import Any
 from deepagents import create_deep_agent
 from langchain_core.language_models import BaseChatModel
 from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import SecretStr
 
 from agent.prompt import AGENT_INSTRUCTIONS
 from agent.tools import search_corpus
-from core.config import settings
+from core.config import AgentProvider, settings
 
 
-def default_model() -> ChatGroq:
-    """Build the default agent chat model from settings (hosted Groq, ADR-0009)."""
+def default_model() -> BaseChatModel:
+    """Build the default agent chat model from settings, per ``agent_provider``.
+
+    ``ollama`` runs a local model (no hosted rate limit); ``groq`` uses the hosted model
+    (ADR-0009). See the local-provider ADR for why the local path is the default.
+    """
+    if settings.agent_provider == AgentProvider.ollama:
+        # num_ctx must hold the ~9.8k-token deep-agent prompt or Ollama truncates the
+        # system/tool prompt; pass the configured timeout too (slow local generation),
+        # matching how the rest of the app builds its Ollama clients.
+        return ChatOllama(
+            model=settings.agent_model,
+            num_ctx=settings.agent_num_ctx,
+            client_kwargs={"timeout": settings.ollama_timeout},
+        )
     api_key = SecretStr(settings.groq_api_key) if settings.groq_api_key is not None else None
     return ChatGroq(model=settings.agent_model, api_key=api_key)
 

@@ -58,7 +58,7 @@ def test_create_agent_compiles_graph_with_injected_model() -> None:
     assert "search_corpus" in str(agent.get_graph())
 
 
-def test_default_model_reads_settings() -> None:
+def test_default_model_builds_chatgroq_when_provider_is_groq() -> None:
     captured: dict[str, object] = {}
 
     class _FakeChatGroq:
@@ -66,6 +66,8 @@ def test_default_model_reads_settings() -> None:
             captured.update(kwargs)
 
     with (
+        patch("agent.factory.settings.agent_provider", "groq"),
+        patch("agent.factory.settings.agent_model", "openai/gpt-oss-20b"),
         patch("agent.factory.ChatGroq", _FakeChatGroq),
         patch("agent.factory.settings.groq_api_key", "test-groq-key"),
     ):
@@ -73,6 +75,28 @@ def test_default_model_reads_settings() -> None:
     assert captured["model"] == "openai/gpt-oss-20b"
     assert isinstance(captured["api_key"], SecretStr)
     assert captured["api_key"].get_secret_value() == "test-groq-key"
+
+
+def test_default_model_builds_chatollama_when_provider_is_ollama() -> None:
+    captured: dict[str, object] = {}
+
+    class _FakeChatOllama:
+        def __init__(self, **kwargs: object) -> None:
+            captured.update(kwargs)
+
+    with (
+        patch("agent.factory.settings.agent_provider", "ollama"),
+        patch("agent.factory.settings.agent_model", "qwen2.5:7b"),
+        patch("agent.factory.settings.ollama_timeout", 99.0),
+        patch("agent.factory.settings.agent_num_ctx", 16384),
+        patch("agent.factory.ChatOllama", _FakeChatOllama),
+    ):
+        default_model()
+    assert captured["model"] == "qwen2.5:7b"
+    # the configured Ollama timeout reaches the client (slow local generation)
+    assert captured["client_kwargs"] == {"timeout": 99.0}
+    # a context window large enough for the ~9.8k-token deep-agent prompt
+    assert captured["num_ctx"] == 16384
 
 
 def test_default_model_handles_none_api_key() -> None:
@@ -83,11 +107,29 @@ def test_default_model_handles_none_api_key() -> None:
             captured.update(kwargs)
 
     with (
+        patch("agent.factory.settings.agent_provider", "groq"),
         patch("agent.factory.ChatGroq", _FakeChatGroq),
         patch("agent.factory.settings.groq_api_key", None),
     ):
         default_model()
     assert captured["api_key"] is None
+
+
+@pytest.mark.requires_infra
+def test_deep_agent_runs_search_corpus_on_qwen() -> None:
+    # End-to-end on the default local provider (qwen2.5:7b via Ollama): a real agricultural
+    # question must drive a search_corpus tool call (non-empty retrieved context) and yield a
+    # grounded answer, proving the local model works in the compiled deep agent.
+    from agent.runner import invoke_agent
+    from core.schemas import ExpertiseLevel, UserProfile
+
+    outcome = invoke_agent(
+        "Qual a dose de nitrogênio recomendada para o milho?",
+        [],
+        UserProfile(name="test", expertise=ExpertiseLevel.intermediate),
+    )
+    assert outcome.answer.strip()
+    assert outcome.context.strip()
 
 
 def test_invoke_agent_extracts_answer_and_concatenated_context() -> None:
