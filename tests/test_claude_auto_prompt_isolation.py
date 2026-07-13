@@ -54,18 +54,27 @@ def test_prompt_references_issue_by_number() -> None:
 def test_untrusted_issue_content_only_under_step_env() -> None:
     """Title/body may be captured in a step ``env`` mapping, never in ``run`` or ``with``."""
     offenders: list[str] = []
+    captured_in_env: set[str] = set()
     for step in _implement_job().get("steps", []):
         name = str(step.get("name") or step.get("uses") or "<step>")
         run_blob = str(step.get("run", ""))
         with_blob = " ".join(str(value) for value in step.get("with", {}).values())
+        env_blob = " ".join(str(value) for value in step.get("env", {}).values())
         for expr in _UNTRUSTED_EXPRESSIONS:
             if expr in run_blob:
                 offenders.append(f"{name}: run -> {expr}")
             if expr in with_blob:
                 offenders.append(f"{name}: with -> {expr}")
+            if expr in env_blob:
+                captured_in_env.add(expr)
     assert not offenders, (
         "untrusted issue content must reach the job only via step env, never "
         f"expanded into run/with (template injection); found: {offenders}"
+    )
+    missing_from_env = [expr for expr in _UNTRUSTED_EXPRESSIONS if expr not in captured_in_env]
+    assert not missing_from_env, (
+        "untrusted issue content must be captured under a step env mapping so it is passed as "
+        f"isolated data, not interpolated; missing from env: {missing_from_env}"
     )
 
 
