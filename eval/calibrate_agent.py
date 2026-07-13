@@ -513,6 +513,31 @@ def main() -> int:
         seed=args.seed,
     )
 
+    # Validate BEFORE writing: the default output is the committed guard-test fixture, so partial
+    # or degraded evidence must never overwrite it — only a full, clean run may replace it. Runs
+    # that hit the recursion ceiling are censored (steps/tokens truncated); dropped runs (transient
+    # failures) shrink the sample and would bias p95/max.
+    n_pos = sum(1 for s in evidence.scored if s.in_domain)
+    n_neg = sum(1 for s in evidence.scored if not s.in_domain)
+    completed = [r for r in evidence.runs if not r.hit_recursion_limit]
+    expected_runs = min(args.num_agent_runs, args.num_questions)
+    problems: list[str] = []
+    if n_pos == 0 or n_neg == 0:
+        problems.append(f"need both classes scored (got {n_pos} positive, {n_neg} negative)")
+    if len(evidence.runs) < expected_runs:
+        problems.append(
+            f"{expected_runs - len(evidence.runs)} of {expected_runs} agent run(s) dropped"
+        )
+    if len(completed) < len(evidence.runs):
+        problems.append(f"{len(evidence.runs) - len(completed)} run(s) hit the recursion ceiling")
+    if not completed:
+        problems.append("no completed agent runs")
+    if problems:
+        print("ERROR: calibration evidence is invalid; the fixture was NOT overwritten:")
+        for problem in problems:
+            print(f"  - {problem}")
+        return 1
+
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as handle:
@@ -520,27 +545,11 @@ def main() -> int:
 
     youden = select_threshold_youden(evidence.scored)
     capped = threshold_at_max_fpr(evidence.scored, max_fpr=0.05)
-    # Runs that hit the recursion ceiling are censored (steps/tokens truncated at the ceiling), so
-    # they under-report the true need; exclude them from the bound recommendations.
-    completed = [r for r in evidence.runs if not r.hit_recursion_limit]
-    hit = len(evidence.runs) - len(completed)
-    if not completed:
-        print(
-            f"ERROR: all {hit} agent run(s) hit the recursion ceiling; raise --recursion-ceiling."
-        )
-        return 1
-    steps = [r.steps for r in completed]
-    tokens = [r.total_tokens for r in completed]
-    steps_p95, steps_max, recursion_limit = _recommend_bound(steps)
-    tokens_p95, tokens_max, token_budget = _recommend_bound(tokens)
-    n_pos = sum(1 for s in evidence.scored if s.in_domain)
-    n_neg = sum(1 for s in evidence.scored if not s.in_domain)
+    steps_p95, steps_max, recursion_limit = _recommend_bound([r.steps for r in completed])
+    tokens_p95, tokens_max, token_budget = _recommend_bound([r.total_tokens for r in completed])
 
     print(f"\nEvidence written to: {output_path}")
-    print(
-        f"scored: {n_pos} positives, {n_neg} negatives | agent runs: {len(evidence.runs)} "
-        f"({hit} censored, bounds from {len(completed)})"
-    )
+    print(f"scored: {n_pos} positives, {n_neg} negatives | agent runs: {len(completed)}")
     print("\n--- intent_threshold ---")
     print(
         f"  Youden's J:              {youden:.4f}  -> {threshold_metrics(evidence.scored, youden)}"
