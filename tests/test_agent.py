@@ -354,3 +354,89 @@ def test_settings_reject_non_positive_token_budget() -> None:
 
     with pytest.raises(ValidationError):
         Settings(jwt_secret_key="x" * 32, agent_token_budget=0)
+
+
+# ----------------------------- cached agent graph (#177) -----------------------------
+
+
+def test_get_agent_builds_the_graph_at_most_once() -> None:
+    from agent import factory
+
+    factory.reset_agent_cache()
+    with patch.object(factory, "create_agent", return_value=object()) as m:
+        factory.get_agent()
+        factory.get_agent()
+    assert m.call_count == 1
+    factory.reset_agent_cache()
+
+
+def test_get_agent_returns_the_same_cached_instance() -> None:
+    from agent import factory
+
+    factory.reset_agent_cache()
+    with patch.object(factory, "create_agent", return_value=object()):
+        first = factory.get_agent()
+        second = factory.get_agent()
+    assert first is second
+    factory.reset_agent_cache()
+
+
+def test_reset_agent_cache_forces_a_rebuild() -> None:
+    from agent import factory
+
+    factory.reset_agent_cache()
+    with patch.object(factory, "create_agent", side_effect=[object(), object()]) as m:
+        first = factory.get_agent()
+        factory.reset_agent_cache()
+        second = factory.get_agent()
+    assert m.call_count == 2
+    assert first is not second
+    factory.reset_agent_cache()
+
+
+def test_invoke_agent_uses_cached_graph_when_no_graph_injected() -> None:
+    from langchain_core.messages import AIMessage
+
+    from agent import factory
+    from agent.runner import invoke_agent
+    from core.schemas import ExpertiseLevel, UserProfile
+
+    factory.reset_agent_cache()
+
+    class _StubGraph:
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
+            return {"messages": [AIMessage(content="cached ok")]}
+
+    profile = UserProfile(name="Ana", expertise=ExpertiseLevel.expert)
+    with patch.object(factory, "create_agent", return_value=_StubGraph()) as m:
+        first = invoke_agent("q", [], profile)
+        second = invoke_agent("q2", [], profile)
+    assert m.call_count == 1  # built once, reused on the second request
+    assert first.answer == "cached ok"
+    assert second.answer == "cached ok"
+    factory.reset_agent_cache()
+
+
+def test_invoke_agent_uses_injected_graph_without_touching_cache() -> None:
+    from langchain_core.messages import AIMessage
+
+    from agent import factory
+    from agent.runner import invoke_agent
+    from core.schemas import ExpertiseLevel, UserProfile
+
+    factory.reset_agent_cache()
+
+    class _StubGraph:
+        def invoke(
+            self, payload: dict[str, object], config: dict[str, object] | None = None
+        ) -> dict[str, object]:
+            return {"messages": [AIMessage(content="injected")]}
+
+    profile = UserProfile(name="Ana", expertise=ExpertiseLevel.beginner)
+    with patch.object(factory, "create_agent") as m:
+        outcome = invoke_agent("q", [], profile, graph=_StubGraph())
+    assert m.call_count == 0  # injected graph never touches the cache/builder
+    assert outcome.answer == "injected"
+    factory.reset_agent_cache()
