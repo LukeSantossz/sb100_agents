@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     agent_enabled: bool = False
     agent_recursion_limit: int = Field(default=25, ge=1, le=100)
     agent_token_budget: int = Field(default=100_000, ge=1)
+    # Local (Ollama) context window for the agent. Must exceed the ~9.8k-token deep-agent
+    # prompt (deepagents scaffolding) so the system/tool prompt is not truncated; only used
+    # when agent_provider is ollama.
+    agent_num_ctx: int = Field(default=16384, ge=2048, le=131072)
     intent_filter_enabled: bool = True
     intent_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
     openrouter_api_key: str | None = None
