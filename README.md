@@ -200,6 +200,7 @@ holds the full rationale, alternatives, and consequences.
 | Bound the agent loop (recursion limit + soft token budget) | Per-call `max_tokens` / step limit only | Native step bound plus a callback-counted per-run token cap, both failing into a graceful fallback — [ADR-0012](./docs/adr/0012-bound-agent-loop.md) |
 | Configurable agent provider, local Ollama default | Hosted Groq only / paid Groq tier | Free-tier Groq can't fit the deep-agent call (TPM); local `qwen2.5:7b` runs tool-calling with no rate limit — [ADR-0013](./docs/adr/0013-configurable-agent-provider-local-default.md) |
 | Qdrant storage on a named Docker volume | Host bind mount to the project dir | Windows/OneDrive bind mount is FUSE in WSL2 and stalls Qdrant's mmap I/O (hangs search + shutdown) — [ADR-0014](./docs/adr/0014-qdrant-storage-named-volume.md) |
+| Calibrated domain-gate threshold and loop bounds | Guessed defaults / few-shot classifier gate | Measured `intent_threshold=0.80` (96.7% in-domain / 3.3% leak) and bounds from real qwen2.5:7b runs — [ADR-0015](./docs/adr/0015-calibrated-agent-gate-and-loop-bounds.md) |
 
 ## Getting Started
 

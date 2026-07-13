@@ -3,31 +3,29 @@
 ## Problem
 
 The agent's three safety knobs — `intent_threshold`, `agent_recursion_limit`, and
-`agent_token_budget` — hold guessed defaults that were never measured, and the token
-budget may be inert because it is unknown whether Groq reports `total_tokens` where
-`agent/limits.py` reads it; `agent_enabled` cannot be turned on responsibly until these
-are calibrated against the live environment with evidence.
+`agent_token_budget` — hold guessed defaults that were never measured; `agent_enabled`
+cannot be turned on responsibly until these are calibrated against the live environment
+with evidence, now that the agent runs on the default local Ollama model (`qwen2.5:7b`,
+ADR-0013).
 
 ## Design Decision
 
 Add a reproducible harness, `eval/calibrate_agent.py`, that reuses the existing `eval/`
 provider plumbing to produce three measurements against the live environment, in this
-order: (1) a Groq probe that captures one real `on_llm_end` `LLMResult` and confirms
-whether `total_tokens` is reported where `TokenBudgetHandler._extract_total_tokens`
-reads it; (2) an `intent_threshold` sweep over corpus-derived in-domain positives
-(reusing `eval/generate_questions.py`) and LLM-generated out-of-domain negatives,
-scoring each with the same `retrieval.top_similarity` signal the gate uses, and
-reporting leakage (false positives) and over-block (false negatives) across candidate
-thresholds; (3) a loop-bounds measurement that runs the real compiled agent over the
-in-domain questions and records, per run, the exact number of LangGraph super-steps
-(counted from `graph.stream(..., stream_mode="updates")`) and the cumulative
-`total_tokens` (a non-raising metering callback). The harness freezes its evidence to a
-committed fixture; guard tests assert the chosen defaults hold on that frozen evidence
-without any live service; the defaults land in `core/config.py`; and ADR-0013 records
-the methodology, the evidence, and the chosen values. If the Groq probe shows
-`total_tokens` reported elsewhere (e.g. `usage_metadata` on the `AIMessage`),
-`_extract_total_tokens` is fixed test-first as part of this change, since an inert token
-budget is a correctness defect in the bound.
+order: (1) a provider-agnostic token-report probe (via `default_model()`, the local Ollama
+model by default) that captures one real `on_llm_end` `LLMResult` and confirms `total_tokens`
+is reported where `TokenBudgetHandler._extract_total_tokens` reads it — the `usage_metadata`
+fallback for Ollama already landed in ADR-0013/#196, so this is a live re-confirmation, not a
+fix; (2) an `intent_threshold` sweep over corpus-derived in-domain positives (reusing
+`eval/generate_questions.py`) and LLM-generated out-of-domain negatives, scoring each with the
+same `retrieval.top_similarity` signal the gate uses, and reporting leakage (false positives)
+and over-block (false negatives) across candidate thresholds; (3) a loop-bounds measurement
+that runs the real compiled agent (local Ollama, no rate limit) over the in-domain questions
+and records, per run, the exact number of LangGraph super-steps (counted from
+`graph.stream(..., stream_mode="updates")`) and the cumulative `total_tokens` (a non-raising
+metering callback). The harness freezes its evidence to a committed fixture; guard tests assert
+the chosen defaults hold on that frozen evidence without any live service; the defaults land in
+`core/config.py`; and ADR-0015 records the methodology, the evidence, and the chosen values.
 
 ## Alternatives Considered
 
@@ -50,17 +48,15 @@ budget is a correctness defect in the bound.
 ## Scope
 
 - Includes:
-  - `eval/calibrate_agent.py`: the harness (Groq probe, threshold sweep, loop-bounds
-    measurement), reusing `eval/` provider plumbing and `eval/generate_questions.py`.
+  - `eval/calibrate_agent.py`: the harness (provider-agnostic token probe, threshold sweep,
+    loop-bounds measurement), reusing `eval/` provider plumbing and `eval/generate_questions.py`.
   - Generation of LLM-based out-of-domain negatives (non-agricultural prompt), reproducible.
-  - A committed evidence fixture (frozen `(score, label)` pairs plus step/token
-    distributions and the captured Groq `LLMResult` shape) for offline guard tests.
-  - Guard tests that run in CI without Qdrant or Groq.
+  - A committed evidence fixture (frozen `(score, label)` pairs plus step/token distributions)
+    for offline guard tests.
+  - Guard tests that run in CI without Qdrant or a model provider.
   - Updated defaults for `intent_threshold`, `agent_recursion_limit`, `agent_token_budget`
     in `core/config.py`.
-  - A test-first fix to `agent/limits.py::_extract_total_tokens` **only if** the probe
-    shows Groq reports `total_tokens` in a location the current extractor misses.
-  - ADR-0013 plus a README Engineering Decisions row.
+  - ADR-0015 plus a README Engineering Decisions row.
 - Does NOT include:
   - Flipping `agent_enabled` to `True` (a separate decision after these values land).
   - Replacing the retrieval-score gate with a topic classifier (ADR-0010 escalation).
@@ -71,13 +67,9 @@ budget is a correctness defect in the bound.
 
 ## Acceptance Criteria
 
-- `groq_probe_reports_total_tokens_as_positive_int`: the probe captures a real
-  `on_llm_end` `LLMResult` from `ChatGroq(settings.agent_model)` and asserts a positive
-  integer `total_tokens` is present at the location the runtime reads.
-- `extract_total_tokens_reads_the_real_groq_shape`: a unit test builds an `LLMResult` in
-  the exact shape the probe captured and asserts `_extract_total_tokens` returns the
-  positive total (this test is the red step of the fix if the probe reveals a missed
-  location; otherwise it locks the confirmed shape).
+- `agent_probe_reports_total_tokens_as_positive_int`: the probe captures a real
+  `on_llm_end` `LLMResult` from `default_model()` (local Ollama by default) and asserts a
+  positive integer `total_tokens` at the location the runtime budget reads (`requires_infra`).
 - `chosen_threshold_separates_frozen_probe_within_targets`: on the frozen evidence, the
   selected `intent_threshold` yields true-positive rate ≥ 0.90 and false-positive
   (leakage) rate ≤ 0.05; if no threshold meets both, the harness reports it and the ADR
@@ -93,13 +85,14 @@ budget is a correctness defect in the bound.
 
 ## Reproducibility
 
-- Command: `python eval/calibrate_agent.py --num-questions 60 --num-negatives 60`
-  (run from an environment with `GROQ_API_KEY` set, Qdrant reachable at
-  `settings.qdrant_url`, and the corpus already ingested into `settings.collection_name`).
+- Command: `python eval/calibrate_agent.py --num-questions 60 --num-negatives 60 --num-agent-runs 12`
+  (Qdrant reachable at `settings.qdrant_url` with the corpus ingested; Ollama serving
+  `nomic-embed-text` and `qwen2.5:7b`; `GROQ_API_KEY` set — used only to *generate* the
+  calibration questions, not to run the agent).
 - Seed: `random.seed(42)`, matching the existing eval pipeline, for question sampling and
   any ordering.
 - Relevant versions: Python 3.12; dependencies pinned by `uv.lock`; embedding model
-  `nomic-embed-text`; agent model `openai/gpt-oss-20b` on Groq.
+  `nomic-embed-text`; agent model `qwen2.5:7b` via local Ollama (`agent_provider=ollama`).
 - Note: the `intent_threshold` scale is tied to the embedding model and its task prefixes;
   the pending `#106` nomic task-prefix change would shift the scale and require rerunning
   the sweep (per ADR-0010). The frozen fixture records the embed model it was produced with.
@@ -109,14 +102,17 @@ budget is a correctness defect in the bound.
 - Assumption: the live corpus in Qdrant is representative enough that corpus-derived
   positives reflect real in-domain traffic. Invalidated if the corpus is near-empty or
   skewed; the harness prints the positive/negative counts so a degenerate run is visible.
-- Assumption: Groq reports usage deterministically enough that a p95 over ~60 runs is a
-  stable bound. Invalidated by high variance; the harness prints the full distribution so
-  an unstable measurement is visible before a value is chosen.
+- Assumption: the local model reports usage deterministically enough that a p95 over the
+  measured runs is a stable bound. Invalidated by high variance; the harness prints the full
+  distribution so an unstable measurement is visible before a value is chosen.
 - Risk: the sweep may fail to separate positives from negatives at the target operating
   point, meaning the score gate is inadequate. This does not invalidate the spec — the
   acceptance criterion routes that outcome to the documented ADR-0010 escalation decision.
-- Risk: running ~60 live agent turns consumes Groq quota and wall-clock; the harness is a
-  manual, seeded, one-off tool, not part of CI, so this cost is paid only intentionally.
+  (An early 3+3 smoke already showed negatives scoring ~0.77–0.79, so weak separation is a
+  live possibility the full sweep must quantify.)
+- Risk: each local agent run is CPU/GPU-bound (~30s on an RTX 3070) and question generation
+  spends Groq quota; the harness is a manual, seeded, one-off tool, not part of CI, so this
+  cost is paid only intentionally. A smaller `--num-agent-runs` keeps the bounds sample modest.
 - Assumption: `graph.stream(..., stream_mode="updates")` yields one item per LangGraph
   super-step, making it an exact `recursion_limit` unit. Invalidated only by a LangGraph
   semantics change; the no-`GraphRecursionError` criterion cross-checks the chosen limit.
