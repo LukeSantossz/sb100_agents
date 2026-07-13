@@ -277,6 +277,13 @@ def test_explicit_agent_model_overrides_the_provider_default() -> None:
     assert s.agent_model == "llama-3.1-8b-instant"
 
 
+def test_agent_num_ctx_default_exceeds_the_deep_agent_prompt() -> None:
+    # The deep-agent call is ~9.8k tokens (deepagents scaffolding); the default local context
+    # window must be comfortably larger so Ollama does not truncate the system/tool prompt.
+    s = Settings(**_kwargs())
+    assert s.agent_num_ctx >= 12288
+
+
 def test_agent_provider_rejects_unknown_value() -> None:
     with pytest.raises(ValidationError):
         Settings(**_kwargs(agent_provider="bogus"))

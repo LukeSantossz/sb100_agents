@@ -22,10 +22,13 @@ def default_model() -> BaseChatModel:
     (ADR-0009). See the local-provider ADR for why the local path is the default.
     """
     if settings.agent_provider == AgentProvider.ollama:
-        # Pass the configured Ollama timeout (operators raise it for slow local generation),
+        # num_ctx must hold the ~9.8k-token deep-agent prompt or Ollama truncates the
+        # system/tool prompt; pass the configured timeout too (slow local generation),
         # matching how the rest of the app builds its Ollama clients.
         return ChatOllama(
-            model=settings.agent_model, client_kwargs={"timeout": settings.ollama_timeout}
+            model=settings.agent_model,
+            num_ctx=settings.agent_num_ctx,
+            client_kwargs={"timeout": settings.ollama_timeout},
         )
     api_key = SecretStr(settings.groq_api_key) if settings.groq_api_key is not None else None
     return ChatGroq(model=settings.agent_model, api_key=api_key)
