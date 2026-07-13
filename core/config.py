@@ -14,7 +14,7 @@ Usage example:
 from enum import StrEnum
 
 from limits import parse_many
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,6 +31,12 @@ class AgentProvider(StrEnum):
 
     groq = "groq"
     ollama = "ollama"
+
+
+# Provider-appropriate default agent models, applied when ``agent_model`` is left empty so a
+# deployment that only sets ``agent_provider`` gets a valid model for that provider.
+_DEFAULT_OLLAMA_AGENT_MODEL = "qwen2.5:7b"
+_DEFAULT_GROQ_AGENT_MODEL = "openai/gpt-oss-20b"
 
 
 class Settings(BaseSettings):
@@ -73,7 +79,7 @@ class Settings(BaseSettings):
     chat_rate_limit: str = "30/minute"
     groq_api_key: str | None = None
     agent_provider: AgentProvider = AgentProvider.ollama
-    agent_model: str = "qwen2.5:7b"
+    agent_model: str = ""  # Empty = use the provider default (see _apply_agent_model_default)
     agent_enabled: bool = False
     agent_recursion_limit: int = Field(default=25, ge=1, le=100)
     agent_token_budget: int = Field(default=100_000, ge=1)
@@ -109,6 +115,22 @@ class Settings(BaseSettings):
         if len(value) < 32:
             raise ValueError(f"JWT_SECRET_KEY must be at least 32 characters (got {len(value)})")
         return value
+
+    @model_validator(mode="after")
+    def _apply_agent_model_default(self) -> "Settings":
+        """Fill an empty ``agent_model`` with the default model for the selected provider.
+
+        Keeps the two settings consistent: setting only ``AGENT_PROVIDER=groq`` must not leave the
+        Ollama default model in place (``ChatGroq`` would reject it). An explicit ``AGENT_MODEL``
+        always wins.
+        """
+        if not self.agent_model:
+            self.agent_model = (
+                _DEFAULT_OLLAMA_AGENT_MODEL
+                if self.agent_provider == AgentProvider.ollama
+                else _DEFAULT_GROQ_AGENT_MODEL
+            )
+        return self
 
 
 settings = Settings()
