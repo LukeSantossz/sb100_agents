@@ -36,3 +36,19 @@ def test_token_budget_handler_fails_open_when_usage_absent() -> None:
     handler.on_llm_end(_llm_result(None))  # no usage reported; must not raise
 
     assert handler.total == 0
+
+
+def test_token_budget_aborts_through_callback_manager_dispatch() -> None:
+    """Regression (R2): the budget must abort via the real callback dispatch, not only a direct
+    call. BaseCallbackHandler swallows handler exceptions unless raise_error is True, so a direct
+    on_llm_end call would pass while a real model run silently ignores the budget."""
+    from langchain_core.callbacks.manager import CallbackManager
+
+    from agent.limits import TokenBudgetExceededError, TokenBudgetHandler
+
+    handler = TokenBudgetHandler(budget=100)
+    manager = CallbackManager(handlers=[handler])
+    run_manager = manager.on_llm_start({"name": "x"}, ["prompt"])[0]
+    run_manager.on_llm_end(_llm_result(60))  # cumulative 60, under budget
+    with pytest.raises(TokenBudgetExceededError):
+        run_manager.on_llm_end(_llm_result(60))  # cumulative 120 > 100 must propagate
