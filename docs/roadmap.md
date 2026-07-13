@@ -5,14 +5,18 @@ Living document. It organizes the project's recorded decisions (the ADRs under
 remain the durable, authoritative decision records; this file is the operational plan that
 sequences the work and is updated as Waves progress.
 
-## Current State (2026-06-19)
+## Current State (2026-07-13)
 
 - **Product:** MVP-complete RAG monolith (`/chat`: embed → search → generate → entropy-score),
   actively hardened. See the README Project Status.
-- **Migration decided, not started:** ADR-0008 (deepagents/LangGraph as the orchestration
-  substrate) and ADR-0009 (hosted Groq as the agent reasoning model) are **Accepted**. A go/no-go
-  spike (#163) proved the substrate. Only the `deepagents` dependency is wired in `pyproject.toml`;
-  **no `agent/` package exists yet and no code uses `deepagents`.**
+- **Migration in progress (Wave A core landed):** ADR-0008 (deepagents/LangGraph as the orchestration
+  substrate) and ADR-0009 (hosted Groq as the agent reasoning model) are **Accepted**; a go/no-go spike
+  (#163) proved the substrate. The `agent/` package now exists and Wave A slices **A1 (#170), A2 (#171),
+  and A3 (#172) are merged**: the `search_corpus` tool boundary, the agent-backed `/chat` handler behind
+  the `agent_enabled` flag (default off, legacy path preserved per ADR-0005), and the agricultural intent
+  filter (ADR-0010). **A4 (#173, bound the agent loop) is open.** A5 is satisfied for the score itself —
+  the entropy Hallucination Score wraps the agent answer — while the retry/fallback gate behavior is
+  deferred to Wave C (see the Wave C list).
 - **Taxonomy:** the ADRs reference "Wave A" but never define the wave set. This document defines it.
 
 ## The Wave Model
@@ -44,11 +48,11 @@ new issues created.
 
 | Slice | Scope | Notes |
 |-------|-------|-------|
-| **A1 — `agent/` scaffold + `search_corpus` tool** | Create the `agent/` package boundary; wrap the existing retrieval (`retrieval.search_context`) as a `deepagents` tool; build the agent via `create_deep_agent(model=ChatGroq(...), tools=[search_corpus])`; unit-test the wiring with a stubbed model. `/chat` unchanged. | De-risked by spike #163. Foundational; unblocks the rest. |
-| **A2 — Route `/chat` through the agent** | Add the agentic handler invoked via synchronous `graph.invoke(...)`; map agent output → `ChatResponse`; keep the legacy path switchable behind config during rollout. | Preserves ADR-0005. |
-| **A3 — Agricultural intent filter** | Cheap pre-flight classification to deflect off-domain questions before entering the agent loop. | README "agricultural intent filter". |
-| **A4 — Bound the agent loop** | Enforce a recursion limit and a per-run token budget to respect Groq free-tier limits and control latency. | ADR-0009 explicitly defers this to "a later Wave A slice". |
-| **A5 — Preserve the verification gate** | Ensure the entropy hallucination score still wraps the agent's final answer (deep claim-verification is Wave C). | ADR-0002 contract kept. |
+| **A1 — `agent/` scaffold + `search_corpus` tool** | Create the `agent/` package boundary; wrap the existing retrieval (`retrieval.search_context`) as a `deepagents` tool; build the agent via `create_deep_agent(model=ChatGroq(...), tools=[search_corpus])`; unit-test the wiring with a stubbed model. `/chat` unchanged. | De-risked by spike #163. Foundational; unblocks the rest. **Merged (#170).** |
+| **A2 — Route `/chat` through the agent** | Add the agentic handler invoked via synchronous `graph.invoke(...)`; map agent output → `ChatResponse`; keep the legacy path switchable behind config during rollout. | Preserves ADR-0005. **Merged (#171).** |
+| **A3 — Agricultural intent filter** | Cheap pre-flight classification to deflect off-domain questions before entering the agent loop. | README "agricultural intent filter". **Merged (#172, ADR-0010).** |
+| **A4 — Bound the agent loop** | Enforce a recursion limit and a per-run token budget to respect Groq free-tier limits and control latency. | ADR-0009 explicitly defers this to "a later Wave A slice". **Open (#173).** |
+| **A5 — Preserve the verification gate** | Ensure the entropy hallucination score still wraps the agent's final answer (deep claim-verification is Wave C). | ADR-0002 contract kept. **Score wrapping done; retry/fallback gate deferred to Wave C.** |
 
 **Done when:** `/chat` answers are produced by the agent, bounded and intent-filtered, with the
 existing verification score intact, behind the `agent/` boundary.

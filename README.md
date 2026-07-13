@@ -329,14 +329,15 @@ sb100_agents/
 - [x] bcrypt + JWT auth with per-IP rate limiting
 - [x] Dockerized deployment (infra + app profiles, healthchecks, log rotation)
 - [x] 5-step offline evaluation pipeline (`eval/`)
-- [x] Test suite (205 tests, ~83% coverage) with CI: ruff + mypy `--strict` + pytest
+- [x] Test suite (330 tests, ~88% coverage) with CI: ruff + mypy `--strict` + pytest
+- [x] Agentic core Wave A (A1–A3): `agent/` boundary + `search_corpus` tool, agent-backed `/chat` behind the `agent_enabled` flag (default off), agricultural intent filter (ADR-0008/0009/0010)
 
 ### Pending
 
 - [ ] Raise critical-module coverage to a 70% CI gate
 - [ ] Optional Langfuse tracing for the RAG pipeline
 - [ ] Hybrid search (dense + sparse vectors, RRF fusion)
-- [ ] LangGraph migration (ReAct agent + agricultural intent filter)
+- [ ] Finish Wave A: bound the agent loop (#173, A4) — A1–A3 (agent boundary, routing, intent filter) are done behind the `agent_enabled` flag
 - [ ] Claim verification (atomic decomposition + RAG fact-checking)
 - [ ] Streaming responses (SSE)
 
