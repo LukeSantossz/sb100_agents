@@ -8,6 +8,9 @@ selection (`-m "not requires_infra"`).
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from eval.calibrate_agent import (
@@ -18,6 +21,51 @@ from eval.calibrate_agent import (
     threshold_at_max_fpr,
     threshold_metrics,
 )
+
+# Frozen calibration evidence (issue #192): 60 in-domain + 60 out-of-domain scored questions
+# and 12 agent runs measured live on qwen2.5:7b. Regenerate with `python eval/calibrate_agent.py`.
+_EVIDENCE_FIXTURE = Path(__file__).parent / "fixtures" / "calibration_evidence.json"
+
+
+def _frozen_evidence() -> dict:
+    return json.loads(_EVIDENCE_FIXTURE.read_text(encoding="utf-8"))
+
+
+def _frozen_scored() -> list[ScoredQuestion]:
+    return [
+        ScoredQuestion(score=item["score"], in_domain=item["in_domain"])
+        for item in _frozen_evidence()["scored"]
+    ]
+
+
+def test_intent_threshold_default_separates_the_frozen_evidence_within_targets() -> None:
+    # The calibrated intent_threshold must admit >= 90% of in-domain questions while leaking
+    # <= 5% of out-of-domain ones on the frozen evidence (ADR-0010 operating point).
+    from core.config import settings
+
+    metrics = threshold_metrics(_frozen_scored(), settings.intent_threshold)
+    assert metrics.tpr >= 0.90, metrics
+    assert metrics.fpr <= 0.05, metrics
+
+
+def test_recursion_limit_default_is_at_least_frozen_p95_and_max_steps() -> None:
+    import numpy as np
+
+    from core.config import settings
+
+    steps = [run["steps"] for run in _frozen_evidence()["runs"]]
+    assert settings.agent_recursion_limit >= float(np.percentile(steps, 95))
+    assert settings.agent_recursion_limit >= max(steps)
+
+
+def test_token_budget_default_is_at_least_frozen_p95_and_max_tokens() -> None:
+    import numpy as np
+
+    from core.config import settings
+
+    tokens = [run["total_tokens"] for run in _frozen_evidence()["runs"]]
+    assert settings.agent_token_budget >= float(np.percentile(tokens, 95))
+    assert settings.agent_token_budget >= max(tokens)
 
 
 def _sample() -> list[ScoredQuestion]:
