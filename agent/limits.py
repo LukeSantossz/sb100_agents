@@ -71,7 +71,9 @@ class TokenBudgetHandler(BaseCallbackHandler):
         found = False
         for generation_list in response.generations:
             for generation in generation_list:
-                usage_metadata = getattr(getattr(generation, "message", None), "usage_metadata", None)
+                usage_metadata = getattr(
+                    getattr(generation, "message", None), "usage_metadata", None
+                )
                 value = usage_metadata.get("total_tokens") if usage_metadata else None
                 if isinstance(value, int):
                     from_messages += value
