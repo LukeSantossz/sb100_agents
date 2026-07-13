@@ -26,6 +26,13 @@ class VerificationProvider(StrEnum):
     openrouter = "openrouter"
 
 
+class AgentProvider(StrEnum):
+    """Supported chat-model providers for the deep agent (ADR-0009 and the local-provider ADR)."""
+
+    groq = "groq"
+    ollama = "ollama"
+
+
 class Settings(BaseSettings):
     """Global SmartB100 system settings.
 
@@ -65,7 +72,8 @@ class Settings(BaseSettings):
     # slowapi limit string enforced per authenticated user on POST /chat.
     chat_rate_limit: str = "30/minute"
     groq_api_key: str | None = None
-    agent_model: str = "openai/gpt-oss-20b"
+    agent_provider: AgentProvider = AgentProvider.ollama
+    agent_model: str = "qwen2.5:7b"
     agent_enabled: bool = False
     agent_recursion_limit: int = Field(default=25, ge=1, le=100)
     agent_token_budget: int = Field(default=100_000, ge=1)

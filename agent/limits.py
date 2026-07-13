@@ -54,11 +54,26 @@ class TokenBudgetHandler(BaseCallbackHandler):
 
     @staticmethod
     def _extract_total_tokens(response: LLMResult) -> int:
-        """Read the total token count from the OpenAI/Groq-style ``llm_output`` usage block.
+        """Read the total token count from an ``on_llm_end`` result across providers.
 
-        Returns 0 when usage is absent or not an int, so accounting fails open.
+        Groq/OpenAI report usage in ``llm_output``; Ollama leaves ``llm_output`` empty and reports
+        usage on the message's standardized ``usage_metadata``. Try the ``llm_output`` block first,
+        then fall back to summing ``usage_metadata`` across the generation messages. Returns 0 when
+        no usage is present at either location, so accounting fails open.
         """
         llm_output = response.llm_output or {}
         usage = llm_output.get("token_usage") or llm_output.get("usage") or {}
         total = usage.get("total_tokens")
-        return total if isinstance(total, int) else 0
+        if isinstance(total, int):
+            return total
+
+        from_messages = 0
+        found = False
+        for generation_list in response.generations:
+            for generation in generation_list:
+                usage_metadata = getattr(getattr(generation, "message", None), "usage_metadata", None)
+                value = usage_metadata.get("total_tokens") if usage_metadata else None
+                if isinstance(value, int):
+                    from_messages += value
+                    found = True
+        return from_messages if found else 0

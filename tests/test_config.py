@@ -259,7 +259,17 @@ def test_settings_still_rejects_invalid_declared_field_with_unknown_keys(
 
 def test_agent_model_default() -> None:
     s = Settings(**_kwargs())
-    assert s.agent_model == "openai/gpt-oss-20b"
+    assert s.agent_model == "qwen2.5:7b"
+
+
+def test_agent_provider_defaults_to_ollama() -> None:
+    s = Settings(**_kwargs())
+    assert s.agent_provider == "ollama"
+
+
+def test_agent_provider_rejects_unknown_value() -> None:
+    with pytest.raises(ValidationError):
+        Settings(**_kwargs(agent_provider="bogus"))
 
 
 def test_agent_enabled_defaults_to_false(monkeypatch: pytest.MonkeyPatch) -> None:
