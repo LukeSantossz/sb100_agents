@@ -1,0 +1,567 @@
+{
+  "metadata": {
+    "embed_model": "nomic-embed-text",
+    "agent_model": "qwen2.5:7b",
+    "seed": 42,
+    "generated_via": "eval/calibrate_agent.py"
+  },
+  "scored": [
+    {
+      "score": 0.776441,
+      "in_domain": true
+    },
+    {
+      "score": 0.8366086,
+      "in_domain": true
+    },
+    {
+      "score": 0.831089,
+      "in_domain": true
+    },
+    {
+      "score": 0.7602917,
+      "in_domain": true
+    },
+    {
+      "score": 0.8280106,
+      "in_domain": true
+    },
+    {
+      "score": 0.8167979,
+      "in_domain": true
+    },
+    {
+      "score": 0.824224,
+      "in_domain": true
+    },
+    {
+      "score": 0.8351508,
+      "in_domain": true
+    },
+    {
+      "score": 0.8488116,
+      "in_domain": true
+    },
+    {
+      "score": 0.8365574,
+      "in_domain": true
+    },
+    {
+      "score": 0.85342085,
+      "in_domain": true
+    },
+    {
+      "score": 0.8413533,
+      "in_domain": true
+    },
+    {
+      "score": 0.8069582,
+      "in_domain": true
+    },
+    {
+      "score": 0.89533937,
+      "in_domain": true
+    },
+    {
+      "score": 0.8015834,
+      "in_domain": true
+    },
+    {
+      "score": 0.8074676,
+      "in_domain": true
+    },
+    {
+      "score": 0.8066808,
+      "in_domain": true
+    },
+    {
+      "score": 0.8602672,
+      "in_domain": true
+    },
+    {
+      "score": 0.8954631,
+      "in_domain": true
+    },
+    {
+      "score": 0.8468933,
+      "in_domain": true
+    },
+    {
+      "score": 0.8324555,
+      "in_domain": true
+    },
+    {
+      "score": 0.8590244,
+      "in_domain": true
+    },
+    {
+      "score": 0.8527963,
+      "in_domain": true
+    },
+    {
+      "score": 0.8352033,
+      "in_domain": true
+    },
+    {
+      "score": 0.8540357,
+      "in_domain": true
+    },
+    {
+      "score": 0.84369993,
+      "in_domain": true
+    },
+    {
+      "score": 0.8619384,
+      "in_domain": true
+    },
+    {
+      "score": 0.84242725,
+      "in_domain": true
+    },
+    {
+      "score": 0.8400297,
+      "in_domain": true
+    },
+    {
+      "score": 0.8271096,
+      "in_domain": true
+    },
+    {
+      "score": 0.88160646,
+      "in_domain": true
+    },
+    {
+      "score": 0.8482082,
+      "in_domain": true
+    },
+    {
+      "score": 0.84468585,
+      "in_domain": true
+    },
+    {
+      "score": 0.85067606,
+      "in_domain": true
+    },
+    {
+      "score": 0.8621701,
+      "in_domain": true
+    },
+    {
+      "score": 0.8426154,
+      "in_domain": true
+    },
+    {
+      "score": 0.8552188,
+      "in_domain": true
+    },
+    {
+      "score": 0.82244927,
+      "in_domain": true
+    },
+    {
+      "score": 0.84000283,
+      "in_domain": true
+    },
+    {
+      "score": 0.8403183,
+      "in_domain": true
+    },
+    {
+      "score": 0.8574829,
+      "in_domain": true
+    },
+    {
+      "score": 0.822528,
+      "in_domain": true
+    },
+    {
+      "score": 0.83521366,
+      "in_domain": true
+    },
+    {
+      "score": 0.85260594,
+      "in_domain": true
+    },
+    {
+      "score": 0.8552811,
+      "in_domain": true
+    },
+    {
+      "score": 0.8611141,
+      "in_domain": true
+    },
+    {
+      "score": 0.83680344,
+      "in_domain": true
+    },
+    {
+      "score": 0.89643246,
+      "in_domain": true
+    },
+    {
+      "score": 0.8283153,
+      "in_domain": true
+    },
+    {
+      "score": 0.85318124,
+      "in_domain": true
+    },
+    {
+      "score": 0.8510846,
+      "in_domain": true
+    },
+    {
+      "score": 0.84283215,
+      "in_domain": true
+    },
+    {
+      "score": 0.8160836,
+      "in_domain": true
+    },
+    {
+      "score": 0.8311536,
+      "in_domain": true
+    },
+    {
+      "score": 0.8389061,
+      "in_domain": true
+    },
+    {
+      "score": 0.8202367,
+      "in_domain": true
+    },
+    {
+      "score": 0.8304254,
+      "in_domain": true
+    },
+    {
+      "score": 0.86727273,
+      "in_domain": true
+    },
+    {
+      "score": 0.8418271,
+      "in_domain": true
+    },
+    {
+      "score": 0.86184275,
+      "in_domain": true
+    },
+    {
+      "score": 0.7965306,
+      "in_domain": false
+    },
+    {
+      "score": 0.7666692,
+      "in_domain": false
+    },
+    {
+      "score": 0.79299957,
+      "in_domain": false
+    },
+    {
+      "score": 0.7954329,
+      "in_domain": false
+    },
+    {
+      "score": 0.73912996,
+      "in_domain": false
+    },
+    {
+      "score": 0.7752084,
+      "in_domain": false
+    },
+    {
+      "score": 0.7329505,
+      "in_domain": false
+    },
+    {
+      "score": 0.74708045,
+      "in_domain": false
+    },
+    {
+      "score": 0.72841555,
+      "in_domain": false
+    },
+    {
+      "score": 0.72883743,
+      "in_domain": false
+    },
+    {
+      "score": 0.8165251,
+      "in_domain": false
+    },
+    {
+      "score": 0.77308965,
+      "in_domain": false
+    },
+    {
+      "score": 0.74294764,
+      "in_domain": false
+    },
+    {
+      "score": 0.7537013,
+      "in_domain": false
+    },
+    {
+      "score": 0.76845205,
+      "in_domain": false
+    },
+    {
+      "score": 0.79512566,
+      "in_domain": false
+    },
+    {
+      "score": 0.68799055,
+      "in_domain": false
+    },
+    {
+      "score": 0.7242414,
+      "in_domain": false
+    },
+    {
+      "score": 0.73069036,
+      "in_domain": false
+    },
+    {
+      "score": 0.7976126,
+      "in_domain": false
+    },
+    {
+      "score": 0.7480669,
+      "in_domain": false
+    },
+    {
+      "score": 0.7968491,
+      "in_domain": false
+    },
+    {
+      "score": 0.74002755,
+      "in_domain": false
+    },
+    {
+      "score": 0.7046652,
+      "in_domain": false
+    },
+    {
+      "score": 0.8028077,
+      "in_domain": false
+    },
+    {
+      "score": 0.75147724,
+      "in_domain": false
+    },
+    {
+      "score": 0.79222316,
+      "in_domain": false
+    },
+    {
+      "score": 0.76945436,
+      "in_domain": false
+    },
+    {
+      "score": 0.7655456,
+      "in_domain": false
+    },
+    {
+      "score": 0.75219417,
+      "in_domain": false
+    },
+    {
+      "score": 0.7568197,
+      "in_domain": false
+    },
+    {
+      "score": 0.7110163,
+      "in_domain": false
+    },
+    {
+      "score": 0.72758436,
+      "in_domain": false
+    },
+    {
+      "score": 0.7470044,
+      "in_domain": false
+    },
+    {
+      "score": 0.766363,
+      "in_domain": false
+    },
+    {
+      "score": 0.7489269,
+      "in_domain": false
+    },
+    {
+      "score": 0.7410159,
+      "in_domain": false
+    },
+    {
+      "score": 0.7615303,
+      "in_domain": false
+    },
+    {
+      "score": 0.7798284,
+      "in_domain": false
+    },
+    {
+      "score": 0.77190584,
+      "in_domain": false
+    },
+    {
+      "score": 0.73265934,
+      "in_domain": false
+    },
+    {
+      "score": 0.7940854,
+      "in_domain": false
+    },
+    {
+      "score": 0.74180233,
+      "in_domain": false
+    },
+    {
+      "score": 0.79300594,
+      "in_domain": false
+    },
+    {
+      "score": 0.7419413,
+      "in_domain": false
+    },
+    {
+      "score": 0.77595526,
+      "in_domain": false
+    },
+    {
+      "score": 0.7825359,
+      "in_domain": false
+    },
+    {
+      "score": 0.7580258,
+      "in_domain": false
+    },
+    {
+      "score": 0.7552245,
+      "in_domain": false
+    },
+    {
+      "score": 0.78031486,
+      "in_domain": false
+    },
+    {
+      "score": 0.7372985,
+      "in_domain": false
+    },
+    {
+      "score": 0.7751709,
+      "in_domain": false
+    },
+    {
+      "score": 0.78403926,
+      "in_domain": false
+    },
+    {
+      "score": 0.7820578,
+      "in_domain": false
+    },
+    {
+      "score": 0.7917435,
+      "in_domain": false
+    },
+    {
+      "score": 0.74731636,
+      "in_domain": false
+    },
+    {
+      "score": 0.76461565,
+      "in_domain": false
+    },
+    {
+      "score": 0.7736487,
+      "in_domain": false
+    },
+    {
+      "score": 0.72405744,
+      "in_domain": false
+    },
+    {
+      "score": 0.75615007,
+      "in_domain": false
+    }
+  ],
+  "runs": [
+    {
+      "question": "Qual é o objetivo principal do Sistema IAC de Análise de Solo?",
+      "steps": 6,
+      "total_tokens": 16109,
+      "hit_recursion_limit": false
+    },
+    {
+      "question": "Quais são os métodos de análise química utilizados para avaliar a fertilidade do solo, de acordo com Catani et al. (1955)?",
+      "steps": 6,
+      "total_tokens": 14613,
+      "hit_recursion_limit": false
+    },
+    {
+      "question": "Como a análise de solo foi uniformizada no Brasil, após o programa conjunto do Ministério da Agricultura Pecuária e Abastecimento e da Universidade da Carolina do Norte?",
+      "steps": 6,
+      "total_tokens": 13069,
+      "hit_recursion_limit": false
+    },
+    {
+      "question": "Qual é a diferença entre a extração de fósforo e potássio com a solução Mehlich-1 e a solução 0,025 mol L-1 de H2SO4?",
+      "steps": 9,
+      "total_tokens": 19663,
+      "hit_recursion_limit": false
+    },
+    {
+      "question": "Como é determinado o alumínio trocável no solo e qual é o seu papel na calagem?",
+      "steps": 6,
+      "total_tokens": 12505,
+      "hit_recursion_limit": false
+    },
+    {
+      "question": "Qual é o objetivo do cálculo da necessidade de calagem, considerando a soma de Ca e Mg no solo?",
+      "steps": 3,
+      "total_tokens": 6606,
+      "hit_recursion_limit": false
+    },
+    {
+      "question": "Quais são as alterações introduzidas em 1983 na análise de solo de rotina no estado de São Paulo, de acordo com Raij et al. (1983)?",
+      "steps": 6,
+      "total_tokens": 12580,
+      "hit_recursion_limit": false
+    },
+    {
+      "question": "Qual é a importância da determinação do teor de argila no solo para a adubação fosfatada?",
+      "steps": 6,
+      "total_tokens": 14278,
+      "hit_recursion_limit": false
+    },
+    {
+      "question": "Como a resina de troca iônica é utilizada para a extração de fósforo, potássio, cálcio e magnésio do solo?",
+      "steps": 6,
+      "total_tokens": 13728,
+      "hit_recursion_limit": false
+    },
+    {
+      "question": "Quais são as principais diferenças entre os métodos de análise de solo utilizados nos estados do Rio Grande do Sul e de Santa Catarina em relação aos demais estados?",
+      "steps": 6,
+      "total_tokens": 14866,
+      "hit_recursion_limit": false
+    },
+    {
+      "question": "Quais são as principais fontes fertilizantes de fósforo utilizadas na agricultura brasileira?",
+      "steps": 3,
+      "total_tokens": 5876,
+      "hit_recursion_limit": false
+    },
+    {
+      "question": "Como a adubação fosfatada afeta o crescimento e desenvolvimento das plantas?",
+      "steps": 6,
+      "total_tokens": 16187,
+      "hit_recursion_limit": false
+    }
+  ],
+  "probe": {
+    "total_tokens_via_runtime": 39
+  }
+}
