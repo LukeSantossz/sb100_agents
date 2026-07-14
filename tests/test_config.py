@@ -304,10 +304,11 @@ def test_intent_filter_enabled_defaults_to_true(monkeypatch: pytest.MonkeyPatch)
     assert s.intent_filter_enabled is True
 
 
-def test_intent_threshold_default_is_0_3(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_intent_threshold_default_is_calibrated_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Calibrated on the corpus (ADR-0015): 0.80 admits 96.7% in-domain / leaks 3.3% out-of-domain.
     monkeypatch.delenv("INTENT_THRESHOLD", raising=False)
     s = Settings(**_kwargs())
-    assert s.intent_threshold == 0.3
+    assert s.intent_threshold == 0.80
 
 
 def test_intent_threshold_rejects_below_zero() -> None:
