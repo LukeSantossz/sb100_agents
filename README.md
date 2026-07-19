@@ -5,7 +5,7 @@
 
 # SmartB100 — Agriculture RAG Agent
 
-> Self-hostable RAG assistant for agricultural technical support: it answers questions grounded in your own PDF manuals, adapts the response to the reader's expertise, and tags every answer with a continuous **0.0–1.0 semantic-entropy hallucination score** so users know when to double-check.
+> Self-hostable RAG assistant for agricultural technical support: it answers questions grounded in your own PDF manuals, adapts the response to the reader's expertise, and — when a verification provider is reachable — tags every answer with a continuous **0.0–1.0 semantic-entropy hallucination score** so users know when to double-check.
 
 ---
 
@@ -15,9 +15,9 @@ SmartB100 turns a folder of agricultural PDFs into a question-answering service 
 
 - **Grounded Q&A** — indexes PDF manuals into a vector database and answers questions from the retrieved chunks, not from model memory.
 - **Expertise-adaptive answers** — the same RAG context is rendered for `beginner`, `intermediate`, or `expert` readers via profile-aware system prompts.
-- **Hallucination scoring** — semantic entropy over multiple candidate answers produces a continuous `0.0–1.0` score flagging low-confidence responses.
-- **Authenticated API** — bcrypt password hashing + JWT-gated `/chat`, with per-IP rate limiting on login and registration.
-- **Runs fully local** — Ollama serves both chat and embeddings; no paid API key is required to operate the core pipeline.
+- **Hallucination scoring** — semantic entropy over multiple candidate answers produces a continuous `0.0–1.0` score flagging low-confidence responses. It is on by default and degrades to a neutral `0.5` when the configured verification provider is unreachable.
+- **Authenticated API** — bcrypt password hashing + JWT-gated `/chat`, with per-IP rate limiting on login and registration and a per-user limit on `/chat`.
+- **Runs local for chat and retrieval** — Ollama serves both chat and embeddings, so the RAG pipeline needs no paid API key. Verification defaults to the hosted Groq provider; set `VERIFICATION_PROVIDER=ollama` for a fully local deployment.
 
 ## What It Is
 
@@ -33,7 +33,7 @@ SmartB100 is a **REST API** (FastAPI) with an optional **Gradio web UI** that co
 | Vector DB | Qdrant (`archives_v2`, 768-dim embeddings) |
 | Inference | Ollama — `llama3.2:3b` (chat) + `nomic-embed-text` (embeddings) |
 | Verification | Multi-provider semantic entropy (Groq / Ollama / OpenRouter) |
-| Persistence | SQLite (auth + conversation history) |
+| Persistence | SQLite (user accounts) |
 | Auth | bcrypt + JWT (passlib, slowapi rate limiting) |
 | Testing / CI | pytest, ruff, mypy `--strict`, GitHub Actions |
 | Packaging | uv, Docker (multi-stage `Dockerfile.api`) |
@@ -44,7 +44,7 @@ SmartB100 is a **REST API** (FastAPI) with an optional **Gradio web UI** that co
 
 SmartB100 is a **modular monolith with composed deployment**:
 
-- **One application process.** `api/main.py` loads every domain module (`api/routes/*`, `core/*`, `retrieval/*`, `memory/*`, `generation/*`, `verification/*`, `database/*`) into a single FastAPI runtime. Inter-module communication is **function calls inside the same Python interpreter** — no RPC, no message broker, no queue.
+- **One application process.** `api/main.py` loads every domain module (`api/routes/*`, `agent/*`, `core/*`, `retrieval/*`, `memory/*`, `generation/*`, `verification/*`, `database/*`) into a single FastAPI runtime. Inter-module communication is **function calls inside the same Python interpreter** — no RPC, no message broker, no queue.
 - **Eight internal layers, one binary.** The folder boundary is a convention for testability and review; it is **not** a network boundary.
 - **External processes are limited to genuine third-party services.** No domain code lives outside the API process.
 
@@ -54,11 +54,11 @@ External components (each runs in its own process):
 |-----------|------|----------------|----------|
 | **Qdrant** | Vector DB (`archives_v2` collection, 768-dim embeddings) | Yes — `docker compose --profile infra` | HTTP REST `:6333` + gRPC `:6334` |
 | **Ollama** | LLM chat (`llama3.2:3b`) + embeddings (`nomic-embed-text`) | **No** — runs on the host | HTTP REST `:11434` via `OLLAMA_HOST` |
-| **SQLite** | Auth + conversation history | No (filesystem) | Bind-mount `./smartb100_v2.db:/app/smartb100_v2.db` |
+| **SQLite** | User accounts | No (filesystem) | Bind-mount `./smartb100_v2.db:/app/smartb100_v2.db` |
 
 Client tier (two paths):
 
-- **Gradio UI** (`ui/chat_ui.py`) — stateless HTTP client containerized via `docker compose --profile app`. Calls only `POST /chat`. Does **not** import any domain module — it is a UI shell, not a microservice.
+- **Gradio UI** (`ui/chat_ui.py`) — stateless HTTP client containerized via `docker compose --profile app`. Calls `POST /auth/token` to log in and `POST /chat` to ask. Imports only `core.config` for shared client settings; it holds no pipeline logic (no `retrieval/`, `generation/`, `verification/`, or `agent/`) and reaches the API over HTTP — a UI shell, not a microservice.
 - **Direct HTTP** — `curl`, scripts, future mobile clients. Same endpoint, same JSON contract.
 
 **Why not microservices.** The RAG pipeline (embed → search → generate → verify) shares the same `ChatRequest`/`ChatResponse` model and runs synchronously within a single request. Splitting any step into its own service would add network latency between calls that are currently in-process, plus contract-versioning overhead, without delivering independent scaling benefit at current load.
@@ -93,7 +93,7 @@ flowchart TD
 
     subgraph DATA["Data Layer"]
         QDRANT[("Qdrant\n:6333\narchives_v2")]
-        SQLITE[("SQLite\nusers / conversations")]
+        SQLITE[("SQLite\nusers")]
     end
 
     GRADIO -->|HTTP JSON| ENDPOINT
@@ -177,7 +177,9 @@ flowchart LR
     API -. SQLAlchemy .-> SQLITE
 ```
 
-The first two diagrams are *logical* (what runs); the last is *topological* (where it runs). They complement, not duplicate.
+The first two diagrams are *logical* (what runs); the last is *topological* (where it runs). They complement, not duplicate. All three show the default request path.
+
+**Optional agent branch.** `POST /chat` has a second, conditional path guarded by `agent_enabled` (default `false`, so it does not run in a default deployment). When enabled, the request first passes the agricultural domain gate (`agent/intent.py`, ADR-0010); out-of-domain questions short-circuit with a refusal, and in-domain questions run a Deepagents/LangGraph loop (`agent/runner.py`) that calls the `search_corpus` tool instead of the direct retrieval path. The loop is bounded by a recursion limit and a soft token budget (ADR-0012, calibrated in ADR-0015); exceeding either falls back gracefully rather than failing the request. The diagrams above do not depict this branch.
 
 ## Engineering Decisions
 
@@ -194,7 +196,7 @@ holds the full rationale, alternatives, and consequences.
 | bcrypt + JWT gate on `/chat` | Session cookies / static API keys | Stateless, instantly revocable auth — [ADR-0006](./docs/adr/0006-bcrypt-jwt-auth-gate.md) |
 | SQLite for persistence | PostgreSQL | Zero-ops at single-node scale — [ADR-0007](./docs/adr/0007-sqlite-persistence.md) |
 | Deepagents on LangGraph as the agent substrate | Raw LangGraph / hand-rolled loop | Built-in planning, sub-agents, filesystem; isolated behind `agent/` — [ADR-0008](./docs/adr/0008-deepagents-orchestration-substrate.md) |
-| Hosted Groq (GPT-OSS) for the agent reasoning tier | Larger local model / Claude | No local GPU; reuses the default verification provider; reliable tool-calling — [ADR-0009](./docs/adr/0009-groq-agent-model.md) |
+| Hosted Groq (GPT-OSS) for the agent reasoning tier | Larger local model / Claude | No local GPU; reuses the default verification provider; reliable tool-calling — [ADR-0009](./docs/adr/0009-groq-agent-model.md), amended by [ADR-0013](./docs/adr/0013-configurable-agent-provider-local-default.md) (the default is now local `qwen2.5:7b`) |
 | Agricultural domain gate via corpus retrieval score | Few-shot topic classifier / LLM judge | Cheap corpus-derived coverage proxy before the agent loop, staged escalation — [ADR-0010](./docs/adr/0010-domain-gate-retrieval-score.md) |
 | Untrusted input isolated in agentic CI | Inline escape / remove workflow | No template injection, least privilege, human-merge barrier — [ADR-0011](./docs/adr/0011-untrusted-input-in-agentic-ci.md) |
 | Bound the agent loop (recursion limit + soft token budget) | Per-call `max_tokens` / step limit only | Native step bound plus a callback-counted per-run token cap, both failing into a graceful fallback — [ADR-0012](./docs/adr/0012-bound-agent-loop.md) |
@@ -219,12 +221,14 @@ cd sb100_agents
 # Pull inference models
 ollama pull llama3.2:3b && ollama pull nomic-embed-text
 
-# Install dependencies
-uv sync                            # or: python -m venv .venv && .venv/bin/pip install -e .
+# Install dependencies, including the test and lint toolchain
+uv sync --extra dev                # or: python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 
 # Configure environment (defaults work for local dev)
 cp .env.example .env
 ```
+
+Plain `uv sync` installs runtime dependencies only and removes `ruff`, `mypy`, and `pytest-cov`; the `--extra dev` form is required for the Tests section below, because the pytest `addopts` in `pyproject.toml` pass `--cov` flags that need `pytest-cov`. Enabling the optional agent path additionally needs its reasoning model (`ollama pull qwen2.5:7b`, per ADR-0013).
 
 ### Running
 
@@ -232,8 +236,8 @@ cp .env.example .env
 # 1. Start Qdrant
 docker compose --profile infra up -d
 
-# 2. Index documents (first run only)
-.venv/bin/python database/semantic_chunker.py index ./archives/
+# 2. Index documents (first run only) — pass a directory, not a single file
+.venv/bin/python scripts/ingest.py ./archives/
 
 # 3. Start API
 .venv/bin/python -m uvicorn api.main:app --reload
@@ -265,7 +269,7 @@ mypy retrieval/ generation/ memory/ --strict          # type check
 
 | Endpoint | Description |
 |----------|-------------|
-| `POST /chat` | RAG query (requires JWT); returns answer with hallucination score |
+| `POST /chat` | RAG query (requires JWT); returns answer with hallucination score (rate-limit 30/minute per user) |
 | `POST /auth/register` | Creates new user (rate-limit 3/hour per IP) |
 | `POST /auth/token` | OAuth2 login; returns JWT (rate-limit 5 / 15min per IP) |
 | `GET /health` | API health status |
@@ -284,8 +288,10 @@ curl -X POST "http://localhost:8000/chat" \
     "question": "Qual a epoca ideal de plantio da soja?",
     "profile": {"name": "User", "expertise": "beginner"}
   }'
-# {"answer": "...", "hallucination_score": 0.18}
+# {"answer": "...", "hallucination_score": 0.0}
 ```
+
+The score is a normalized `0.0–1.0` semantic entropy. At the default `ENTROPY_NUM_SAMPLES=2` it resolves to `0.0` or `1.0` (plus the neutral `0.5` returned when verification is unavailable); raise `ENTROPY_NUM_SAMPLES` for finer granularity.
 
 Without the `Authorization` header the API returns `401 Unauthorized`.
 
@@ -307,6 +313,7 @@ sb100_agents/
 ├── api/                            # FastAPI backend
 │   ├── main.py                     # App entry (CORS + routers + lifespan)
 │   └── routes/                     # chat.py, auth.py, health.py
+├── agent/                          # Optional Deepagents loop, domain gate, loop bounds
 ├── core/                           # Pydantic schemas & configuration
 ├── retrieval/                      # Embeddings + Qdrant vector search
 ├── generation/                     # LLM response generation
@@ -315,6 +322,8 @@ sb100_agents/
 ├── database/                       # SQLite + PDF semantic chunking
 ├── eval/                           # 5-step evaluation pipeline
 ├── ui/                             # Gradio chat interface
+├── scripts/                        # Ingestion entrypoint
+├── docs/adr/                       # Architecture decision records
 ├── tests/                          # Unit + integration tests
 ├── .github/workflows/              # CI + Claude Code automation
 ├── Dockerfile.api                  # Multi-stage build (builder + runtime)
@@ -334,15 +343,19 @@ sb100_agents/
 - [x] bcrypt + JWT auth with per-IP rate limiting
 - [x] Dockerized deployment (infra + app profiles, healthchecks, log rotation)
 - [x] 5-step offline evaluation pipeline (`eval/`)
-- [x] Test suite (330 tests, ~88% coverage) with CI: ruff + mypy `--strict` + pytest
-- [x] Agentic core Wave A (A1–A3): `agent/` boundary + `search_corpus` tool, agent-backed `/chat` behind the `agent_enabled` flag (default off), agricultural intent filter (ADR-0008/0009/0010)
+- [x] Test suite (372 tests; 369 pass under the CI selection, 89.88% coverage) with CI: ruff + mypy + pytest
+- [x] Agentic core Wave A (A1–A4): `agent/` boundary + `search_corpus` tool, agent-backed `/chat` behind the `agent_enabled` flag (default off), agricultural intent filter, and bounded agent loop (ADR-0008/0009/0010/0012/0015)
 
 ### Pending
 
-- [ ] Raise critical-module coverage to a 70% CI gate
+- [ ] Enable or retire the agent path — Wave A is complete but `agent_enabled` defaults to `false`, so `agent/` does not execute in any shipped configuration
+- [ ] Ship verification credentials to the container — `docker compose --profile app` passes no `GROQ_API_KEY`, so containerized answers score a constant `0.5`
+- [ ] Bootstrap the SQLite bind mount so `docker compose --profile app up` works on a clean checkout without a manual pre-step
+- [ ] Persist conversation history, or drop the unused `Conversation`/`Message` tables
+- [ ] Raise the CI coverage gate (currently `--cov-fail-under=23`) toward the measured 89.88%, and extend CI `mypy` to the packages `pyproject.toml` declares strict
+- [ ] Cover the semantic-entropy math and the embedding retry path, the two least-tested pieces of the core product
 - [ ] Optional Langfuse tracing for the RAG pipeline
 - [ ] Hybrid search (dense + sparse vectors, RRF fusion)
-- [ ] Finish Wave A: bound the agent loop (#173, A4) — A1–A3 (agent boundary, routing, intent filter) are done behind the `agent_enabled` flag
 - [ ] Claim verification (atomic decomposition + RAG fact-checking)
 - [ ] Streaming responses (SSE)
 
@@ -353,9 +366,13 @@ The pending work is sequenced into delivery Waves in the [agentic migration road
 - **CPU inference latency** — `llama3.2:3b` with RAG context can take minutes per answer on CPU-only hosts. A configurable `CHAT_TIMEOUT` (default 600s) plus transient-error retries exist for this reason; the limitation disappears with a GPU or a hosted provider.
 - **Single-node persistence** — SQLite is single-writer. It fits one API process but does not support horizontal scaling; PostgreSQL is the migration path once writes contend.
 - **Windows + Docker bind mount** — if `./smartb100_v2.db` does not already exist as a file, Docker Desktop may create it as a *directory*. Create the empty file before `docker compose --profile app up`; the API raises an explicit `RuntimeError` if it finds a directory.
-- **Coverage gate is conservative** — the CI coverage threshold is currently below the 70% target on critical modules. Raising it is in progress (see Project Status).
+- **Coverage gate is far below actual coverage** — measured coverage is 89.88%, but the CI gate is `--cov-fail-under=23`, so a large regression would still pass. Raising it is tracked in Project Status.
 - **Breaking auth change** — users created before the bcrypt + JWT gate (SHA-256 hashes) must be re-registered.
-- **Verification adds latency** — entropy sampling generates multiple candidate answers. It is opt-in via `VERIFICATION_ENABLED` and falls back to a neutral score on failure rather than blocking the answer.
+- **Verification adds latency, and is on by default** — entropy sampling generates multiple candidate answers. It is enabled by default (`VERIFICATION_ENABLED=true`) and falls back to a neutral score on failure rather than blocking the answer.
+- **A degraded verification score is indistinguishable from a measured one** — when the configured provider is unreachable or its API key is missing, the gate returns the neutral `0.5` and the UI renders it as "Moderate risk". In the Docker profile no `GROQ_API_KEY` is passed, so every containerized answer currently scores exactly `0.5`. Setting `VERIFICATION_PROVIDER=ollama` keeps scoring local and functional.
+- **Conversation history does not survive a restart** — the `Conversation` and `Message` tables are created at startup but never written; history lives in an in-process buffer, so it is lost on restart and is not shared across replicas.
+- **Ingestion must be run through `scripts/ingest.py`** — invoking `database/semantic_chunker.py` directly fails with `ModuleNotFoundError` because the repository root is not on `sys.path`. Passing a single PDF path also indexes nothing: the indexer globs a directory, so a file argument matches no PDFs and exits without error.
+- **Agent path is inert by default** — `agent/` is complete, tested, and bounded, but `agent_enabled` defaults to `false` and `AGENT_ENABLED` appears in no `.env.example`, compose file, or start script, so it never executes unless set by hand.
 
 ## Contributing
 
