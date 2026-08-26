@@ -143,7 +143,9 @@ exempt_paths = ["README.md", "LICENSE", ".gitignore"]
 
 # --- agent instruction files --------------------------------------------------
 
-# Generated from docs/agents/instructions.md by `mf agents sync`, and compared
+# Generated from the source `paths.agents_source` names — here
+# `.standards/docs/agents/instructions.md`, inside the submodule and owned by the
+# framework, so it is read and never edited from this repository. Compared
 # against it by `mf check agents`. Declared here rather than left out, because a
 # repository that declares no targets has an agents gate that passes forever
 # while its CLAUDE.md says the gate fails when they drift apart.
