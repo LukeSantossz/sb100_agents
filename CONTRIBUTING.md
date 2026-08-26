@@ -40,17 +40,20 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `bui
 
 ### 4. Pass the Spec Gate (non-trivial changes)
 
-Any change big enough to have a design starts with a `SPEC.md`, per
+Any change big enough to have a design starts with a spec, per
 `.standards/docs/standards/spec_method.md`. The spec passes the Gate only when:
 
 - the Problem is stated in one sentence;
 - Scope is filled, including a non-empty "Does NOT include" list;
 - at least one Acceptance Criterion exists and is verifiable.
 
-The `SPEC.md` is ephemeral: it lives at the repository root on the feature branch and is
-removed as the branch's final commit before merge. The PR's Spec Link points to the
-`SPEC.md` blob at a branch commit. Skip the spec only for changes too small to have a
-design (a typo, a one-line fix).
+The spec is durable, not ephemeral: it is written as `docs/specs/NNNN-<slug>.md` — the
+next free number — and it stays there. `mf check spec` fails a branch that changes
+non-exempt paths and adds none, and `mf check records` fails a number that is reused, a
+gap in the sequence, or a record that was deleted. A superseded spec is marked in place
+and keeps its file. The PR's Spec Link points at the file on the default branch.
+
+Skip the spec only for changes too small to have a design (a typo, a one-line fix).
 
 ### 5. Make your changes (test-first)
 
@@ -97,9 +100,9 @@ git commit -m "feat(auth): add password reset endpoint"
 |------|------|
 | Commits | `type(scope): subject` — no body, no co-authored-by |
 | Branches | `type/NNN-short-description` (NNN = issue number) |
-| Spec | Ephemeral `SPEC.md` per `.standards/docs/standards/spec_method.md` for non-trivial changes |
+| Spec | Durable `docs/specs/NNNN-<slug>.md` per `.standards/docs/standards/spec_method.md` for non-trivial changes |
 | Tests | Test-first (red-green-refactor); required for new features and bug fixes |
-| Review | R1 internal + human CRURA review (R2 not available, recorded per PR) |
+| Review | R1 internal + R2 cross-provider on push (`mf review --role r2`) + human CRURA review; each recorded per PR |
 | Lint | `ruff check .` must pass with no errors |
 
 ## Reporting bugs

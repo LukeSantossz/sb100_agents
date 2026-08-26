@@ -1,0 +1,163 @@
+# Development-standards policy for this repository.
+#
+# Committed on purpose: this carries policy, so it travels with the repository.
+# It must never carry an endpoint, an API key, or the name of the variable
+# holding one — those are machine state and the loader refuses them here.
+#
+# A project names providers; only a machine defines how to reach them. Which
+# provider reviews your code is your choice, so this framework names none: the
+# quickest way to record one is to have said so at activation,
+#
+#   mf init --provider <name> --endpoint <url> --api-key-env <VAR> --model <id>
+#
+# which writes the route on this machine and the chain below in one step. The
+# same thing by hand, for a provider added later:
+#
+#   mf config set providers.<name>.endpoint <url> --machine
+#   mf config set providers.<name>.api_key_env <VAR> --machine
+#   mf config set providers.<name>.kind openai-compatible --machine
+#   mf config set backends.<name>.kind api --machine
+#   mf config set backends.<name>.provider <name> --machine
+#   mf config set backends.<name>.model <id> --machine
+#
+# <VAR> is the NAME of the environment variable holding the key, never the key.
+#
+# Then decide who puts it in a chain. This file does, for everyone who clones
+# the repository: add the name to a role below and commit it. A machine chain
+# (`mf config set roles.r2.backends ... --machine`) applies only to a role this
+# file leaves undeclared, because a machine may not review a repository with a
+# chain that repository did not choose. For one run, and only for the person
+# running it: `MF_ROLES_R2_BACKENDS=<name> mf review --role r2`.
+#
+# `mf doctor` reports which of these steps is still missing.
+
+version = 1
+
+# --- paths --------------------------------------------------------------------
+
+# Where the gates look for the documents they read. The values below are the
+# built-in defaults, so leaving this commented out changes nothing. Uncomment
+# and edit it if this repository keeps the corpus somewhere else — consuming
+# these standards as a submodule is the case it exists for. Every value is
+# resolved against the repository root and may not leave it, and there is no
+# machine layer for them: where a repository keeps its documents is the same
+# fact on every clone, so a machine able to redirect a gate could make one
+# commit pass here and fail in CI.
+#
+[paths]
+standards = ".standards/docs/standards"
+specs = "docs/specs"
+adr = "docs/adr"
+agents_source = ".standards/docs/agents/instructions.md"
+agents_file = "AGENTS.md"
+
+[review]
+base = "main"
+effort = "high"
+
+# --- roles ------------------------------------------------------------------
+
+# R1 carries no provider constraint: what defines it is when it runs and how
+# much of the change it sees. `superpowers` runs inside a coding-agent session,
+# so nothing can start it as a subprocess; it contributes an attestation, and a
+# session where it is absent counts as unavailable so the chain advances.
+[roles.r1]
+backends = ["superpowers"]
+
+# R2 is the only role that carries the cross-provider requirement. Both entries
+# are CLIs the Developer already runs, so no machine route is needed for either.
+[roles.r2]
+backends = ["codex", "agy"]
+require_cross_provider = true
+
+# Left empty: no automated pull-request reviewer is wired for this repository,
+# and a chain naming one that does not run would read as a review that happened.
+[roles.r3]
+backends = []
+
+# Only a prompt-driven backend can serve the explainer: an agentic reviewer
+# answers with a review, and `mf explain` asks for an explainer.
+[roles.explain]
+backends = ["agy"]
+
+# --- backends ----------------------------------------------------------------
+
+# Declared here rather than shared with the framework, because a backend is
+# declared per repository and there is no mechanism for referencing one from
+# somewhere else. Keep them in step with `.standards/.framework.toml` by hand.
+
+# Runs inside a coding-agent session, so it cannot be started as a subprocess.
+[backends.superpowers]
+kind = "in-session"
+provider = "anthropic"
+
+# Agentic: explores the repository itself, and finds AGENTS.md on disk.
+[backends.codex]
+kind = "cli"
+provider = "openai"
+command = "codex"
+model = "gpt-5.6-terra"
+args = [
+  "review",
+  "--base", "{{.Base}}",
+  "-c", "model={{.Model}}",
+  "-c", "model_reasoning_effort={{.Effort}}",
+]
+unavailable_patterns = [
+  "usage limit", "rate limit", "quota",
+  "not logged in", "please (run )?codex login", "unauthorized", "401", "403",
+  "network error", "connection (refused|reset)",
+]
+
+# Antigravity's CLI. Prompt-driven rather than repository-reading, so the role
+# instructions and the diff are handed to it through {{.Prompt}}.
+#
+# It is a gateway rather than a vendor: the same command reaches several, so
+# which vendor actually reviews depends entirely on the model pinned below. That
+# is why the provider says `google` and the model is a Gemini one — a Claude
+# model here would satisfy the cross-provider rule against an Anthropic Author
+# by name while being the same vendor in substance.
+#
+# The effort is baked into the model id (`-high`, `-low`), so --effort is not
+# passed: two settings for one dial is a way to have them disagree.
+[backends.agy]
+kind = "cli"
+provider = "google"
+command = "agy"
+model = "gemini-3.1-pro-high"
+args = ["--print", "{{.Prompt}}", "--model", "{{.Model}}"]
+structured = true
+unavailable_patterns = [
+  "quota", "rate limit", "resource[_ ]exhausted",
+  "not authenticated", "unauthorized", "401", "403",
+  "network error", "connection (refused|reset)",
+]
+
+# --- checks ------------------------------------------------------------------
+
+# What counts as trivial for the Spec Gate, as an explicit path list rather than
+# a heuristic or a model. It is crude on purpose: a gate nobody can predict is a
+# gate people route around, and widening this list is visible in review.
+[checks]
+exempt_paths = ["README.md", "LICENSE", ".gitignore"]
+
+# --- agent instruction files --------------------------------------------------
+
+# Generated from docs/agents/instructions.md by `mf agents sync`, and compared
+# against it by `mf check agents`. Declared here rather than left out, because a
+# repository that declares no targets has an agents gate that passes forever
+# while its CLAUDE.md says the gate fails when they drift apart.
+#
+# Roles are declared, not derived from the backend chains: the Author is a
+# per-branch declaration rather than a chain, so there is nothing to derive it
+# from. Delete a target whose vendor you do not use.
+
+[agents.claude]
+file = "CLAUDE.md"
+roles = ["shared", "author"]
+path_prefix = ".standards/docs/standards"
+
+[agents.codex]
+file = "AGENTS.md"
+roles = ["shared", "reviewer"]
+path_prefix = ".standards/docs/standards"
