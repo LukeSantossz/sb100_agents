@@ -74,8 +74,11 @@ def test_the_index_records_both_hooks_as_executable() -> None:
     ``core.hooksPath`` is deliberately not asserted here. It is local git
     config, set per clone and never committed, so a fresh checkout — CI's
     included — has none, and a test demanding it would fail everywhere it is
-    correct for it to be absent. ``mf doctor`` is what reports it, to the
-    Developer whose clone it is.
+    correct for it to be absent. That leaves a real gap: a fresh clone has both
+    hooks and runs neither. Nothing in a test can close it, because the fix is
+    an act on the clone; what closes it is CONTRIBUTING's setup step telling the
+    Developer to run ``mf hooks install``, and ``mf doctor`` reporting the answer
+    afterwards.
     """
     for name in ("pre-push", "commit-msg"):
         entry = _git_ls_stage(f".githooks/{name}")
