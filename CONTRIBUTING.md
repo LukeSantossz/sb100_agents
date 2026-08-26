@@ -8,9 +8,14 @@ Thank you for your interest in contributing! This guide explains how to get invo
 
 ```bash
 # Fork via GitHub, then:
-git clone https://github.com/<your-username>/sb100_agents.git
+git clone --recurse-submodules https://github.com/<your-username>/sb100_agents.git
 cd sb100_agents
+# already cloned without --recurse-submodules?
+git submodule update --init
 ```
+
+The standards this project binds itself to live in the `.standards` submodule. A
+clone without them leaves every gate reading an empty directory.
 
 ### 2. Set up the environment
 
@@ -18,7 +23,18 @@ cd sb100_agents
 uv sync
 cp .env.example .env
 docker compose --profile infra up -d
+
+# Wire the gates in this clone. `core.hooksPath` is local git config: it is not
+# committed and no clone inherits it, so a fresh checkout has the hooks and runs
+# none of them until this is run.
+mf hooks install
+mf doctor          # reports what is wired and what is still missing
 ```
+
+`mf` comes from [my-framework](https://github.com/LukeSantossz/my-framework) —
+`go install github.com/LukeSantossz/my-framework/cmd/mf@latest`, or a release
+binary on `PATH`. Both hooks fail closed, so the next commit is refused until
+`mf` is reachable.
 
 ### Handling secrets
 
@@ -87,11 +103,18 @@ git commit -m "feat(auth): add password reset endpoint"
 ### 8. Open a Pull Request
 
 - Fill in `.github/PULL_REQUEST_TEMPLATE.md` with real content, including the
-  review-layers record: which backend ran R1; which backend ran R2 and against which
-  Author provider and model, or that R2 did not run and why (no backend reachable,
-  quota, skipped); and that R3 (automated PR review) is not configured here. R2 runs
-  on push via `mf review --role r2` — record what it actually reported, including a
-  finding you rejected and the reason, never a status nobody observed.
+  review-layers record. `roles.r2.backends` is a fallback chain, not a panel: the
+  runner takes the **first backend that is actually available** and names it, so the
+  record is one reviewer plus the ones ahead of it that were skipped, with the
+  reason each was skipped. Write down which backend ran R1; which backend ran R2,
+  against which Author provider and model, and the cross-provider state it
+  resolved to (`verified`, `declared`, `unknown`); which backends it skipped and
+  why (quota, authentication, network, not installed); or that R2 did not run at
+  all, when no backend in the chain was reachable. R3 is not configured here.
+
+  R2 runs on push via `mf review --role r2`, which prints all of this. Record what
+  it actually reported, including a finding you rejected and the reason — never a
+  status nobody observed.
 - Review your own diff in the Files Changed tab before requesting review (the RA stage
   of `.standards/docs/standards/crura_method.md`).
 - Make sure CI passes
