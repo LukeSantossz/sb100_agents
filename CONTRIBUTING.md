@@ -87,9 +87,11 @@ git commit -m "feat(auth): add password reset endpoint"
 ### 8. Open a Pull Request
 
 - Fill in `.github/PULL_REQUEST_TEMPLATE.md` with real content, including the
-  review-layers record: R1 (internal review) ran; R2 (cross-provider review) is not
-  available in this project — the human CRURA review stands in; R3 (automated PR
-  review) is not configured.
+  review-layers record: which backend ran R1; which backend ran R2 and against which
+  Author provider and model, or that R2 did not run and why (no backend reachable,
+  quota, skipped); and that R3 (automated PR review) is not configured here. R2 runs
+  on push via `mf review --role r2` — record what it actually reported, including a
+  finding you rejected and the reason, never a status nobody observed.
 - Review your own diff in the Files Changed tab before requesting review (the RA stage
   of `.standards/docs/standards/crura_method.md`).
 - Make sure CI passes
