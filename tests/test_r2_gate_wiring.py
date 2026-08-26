@@ -16,6 +16,11 @@ git resolves, not about files inside the submodule, and none of them is skipped.
 The one fact that needs the submodule — that the standards it supplies are the
 ones the gates read — is asserted through the configuration that names them
 rather than by reading them.
+
+What is deliberately absent: any assertion about ``core.hooksPath``. It is local
+git config, set per clone and never committed, so a fresh checkout has none and
+a test demanding it fails in CI for the one reason that is not a defect.
+``mf doctor`` reports it, to the Developer whose clone it is.
 """
 
 from __future__ import annotations
@@ -30,10 +35,10 @@ _HOOKS_DIR = _REPO_ROOT / ".githooks"
 _PROJECT_FILE = _REPO_ROOT / ".framework.toml"
 
 
-def _git_config(key: str) -> str:
-    """Read a local git-config value, or the empty string when it is unset."""
+def _git_ls_stage(path: str) -> str:
+    """Read the index entry for a path, or the empty string when untracked."""
     result = subprocess.run(
-        ["git", "config", "--local", "--get", key],
+        ["git", "ls-files", "--stage", "--", path],
         cwd=_REPO_ROOT,
         capture_output=True,
         text=True,
@@ -56,18 +61,30 @@ def test_versioned_hooks_are_present() -> None:
         )
 
 
-def test_hooks_path_points_at_the_versioned_hooks() -> None:
-    """The setting is what makes the hooks run at all.
+def test_the_index_records_both_hooks_as_executable() -> None:
+    """git skips a hook the checkout leaves non-executable, without a word.
 
-    This is the assertion the old guard should have made and never did: it
-    checked which file the hook execs, and never whether git would reach the
-    hook.
+    This is repository state and the strongest thing a test here can assert
+    about whether the gate reaches anyone. A hook staged ``100644`` is a gate
+    that exists, is wired, and does not fire — for every clone except the one
+    that wrote it, if that machine has ``core.fileMode`` false. It happened:
+    both hooks were staged non-executable on the first attempt at this
+    migration.
+
+    ``core.hooksPath`` is deliberately not asserted here. It is local git
+    config, set per clone and never committed, so a fresh checkout — CI's
+    included — has none, and a test demanding it would fail everywhere it is
+    correct for it to be absent. ``mf doctor`` is what reports it, to the
+    Developer whose clone it is.
     """
-    assert _git_config("core.hooksPath") == ".githooks", (
-        "core.hooksPath does not point at .githooks, so no hook in it runs. "
-        "Run `mf hooks install`. This is the failure this guard exists for: "
-        "the gate was documented as active here for months while unset."
-    )
+    for name in ("pre-push", "commit-msg"):
+        entry = _git_ls_stage(f".githooks/{name}")
+        assert entry, f".githooks/{name} is not tracked, so no clone receives it"
+        assert entry.startswith("100755"), (
+            f"the index records .githooks/{name} as non-executable; git skips it "
+            "on every platform that honours the bit. "
+            f"Run `git update-index --chmod=+x .githooks/{name}`."
+        )
 
 
 def test_hooks_fail_closed() -> None:
@@ -123,10 +140,7 @@ def test_r2_chain_names_a_reviewer() -> None:
     """A chain nobody fills reports 'did not run' on every push, forever."""
     config = tomllib.loads(_PROJECT_FILE.read_text(encoding="utf-8"))
     chain = config["roles"]["r2"]["backends"]
-    assert chain, (
-        "roles.r2.backends is empty, so R2 never runs. That is honest, and it is "
-        "not a gate."
-    )
+    assert chain, "roles.r2.backends is empty, so R2 never runs. That is honest, not a gate."
     for name in chain:
         assert name in config["backends"], (
             f"the R2 chain names {name!r} and nothing defines it; the runner "

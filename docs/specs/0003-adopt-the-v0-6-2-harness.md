@@ -20,9 +20,15 @@ left to forward to and no reason to exist.
 The wiring guard is rewritten rather than deleted. It was right to exist and
 wrong in what it watched: it asserted which file the hook execs and never
 whether git would reach the hook. It now executes both hooks against an unusable
-runner and asserts they refuse, checks `core.hooksPath` directly, and asserts no
-second corpus exists — all without a skip, because a guard that can skip itself
-into silence is the failure it was written for.
+runner and asserts they refuse, asserts the index records both as executable,
+and asserts no second corpus exists — all without a skip, because a guard that
+can skip itself into silence is the failure it was written for.
+
+It asserts nothing about `core.hooksPath`. That is local git config, set per
+clone and never committed, so a fresh checkout has none and a test demanding it
+fails in CI for the one reason that is not a defect. `mf doctor` reports it, to
+the Developer whose clone it is. The first version of this guard did assert it
+and CI was right to fail.
 
 ## Alternatives Considered
 
@@ -57,7 +63,7 @@ into silence is the failure it was written for.
 ## Acceptance Criteria
 
 - `mf_check_passes_every_gate_in_this_repository`
-- `core_hooks_path_points_at_the_versioned_hooks`
+- `the_index_records_both_hooks_as_executable`
 - `both_hooks_refuse_when_the_runner_is_unusable`
 - `the_wiring_guard_has_no_skip_that_can_silence_it`
 - `no_second_standards_corpus_exists_beside_the_submodule`
