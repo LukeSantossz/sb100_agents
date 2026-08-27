@@ -76,9 +76,9 @@ You write the change under the Developer's direction.
 ### Agent skills
 
 - **Issue tracker**: issues live in this repository's GitHub Issues, managed via
-  the `gh` CLI. See `docs/agents/issue-tracker.md`.
+  the `gh` CLI. See `.standards/docs/agents/issue-tracker.md`.
 - **Triage labels**: five canonical triage roles using the default label strings
   (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`,
-  `wontfix`). See `docs/agents/triage-labels.md`.
+  `wontfix`). See `.standards/docs/agents/triage-labels.md`.
 - **Domain docs**: single-context — one `CONTEXT.md` plus `docs/adr/` at the
-  repository root. See `docs/agents/domain.md`.
+  repository root. See `.standards/docs/agents/domain.md`.
