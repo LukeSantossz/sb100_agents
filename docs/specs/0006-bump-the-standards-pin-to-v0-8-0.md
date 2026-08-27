@@ -28,21 +28,22 @@ repository also skipped, fixes the header of a generated instruction file.
 
 ## Reproducibility
 
+Run with `sh -e`: every line below is an assertion, so the block stops at the
+first thing that is not true. A preflight that only prints is one nobody reads.
+
 ```sh
-git submodule status .standards                 # v0.8.0
-grep framework_version .framework.lock          # v0.8.0
-mf version                                      # mf v0.8.0
+mf version | grep -qx 'mf v0.8.0'
+git submodule status .standards | grep -q '(v0.8.0)'
+grep -q 'framework_version = "v0.8.0"' .framework.lock
 mf check
-```
+mf check agents
 
-The five upgrade cases `.standards/docs/specs/0050-release-v0-8-0.md` lists,
-checked here before the pin moved:
-
-```sh
-grep exempt_paths .framework.toml               # ["README.md", "LICENSE", ".gitignore"] — no wildcard
-grep -E '^\s*file\s*=\s*""' .framework.toml     # nothing
-grep -rn MF_PATHS_ .github                      # nothing
-git config --global --get mf.attestation.r1     # unset; the attestation here is local
+# The five upgrade cases .standards/docs/specs/0050-release-v0-8-0.md lists.
+# Each line fails if the case applies here, which is what makes it a preflight.
+! grep -qE 'exempt_paths.*"\*"' .framework.toml    # no wildcard exempt path
+! grep -qE '^[[:space:]]*file[[:space:]]*=[[:space:]]*""' .framework.toml
+! grep -rq 'MF_PATHS_' .github                     # no per-run path override in CI
+! git config --global --get mf.attestation.r1      # the attestation here is local
 ```
 
 Versions: `mf` v0.8.0.
