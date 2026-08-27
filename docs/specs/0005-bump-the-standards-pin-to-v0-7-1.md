@@ -30,7 +30,10 @@ whose three skill references resolve to nothing.
 
 ```sh
 git submodule status .standards                        # v0.7.1
-grep -o 'docs/agents/[a-z-]*\.md' CLAUDE.md | sort -u  # each one under .standards/
+for doc in $(grep -o '\.standards/docs/agents/[a-z-]*\.md' CLAUDE.md | sort -u); do
+  test -f "$doc" || echo "MISSING: $doc"
+done
+grep -c '`docs/agents/' CLAUDE.md                      # 0: none left unrewritten
 mf check agents
 ```
 

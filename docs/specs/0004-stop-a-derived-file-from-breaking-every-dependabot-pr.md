@@ -27,10 +27,13 @@ from `uv.lock` at build time, and the file leaves the repository. There is then
 nothing to fall out of step, no job to check that it has not, and a Dependabot
 pull request touches exactly the two files that describe the dependencies.
 
-`uv export --frozen` is what makes this safe: it refuses to resolve anything,
-so the image is built from the locked versions or the build fails. That is the
-guarantee the deleted check was reaching for, applied where it is load-bearing —
-in the image that ships — rather than to a copy in git.
+`uv export --locked` is what makes this safe: it refuses to resolve anything,
+and it also refuses a lockfile that no longer matches `pyproject.toml`. So the
+image is built from the locked versions or the build fails — including in the
+case a Dependabot pull request could actually produce, where a dependency is
+added to `pyproject.toml` and the lockfile is stale. That is the guarantee the
+deleted check was reaching for, applied where it is load-bearing, in the image
+that ships, rather than to a copy in git.
 
 The CI tools are pinned to exact versions. A version bump becomes a commit
 somebody makes, which is what a dependency change is.
@@ -53,7 +56,9 @@ somebody makes, which is what a dependency change is.
 
 ## Scope
 
-- Includes: generating `requirements.txt` in `Dockerfile.api`'s builder stage;
+- Includes: generating `requirements.txt` in `Dockerfile.api`'s builder stage,
+  with a pinned `uv` installed into the system interpreter rather than into the
+  venv the runtime stage receives;
   removing the committed file and ignoring it; deleting the
   `validate-requirements` job; `docker-build.yml` triggering on `uv.lock`
   instead of `requirements.txt`; pinning `ruff`, `mypy`, `types-requests`,
@@ -74,7 +79,8 @@ somebody makes, which is what a dependency change is.
 ## Reproducibility
 
 ```sh
-git grep -n "requirements.txt" -- ':!Dockerfile.api'   # nothing
+test ! -e requirements.txt                             # gone from the tree
+! git ls-files --error-unmatch requirements.txt        # and untracked
 docker build -f Dockerfile.api -t sb100-api .          # succeeds
 ```
 
