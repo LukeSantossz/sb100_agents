@@ -7,32 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  validate-requirements:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        run: pip install uv
-
-      - name: Validate requirements.txt sync with uv.lock
-        run: |
-          uv export --frozen --no-dev -o requirements.txt
-          if ! git diff --quiet requirements.txt; then
-            echo "ERROR: requirements.txt is out of sync with uv.lock"
-            echo "Run 'uv export --frozen --no-dev -o requirements.txt' and commit the changes"
-            git diff requirements.txt
-            exit 1
-          fi
-          echo "requirements.txt is in sync with uv.lock"
-
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -45,8 +19,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Pinned: an unpinned tool turns CI red on a tree nobody touched, and a
+      # version bump should be a commit somebody made.
       - name: Install ruff
-        run: pip install ruff
+        run: pip install ruff==0.16.4
 
       - name: Run ruff check
         run: ruff check .
@@ -68,7 +44,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install mypy types-requests
+          pip install mypy==2.3.1 types-requests==2.33.0.20260712
 
       - name: Run mypy on critical modules
         run: |
@@ -94,7 +70,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e .
-          pip install pytest pytest-cov httpx
+          pip install pytest==9.1.1 pytest-cov==7.1.0 httpx==0.28.1
 
       - name: Run unit tests with coverage
         run: |

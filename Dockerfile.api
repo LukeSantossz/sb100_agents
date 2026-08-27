@@ -22,9 +22,25 @@ ENV VIRTUAL_ENV=/opt/venv
 RUN python -m venv "$VIRTUAL_ENV"
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Leverage layer caching: requirements before the code
-COPY requirements.txt .
-RUN pip install --upgrade pip && \
+# Leverage layer caching: the dependency description before the code.
+#
+# requirements.txt is generated here rather than committed. It is derived from
+# uv.lock, and a derived file in git is a file that falls out of step with what
+# it is derived from — which it did on every Dependabot pull request, since a
+# bot can update the lockfile and cannot run uv export.
+#
+# --locked is what makes this safe: uv refuses to resolve anything and also
+# refuses a lockfile that no longer matches pyproject.toml, so the image is
+# built from the locked versions or the build fails. That is the check the
+# deleted CI job was reaching for, applied to the thing that ships.
+#
+# uv goes into the system interpreter, not into $VIRTUAL_ENV: only the venv is
+# copied to the runtime stage, and a build tool has no business shipping in it.
+# It is pinned for the same reason every other tool here is.
+COPY pyproject.toml uv.lock ./
+RUN /usr/local/bin/python -m pip install --no-cache-dir uv==0.12.6 && \
+    /usr/local/bin/uv export --locked --no-dev -o requirements.txt && \
+    pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # ============================================================================
