@@ -2,10 +2,11 @@
 
 ## Problem
 
-This repository is pinned to `v0.7.2`, in which six of the harness's own gates
-report `ok` while verifying nothing — among them an exempt-path glob that means
-different things on Windows than in CI, and an R1 attestation any machine-wide
-git setting satisfies.
+This repository is pinned to `v0.7.1`, two releases behind. `v0.8.0` closes six
+of the harness's own gates that report `ok` while verifying nothing — among them
+an exempt-path glob that means different things on Windows than in CI, and an R1
+attestation any machine-wide git setting satisfies — and `v0.7.2`, which this
+repository also skipped, fixes the header of a generated instruction file.
 
 ## Scope
 
