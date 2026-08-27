@@ -59,3 +59,6 @@ coverage.xml
 !/eval/dataset/.gitkeep
 
 
+
+# Generated from uv.lock in the image build (Dockerfile.api); never committed.
+/requirements.txt

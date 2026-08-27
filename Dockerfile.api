@@ -22,9 +22,19 @@ ENV VIRTUAL_ENV=/opt/venv
 RUN python -m venv "$VIRTUAL_ENV"
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Leverage layer caching: requirements before the code
-COPY requirements.txt .
+# Leverage layer caching: the dependency description before the code.
+#
+# requirements.txt is generated here rather than committed. It is derived from
+# uv.lock, and a derived file in git is a file that falls out of step with what
+# it is derived from — which it did on every Dependabot pull request, since a
+# bot can update the lockfile and cannot run uv export.
+#
+# --frozen is what makes this safe: uv resolves nothing, so the image is built
+# from the locked versions or the build fails.
+COPY pyproject.toml uv.lock ./
 RUN pip install --upgrade pip && \
+    pip install --no-cache-dir uv && \
+    uv export --frozen --no-dev -o requirements.txt && \
     pip install --no-cache-dir -r requirements.txt
 
 # ============================================================================
