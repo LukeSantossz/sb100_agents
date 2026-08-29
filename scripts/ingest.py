@@ -7,9 +7,11 @@ It provides a simpler interface for indexing documents.
 
 Usage:
     python scripts/ingest.py ./archives/
+    python scripts/ingest.py ./archives/smart_boletim.pdf
 
-The argument must be a directory: the indexer globs ``**/*.pdf`` beneath it, so a path
-to a single PDF matches nothing and the run exits 0 having indexed nothing.
+The argument is a directory, searched recursively, or a single PDF file. A path that
+denotes no PDF ends the run with a non-zero exit code rather than indexing nothing
+and reporting success.
 
 The actual indexing logic is in database/semantic_chunker.py.
 """
@@ -25,15 +27,18 @@ from database.semantic_chunker import main as chunker_main
 
 
 def main() -> None:
-    """Entry point for the ingest script."""
+    """Entry point for the ingest script.
+
+    Exits with whatever the chunker returned. Swallowing it would restore the
+    defect this wrapper is documented against: a run that indexed nothing
+    reporting success (#100).
+    """
     if len(sys.argv) < 2:
         print("Usage: python scripts/ingest.py <path>")
         print("  <path> can be a directory or a PDF file")
         sys.exit(1)
 
-    # Forward to semantic_chunker with 'index' command
-    sys.argv = [sys.argv[0], "index"] + sys.argv[1:]
-    chunker_main()
+    sys.exit(chunker_main(["index"] + sys.argv[1:]))
 
 
 if __name__ == "__main__":
