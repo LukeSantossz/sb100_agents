@@ -57,7 +57,9 @@ def _get_or_create_buffer(current_user: User, session_id: str) -> ConversationBu
     ``session_id`` cannot read or poison their history (closes the IDOR, #108).
 
     Implements an LRU cache with TTL to manage session memory.
-    Lazily cleans up expired sessions (up to 10 per call).
+    Lazily cleans up expired sessions (up to 10 per call). Eviction happens only
+    on a miss, so a hit never costs another session its place and never costs the
+    caller its own history.
 
     Thread-safe: every operation on ``_sessions`` happens under
     ``_sessions_lock`` to avoid race conditions in FastAPI's thread pool.
@@ -83,16 +85,20 @@ def _get_or_create_buffer(current_user: User, session_id: str) -> ConversationBu
         for sid in expired:
             _sessions.pop(sid, None)
 
-        # Enforce max size (drop oldest entries)
-        while len(_sessions) >= _SESSION_MAX_SIZE:
-            _sessions.popitem(last=False)
-
-        # Get or create
+        # Look up before evicting. The other order cost the caller its own
+        # conversation: at capacity the size limit ran first, so a request for the
+        # least recently used session evicted it and then rebuilt it empty, and a
+        # request for any existing session evicted a bystander to make room for an
+        # insertion that never happened (#97).
         existing = _sessions.pop(key, None)
         if existing is not None:
             buffer, _ = existing
-            _sessions[key] = (buffer, now)
+            _sessions[key] = (buffer, now)  # re-inserting moves it to the recent end
             return buffer
+
+        # Only now is something actually being inserted, so make room for it.
+        while len(_sessions) >= _SESSION_MAX_SIZE:
+            _sessions.popitem(last=False)
 
         buffer = ConversationBuffer(maxlen=settings.buffer_maxlen)
         _sessions[key] = (buffer, now)
