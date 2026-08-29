@@ -1,0 +1,13 @@
+# Line endings that do not depend on who cloned the repository.
+#
+# `core.autocrlf=true` is the default on Windows, so without these rules the
+# committed git hooks are checked out with CRLF. bash then fails on the first
+# line of the script (`set: -\n: invalid option`), the gate never runs, and
+# tests/test_r2_gate_wiring.py::test_hooks_fail_closed is red on a clean
+# Windows checkout. Anything bash executes is therefore pinned to LF.
+.githooks/* text eol=lf
+*.sh text eol=lf
+
+# Interpreted by the Windows shells, which want CRLF.
+*.bat text eol=crlf
+*.ps1 text eol=crlf

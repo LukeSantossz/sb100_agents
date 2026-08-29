@@ -14,7 +14,7 @@ The system supports two Qdrant operation modes:
 
 | Component | Version | Check | Install |
 |-----------|---------|-------|---------|
-| Python | 3.11+ | `python --version` | [python.org](https://www.python.org/downloads/) |
+| Python | 3.12+ | `python --version` | [python.org](https://www.python.org/downloads/) |
 | Ollama | latest | `ollama --version` | [ollama.com](https://ollama.com) |
 | Git | any | `git --version` | [git-scm.com](https://git-scm.com) |
 
@@ -57,10 +57,13 @@ git clone https://github.com/LukeSantossz/sb100_agents.git
 cd sb100_agents
 
 # Install Python dependencies (pick one)
-uv sync                          # Recommended (faster)
+uv sync --extra dev              # Recommended (faster)
 # or
-pip install -e .                 # pip alternative
+pip install -e ".[dev]"          # pip alternative
 ```
+
+The `dev` extra carries `ruff`, `mypy` and `pytest-cov`. Installing without it leaves
+`pytest` unable to start, because the coverage options in `pyproject.toml` are always on.
 
 ---
 
@@ -134,8 +137,8 @@ JWT_SECRET_KEY=
 docker compose --profile infra up -d
 
 # Check that Qdrant is running
-curl http://localhost:6333/health
-# Expected response: {"title":"qdrant - vector search engine","version":"..."}
+curl http://localhost:6333/healthz
+# Expected response: healthz check passed
 
 # Check that Ollama is running locally
 ollama list
@@ -148,7 +151,7 @@ ollama list
 zerotier-cli listnetworks
 
 # Test connectivity to the server
-curl http://<REMOTE_HOST_ZEROTIER>:6333/health
+curl http://<REMOTE_HOST_ZEROTIER>:6333/healthz
 ```
 
 ---
@@ -162,12 +165,15 @@ Before using the system, index the PDF documents into Qdrant:
 python scripts/ingest.py ./archives/
 
 # Or index a specific file
-python scripts/ingest.py ./archives/agricultural_document.pdf
+python scripts/ingest.py ./archives/smart_boletim.pdf
 ```
 
-> **Alternative**: Use the semantic chunker directly:
+> **Alternative**: call the semantic chunker as a module, so the repository root stays on
+> `sys.path`. Running it as a file path (`python database/semantic_chunker.py`) fails with
+> `ModuleNotFoundError: No module named 'retrieval'`.
+>
 > ```bash
-> python database/semantic_chunker.py index ./archives/
+> python -m database.semantic_chunker index ./archives/
 > ```
 
 The script processes the PDFs, extracts text, generates embeddings, and stores them in Qdrant.
@@ -219,14 +225,32 @@ curl -X POST http://localhost:8000/auth/register \
   -d '{"username":"testuser","password":"testpass123"}'
 ```
 
+### Log In
+
+`/chat` is JWT gated, so exchange the credentials for a token first:
+
+```bash
+curl -X POST http://localhost:8000/auth/token \
+  -d "username=testuser&password=testpass123"
+# {"access_token":"<access_token>","token_type":"bearer"}
+```
+
+With `jq` on the path the token can be captured straight into a variable:
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8000/auth/token \
+  -d "username=testuser&password=testpass123" | jq -r .access_token)
+```
+
 ### Ask a Question (RAG)
 
 ```bash
 curl -X POST http://localhost:8000/chat \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "session_id": "demo-session",
-    "question": "How do I correct soil acidity?",
+    "question": "Como corrigir a acidez do solo?",
     "profile": {
       "name": "Farmer",
       "expertise": "beginner"
@@ -234,13 +258,21 @@ curl -X POST http://localhost:8000/chat \
   }'
 ```
 
+Without the `Authorization` header the endpoint answers `401 Unauthorized`. The shipped
+corpus is in Portuguese, and the answer follows the language of the question.
+
 **Expected response:**
+
 ```json
 {
-  "answer": "To correct soil acidity, you can apply agricultural lime...",
-  "hallucination_score": 0.25
+  "answer": "A acidez do solo e um problema comum no Brasil...",
+  "hallucination_score": 0.5
 }
 ```
+
+`0.5` is the neutral score the gate returns when verification cannot run, which is what the
+default `VERIFICATION_PROVIDER=groq` does without a `GROQ_API_KEY`. Set
+`VERIFICATION_PROVIDER=ollama` to have the score computed locally with no key.
 
 ---
 
@@ -327,6 +359,32 @@ docker compose exec api curl -fsS "$OLLAMA_HOST/api/tags"
 
 ## Troubleshooting
 
+### Nothing starts, including the ingestion script
+
+```text
+ValidationError: 1 validation error for Settings
+jwt_secret_key
+  Value error, JWT_SECRET_KEY must be configured in .env or environment variables
+```
+
+**Fix**: `JWT_SECRET_KEY` has no default and `.env.example` ships it empty on purpose. Every
+entry point that imports `core.config` needs it, indexing included. Generate one and paste
+it into `.env`:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+### The first /chat call returns 503 after a few minutes
+
+```text
+{"detail":"Answer generation failed: timed out. Check that Ollama is running."}
+```
+
+**Fix**: Ollama loads the model into memory before generating, so the first call is much
+slower than the ones after it. Raise `OLLAMA_TIMEOUT` in `.env` (upper bound 600), or warm
+the model first with `ollama run llama3.2:3b "ok"`.
+
 ### Ollama not found
 
 ```
@@ -387,9 +445,9 @@ zerotier-cli join <NETWORK_ID>
 ollama pull llama3.2:3b && ollama pull nomic-embed-text
 
 # 2. Dependencies
-uv sync
+uv sync --extra dev
 
-# 3. Configuration
+# 3. Configuration (JWT_SECRET_KEY is required and has no default)
 cp .env.example .env
 
 # 4. Infrastructure
@@ -409,7 +467,7 @@ uvicorn api.main:app --reload
 ollama pull llama3.2:3b && ollama pull nomic-embed-text
 
 # 2. Dependencies
-uv sync
+uv sync --extra dev
 
 # 3. ZeroTier
 zerotier-cli join <NETWORK_ID>

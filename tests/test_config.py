@@ -24,8 +24,16 @@ def _env_example_jwt_secret() -> str:
 
 
 def _kwargs(**overrides: object) -> dict[str, object]:
-    """Minimal defaults to instantiate Settings under test (valid JWT + overrides)."""
+    """Minimal defaults to instantiate Settings under test (valid JWT + overrides).
+
+    ``_env_file=None`` detaches the instance from the repository's ``.env``. Without it
+    these tests assert what the developer's local file happens to say rather than what
+    ``Settings`` declares: copying ``.env.example`` is step one of the documented setup,
+    and any value in it that differs from a pinned default turned this file red for a
+    reason that has nothing to do with the code.
+    """
     base: dict[str, object] = {
+        "_env_file": None,
         "jwt_secret_key": "test-jwt-secret-key-for-tests-only-32-chars-minimum",
     }
     base.update(overrides)
@@ -179,8 +187,15 @@ def test_setup_md_contains_no_functional_jwt_secret() -> None:
 # ----------------------------- ollama_timeout (#92) -----------------------------
 
 
-def test_ollama_timeout_default_is_at_least_210s() -> None:
+def test_ollama_timeout_default_is_at_least_210s(monkeypatch: pytest.MonkeyPatch) -> None:
     # CPU-only generation takes ~160-200s; the default must clear it with margin.
+    #
+    # The variable is cleared first because several eval/ modules call load_dotenv() at
+    # import time, so running the whole suite copies the developer's .env into os.environ.
+    # Without this the test asserts what that file says rather than what Settings declares,
+    # and goes red the moment .env.example ships a tuned value. It does ship one: the
+    # shipped value has to clear a cold start and the declared default does not.
+    monkeypatch.delenv("OLLAMA_TIMEOUT", raising=False)
     s = Settings(**_kwargs())
     assert s.ollama_timeout >= 210
     assert s.ollama_timeout == 240.0
