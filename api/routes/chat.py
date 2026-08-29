@@ -259,8 +259,18 @@ def chat(
                 detail=f"Answer generation failed: {str(e)}. Check that Ollama is running.",
             ) from e
 
-    # Update the buffer only after success
-    buffer.add("user", req.question)
-    buffer.add("assistant", response.answer)
+    # Update the buffer only after success, and as one turn: appending the two
+    # halves separately left the question stored without its answer whenever the
+    # buffer refused the answer (#95).
+    try:
+        buffer.add_turn(req.question, response.answer)
+    except ValueError:
+        # An empty answer is the generator's problem, not the caller's. Return it
+        # rather than turning a delivered response into a 500, and record that the
+        # turn was dropped so the gap in the history is explained.
+        logger.warning(
+            "chat.turn_not_recorded",
+            extra={"username": current_user.username, "session_id": req.session_id},
+        )
 
     return response
