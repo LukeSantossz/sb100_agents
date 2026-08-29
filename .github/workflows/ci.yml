@@ -42,13 +42,20 @@ jobs:
         with:
           python-version: "3.12"
 
+      # The project is installed, not just mypy. Without the dependencies every
+      # third-party import resolves to Any, and strict mode reasons differently
+      # about Any than about a real type, so the job would be checking a
+      # different program than the one a contributor checks locally.
       - name: Install dependencies
         run: |
+          pip install -e .
           pip install mypy==2.3.1 types-requests==2.33.0.20260712
 
-      - name: Run mypy on critical modules
+      # Every package pyproject.toml declares strict, not a subset. Checking
+      # three of seven left the other four passing strict only by accident.
+      - name: Run mypy on every package declared strict
         run: |
-          mypy retrieval/ generation/ memory/ \
+          mypy agent/ api/ core/ retrieval/ generation/ memory/ verification/ \
             --ignore-missing-imports \
             --no-error-summary
         env:
