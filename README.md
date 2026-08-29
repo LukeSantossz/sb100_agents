@@ -324,12 +324,13 @@ The sequencing is in the [migration roadmap](./docs/roadmap.md).
 
 ## Known Issues & Limitations
 
-- **Answers take minutes on CPU.** On a CPU only Windows host with `llama3.2:3b`, one warm
-  `/chat` call took 138 seconds without scoring and 478 seconds with local scoring turned on,
-  because scoring generates the answer plus one sample per `ENTROPY_NUM_SAMPLES`. The first
-  call after startup is slower still, since Ollama loads the model before generating, and it
-  can exceed `OLLAMA_TIMEOUT` and return a `503`. Raise `OLLAMA_TIMEOUT` or warm the model
-  with one throwaway request. A GPU or a hosted provider removes this.
+- **Answers take minutes on CPU.** Measured on a CPU only Windows host with `llama3.2:3b`:
+  138 seconds for a warm `/chat` call, 338 seconds for the first call after startup, and 478
+  seconds with local scoring on, since scoring generates the answer plus one sample per
+  `ENTROPY_NUM_SAMPLES`. The first call is the slow one because Ollama loads the model before
+  generating; with the `Settings` default of 240 seconds it exceeded `OLLAMA_TIMEOUT` and
+  returned a `503`, which is why `.env.example` ships 540. A GPU or a hosted provider removes
+  the whole problem.
 - **The score is coarse at the default sample count.** `ENTROPY_NUM_SAMPLES` defaults to 2.
   Entropy over two samples can only be `0.0` or `1.0`, so the value is effectively a yes or
   no. Raising the count gives intermediate values, and multiplies the generation cost by the
