@@ -10,6 +10,7 @@ Covers:
 import contextlib
 from collections.abc import Generator
 from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -18,7 +19,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from database.db import Base, get_db
+import database.db as db_module
+from database.db import DB_PATH_ENV_VAR, Base, get_db, resolve_db_path
 from database.models import Conversation, Message, User
 
 
@@ -196,3 +198,45 @@ def test_get_db_closes_on_success() -> None:
         mock_session.rollback.assert_not_called()
     finally:
         db_module.SessionLocal = original
+
+
+# ----------------------- database file location (issue #218) -----------------------
+#
+# The bind mount used to point at ./smartb100_v2.db, a path that is gitignored and
+# therefore always absent on a clean clone, so Docker created it as a directory and
+# the API refused to start. The container now points this variable inside a mounted
+# directory instead.
+
+
+def test_db_path_defaults_to_the_repository_root() -> None:
+    """With nothing set, the location is unchanged, so no local database moves."""
+    resolved = resolve_db_path({})
+    assert resolved == Path(db_module.__file__).resolve().parents[1] / "smartb100_v2.db"
+    assert resolved == db_module.DEFAULT_DB_PATH
+
+
+def test_db_path_honours_the_override() -> None:
+    """The container sets this to a path inside the mounted directory."""
+    assert resolve_db_path({DB_PATH_ENV_VAR: "/app/data/smartb100_v2.db"}) == Path(
+        "/app/data/smartb100_v2.db"
+    )
+
+
+@pytest.mark.parametrize("blank", ["", "   ", "\t"])
+def test_blank_override_falls_back_to_the_default(blank: str) -> None:
+    """A declared-but-empty variable must not resolve the database to the cwd.
+
+    ``SMARTB100_DB_PATH=`` in an env file arrives as the empty string, and
+    ``Path("")`` is ``.``, which would put the database wherever the process
+    happened to start.
+    """
+    assert resolve_db_path({DB_PATH_ENV_VAR: blank}) == db_module.DEFAULT_DB_PATH
+
+
+def test_resolve_db_path_reads_the_process_environment_by_default(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Called with no argument it reads os.environ, which is how the module uses it."""
+    target = tmp_path / "elsewhere.db"
+    monkeypatch.setenv(DB_PATH_ENV_VAR, str(target))
+    assert resolve_db_path() == target
