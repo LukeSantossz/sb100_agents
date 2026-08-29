@@ -131,3 +131,12 @@ _Avoid_: profile (unqualified), environment, stack.
 The authenticated account (bcrypt-hashed credential, JWT subject) that owns Sessions and
 gates `/chat`.
 _Avoid_: account, client, profile.
+
+**User copy**:
+Text the system shows a reader of the product, as opposed to text it shows a developer. It is
+Portuguese here, deliberately: the corpus is a Portuguese agricultural bulletin and the readers
+are Brazilian, so the domain-gate refusal and the bounded-run fallback in `agent/` are written
+in Portuguese while everything the English rule in `code_conventions.md` names (identifiers,
+comments, commit, PR and issue text, documentation) stays English. Operator-facing output, such
+as the startup scripts and log messages, is developer text and is English.
+_Avoid_: message, string, label (each names the container, not the audience).

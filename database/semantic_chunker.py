@@ -96,7 +96,16 @@ def get_embedding(text: str) -> np.ndarray:
 
 
 def get_embeddings_batch(texts: list[str], batch_size: int = 16) -> list[np.ndarray]:
-    """Generate embeddings in batches for efficiency."""
+    """Embed every text, one request at a time, reporting progress per group of ``batch_size``.
+
+    The grouping is for the progress bar only: the embedding calls are sequential, and
+    deliberately so. Ollama serialises inference on a CPU-only host, so the cost is the model,
+    not the request overhead, and the faster-looking shapes are not faster. Measured over 96
+    corpus sentences: this loop 23.58s, a 4-worker thread pool 21.47s, an 8-worker pool 23.28s,
+    ``client.embed`` with 16 per call 20.47s, with 64 per call 25.25s. ``client.embed`` also
+    returns L2-normalised vectors where ``client.embeddings`` returns raw ones, which changes
+    the chunk vectors this function feeds into ``build_chunks``. See docs/specs/0008.
+    """
     embeddings = []
     for i in tqdm(range(0, len(texts), batch_size), desc="  Generating embeddings", leave=False):
         batch = texts[i : i + batch_size]
