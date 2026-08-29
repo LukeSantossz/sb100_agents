@@ -206,10 +206,58 @@ def test_config_succeeds_without_a_dotenv(tmp_path: Path):
     """
     rendered = _render_in_project(tmp_path, dotenv=None)
     api_environment = rendered["services"]["api"]["environment"]
-    assert set(api_environment) == {"QDRANT_URL", "OLLAMA_HOST", "JWT_SECRET_KEY"}, api_environment
+    # Exactly the container facts: the three that override .env plus the database
+    # path (#218). Asserting the whole set on purpose, so a variable added to
+    # `environment:` that should have been left to `env_file` fails here.
+    assert set(api_environment) == {
+        "QDRANT_URL",
+        "OLLAMA_HOST",
+        "JWT_SECRET_KEY",
+        "SMARTB100_DB_PATH",
+    }, api_environment
 
 
 def test_dotenv_values_reach_the_gradio_container(tmp_path: Path):
     """The UI reads CHAT_TIMEOUT from Settings, so it needs the same forwarding."""
     rendered = _render_in_project(tmp_path, "CHAT_TIMEOUT=900\n")
     assert rendered["services"]["gradio"]["environment"].get("CHAT_TIMEOUT") == "900"
+
+
+# --------------- the database mount is a directory (issue #218) ---------------
+
+
+def test_compose_mounts_a_directory_not_the_database_file(tmp_path: Path):
+    """Bind-mounting the file itself is what broke a clean clone.
+
+    ``./smartb100_v2.db`` is gitignored, so it is always absent on a fresh
+    checkout, and Docker creates a missing bind-mount source as a directory. The
+    API then raises RuntimeError rather than starting. Mounting the parent
+    directory makes Docker's behaviour correct instead of fatal.
+    """
+    rendered = _render_in_project(tmp_path, dotenv=None)
+    mounts = rendered["services"]["api"]["volumes"]
+    assert not any(mount.get("target") == "/app/smartb100_v2.db" for mount in mounts), mounts
+    data_mounts = [mount for mount in mounts if mount.get("target") == "/app/data"]
+    assert data_mounts, f"no mount at /app/data; {mounts}"
+    assert all(mount.get("type") == "bind" for mount in data_mounts), data_mounts
+
+
+def test_compose_points_the_api_at_the_mounted_directory(tmp_path: Path):
+    """The database path must land inside the mount, or the mount is pointless."""
+    rendered = _render_in_project(tmp_path, dotenv=None)
+    db_path = rendered["services"]["api"]["environment"].get("SMARTB100_DB_PATH")
+    assert db_path == "/app/data/smartb100_v2.db"
+
+
+def test_the_database_path_is_not_left_to_the_dotenv(tmp_path: Path):
+    """A host path in .env must not reach the container.
+
+    ``SMARTB100_DB_PATH`` is a container fact, so it lives in ``environment:``
+    where it overrides ``env_file``. If ``.env`` could set it, a Windows host path
+    would arrive in a Linux container and the API would fail on a path that does
+    not exist there.
+    """
+    rendered = _render_in_project(tmp_path, "SMARTB100_DB_PATH=C:/somewhere/host.db\n")
+    assert rendered["services"]["api"]["environment"]["SMARTB100_DB_PATH"] == (
+        "/app/data/smartb100_v2.db"
+    )

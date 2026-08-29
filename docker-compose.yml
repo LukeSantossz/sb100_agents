@@ -70,8 +70,15 @@ services:
       - QDRANT_URL=http://qdrant:6333
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in the host environment or .env}
+      # Inside the mounted directory, not at the image root. See the volume below.
+      - SMARTB100_DB_PATH=/app/data/smartb100_v2.db
     volumes:
-      - ./smartb100_v2.db:/app/smartb100_v2.db
+      # A directory, not the database file. Bind-mounting ./smartb100_v2.db made
+      # Docker create a directory with that name on every clean clone, because the
+      # file is gitignored and therefore always absent, and the API then refused to
+      # start until the operator created it by hand. Docker creating ./data is
+      # correct, and SQLite creates the file inside it on first boot.
+      - ./data:/app/data
     restart: unless-stopped
     depends_on:
       qdrant:

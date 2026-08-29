@@ -199,7 +199,8 @@ curl http://localhost:8000/health    # {"status":"ok"}
 Windows users can run `.\start.bat` or `.\start.ps1` after installation; both scripts start
 Qdrant, pull the models if missing, and open the API and the web page in separate windows.
 Full Docker deployment is `docker compose --profile infra --profile app up -d`, which needs
-`JWT_SECRET_KEY` exported in the host environment. Remote Qdrant and native Linux notes are
+`JWT_SECRET_KEY` in the host environment or in `.env`. It writes the database into a `data/`
+directory it creates beside the compose file. Remote Qdrant and native Linux notes are
 in [`SETUP.md`](./SETUP.md).
 
 ### Tests
@@ -357,10 +358,6 @@ The sequencing is in the [migration roadmap](./docs/roadmap.md).
   ADR-0007 for when PostgreSQL becomes the answer.
 - **The registration rate limit is tight.** Three registrations per hour per IP. A few failed
   attempts while exploring will lock the endpoint for the rest of the hour.
-- **The Docker bind mount for SQLite needs the file to exist.** If `./smartb100_v2.db` is
-  absent, Docker Desktop may create a directory with that name. The API raises an explicit
-  `RuntimeError` when it finds one. Create the empty file before `docker compose --profile
-  app up`.
 - **Accounts predating the bcrypt gate do not work.** They were stored as SHA-256 hashes and
   have to be registered again.
 - **The Qdrant client logs a version warning.** `qdrant-client` resolves to 1.17 while
