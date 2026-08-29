@@ -71,6 +71,9 @@ the class, which made following the documented setup turn the suite red.
 
 ```sh
 uv sync --extra dev
+cp .env.example .env
+uv run python -c "import secrets; print(secrets.token_urlsafe(32))"
+# paste that value into JWT_SECRET_KEY in .env; nothing below starts without it
 docker compose --profile infra up -d
 uv run python scripts/ingest.py ./archives/
 uv run python -m uvicorn api.main:app --host 127.0.0.1 --port 8000

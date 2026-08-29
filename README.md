@@ -31,10 +31,12 @@ retrieved.
 
 ## What It Is
 
-A REST API built with FastAPI, plus an optional Gradio web page that talks to it. It is one
-process: `api/main.py` imports every domain module directly and calls it in the same
-interpreter. Only two other processes exist, Qdrant for the vectors and Ollama for the
-models, and user accounts sit in a SQLite file next to the code.
+A REST API built with FastAPI, plus an optional Gradio web page that talks to it. The whole
+RAG pipeline is one process: `api/main.py` imports every domain module directly and calls it
+in the same interpreter, so no part of the pipeline is reached over a network. Around it run
+Qdrant for the vectors, Ollama for the models, and, when you want the web page, a separate
+Gradio process that is an HTTP client of the API and imports no domain module. User accounts
+sit in a SQLite file next to the code.
 
 It is aimed at agricultural extension workers and agronomists who need an answer out of a
 long technical manual without reading it, and who need to know when the answer is shaky.
@@ -58,8 +60,8 @@ long technical manual without reading it, and who need to know when the answer i
 ## Architecture
 
 One FastAPI process holds the whole pipeline. `POST /chat` embeds the question, searches
-Qdrant, builds a profile specific prompt, calls Ollama, and optionally scores the answer
-before returning it. Conversation history lives in a per session in memory buffer, not in
+Qdrant, builds a profile-specific prompt, calls Ollama, and optionally scores the answer
+before returning it. Conversation history lives in a per-session in-memory buffer, not in
 the database.
 
 ```mermaid
@@ -69,7 +71,7 @@ flowchart LR
     EMBED --> SEARCH["Vector search<br/>top_k chunks"]
     SEARCH --> QDRANT[("Qdrant :6333<br/>archives_v2")]
     SEARCH --> PROMPT["Profile prompt<br/>beginner / intermediate / expert"]
-    BUFFER["Conversation buffer<br/>in memory, FIFO"] --> PROMPT
+    BUFFER["Conversation buffer<br/>in-memory, FIFO"] --> PROMPT
     PROMPT --> LLM["Generator<br/>llama3.2:3b"]
     LLM --> GATE["Verification gate"]
     GATE -->|"sample and cluster"| ENTROPY["Semantic entropy"]
@@ -99,10 +101,10 @@ Each row points at the decision record holding the full rationale and the reject
 | --- | --- | --- |
 | One modular monolith | a service per RAG step | [ADR-0001](./docs/adr/0001-modular-monolith.md) |
 | Semantic entropy as the hallucination score | a trained classifier or an LLM judge | [ADR-0002](./docs/adr/0002-semantic-entropy-hallucination-score.md) |
-| Local first inference via Ollama | hosted embeddings and a larger hosted model | [ADR-0003](./docs/adr/0003-local-first-inference-via-ollama.md) |
+| Local-first inference via Ollama | hosted embeddings and a larger hosted model | [ADR-0003](./docs/adr/0003-local-first-inference-via-ollama.md) |
 | Verification dispatched across providers | OpenAI only | [ADR-0004](./docs/adr/0004-multi-provider-verification-dispatch.md) |
 | SQLite | PostgreSQL | [ADR-0007](./docs/adr/0007-sqlite-persistence.md) |
-| deepagents as the agent substrate | raw LangGraph or a hand written loop | [ADR-0008](./docs/adr/0008-deepagents-orchestration-substrate.md) |
+| deepagents as the agent substrate | raw LangGraph or a hand-written loop | [ADR-0008](./docs/adr/0008-deepagents-orchestration-substrate.md) |
 | Gate threshold and loop bounds set by measurement | guessed defaults | [ADR-0015](./docs/adr/0015-calibrated-agent-gate-and-loop-bounds.md) |
 
 Fifteen records in total, including the ones behind the auth gate, the synchronous handler
@@ -177,8 +179,8 @@ uv run python -m uvicorn api.main:app --reload
 uv run python ui/chat_ui.py
 ```
 
-Step 2 embeds one sentence at a time. The 511 page PDF shipped in `archives/` produced 519
-chunks in 15 minutes 41 seconds on a CPU only Windows host. It is the slowest part of the
+Step 2 embeds one sentence at a time. The 511-page PDF shipped in `archives/` produced 519
+chunks in 15 minutes 41 seconds on a CPU-only Windows host. It is the slowest part of the
 setup and it only happens once.
 
 Checks that the stack is up:
@@ -229,7 +231,7 @@ curl -X POST http://localhost:8000/auth/register \
 # 2. Exchange the credentials for a token
 curl -X POST http://localhost:8000/auth/token \
   -d "username=demo&password=demo-password-123"
-# {"access_token":"eyJhbGciOiJIUzI1NiIs...","token_type":"bearer"}
+# {"access_token":"<access_token>","token_type":"bearer"}
 
 # 3. Ask a question, pasting the access_token from step 2
 curl -X POST http://localhost:8000/chat \
@@ -248,8 +250,8 @@ With `jq` on the path, step 2 becomes
 and step 3 can send `-H "Authorization: Bearer $TOKEN"`.
 
 The answer takes a while: see the timings in
-[Known Issues & Limitations](#known-issues--limitations). The shipped corpus is a Portuguese
-language agricultural bulletin, so ask in Portuguese. The answer follows the language of the
+[Known Issues & Limitations](#known-issues--limitations). The shipped corpus is a
+Portuguese-language agricultural bulletin, so ask in Portuguese. The answer follows the language of the
 question.
 
 Without the `Authorization` header `/chat` returns `401`.
@@ -278,7 +280,7 @@ sb100_agents/
 ├── core/               # settings (pydantic-settings) and the request/response schemas
 ├── retrieval/          # embedding calls and Qdrant search
 ├── generation/         # prompt building, sanitizing, and the Ollama chat call
-├── memory/             # in memory conversation buffer
+├── memory/             # in-memory conversation buffer
 ├── verification/       # semantic entropy and the score gate
 ├── database/           # SQLAlchemy models, session, PDF semantic chunker
 ├── ui/                 # Gradio page
@@ -316,7 +318,7 @@ Not done:
 - [ ] Turning `AGENT_ENABLED` on by default, which is a separate decision from building it
 - [ ] Persisting conversation history, so it survives a restart
 - [ ] Raising the CI coverage floor to match the coverage actually achieved
-- [ ] Hybrid search, dense plus sparse with RRF fusion
+- [ ] Hybrid search, dense plus sparse vectors with RRF fusion
 - [ ] Claim level verification, splitting an answer into claims and checking each
 - [ ] Streaming responses over SSE
 
@@ -324,7 +326,7 @@ The sequencing is in the [migration roadmap](./docs/roadmap.md).
 
 ## Known Issues & Limitations
 
-- **Answers take minutes on CPU.** Measured on a CPU only Windows host with `llama3.2:3b`:
+- **Answers take minutes on CPU.** Measured on a CPU-only Windows host with `llama3.2:3b`:
   138 seconds for a warm `/chat` call, 338 seconds for the first call after startup, and 478
   seconds with local scoring on, since scoring generates the answer plus one sample per
   `ENTROPY_NUM_SAMPLES`. The first call is the slow one because Ollama loads the model before
@@ -338,8 +340,8 @@ The sequencing is in the [migration roadmap](./docs/roadmap.md).
 - **No key means no score.** The default `VERIFICATION_PROVIDER=groq` needs `GROQ_API_KEY`.
   Without it the gate returns the neutral `0.5` and logs a warning rather than failing the
   request. `VERIFICATION_PROVIDER=ollama` scores locally with no key.
-- **Conversation history is not persisted.** It lives in a per process dictionary with a one
-  hour idle TTL and a 1000 session cap. Restarting the API loses it. The `conversations` and
+- **Conversation history is not persisted.** It lives in a per-process dictionary with a
+  one-hour idle TTL and a 1000-session cap. Restarting the API loses it. The `conversations` and
   `messages` tables exist in `database/models.py` and are created at startup, but nothing
   writes to them yet.
 - **Re-indexing appends, it does not replace.** `scripts/ingest.py` assigns a fresh UUID to
@@ -364,7 +366,7 @@ The sequencing is in the [migration roadmap](./docs/roadmap.md).
 
 See [`CONTRIBUTING.md`](./CONTRIBUTING.md). In short: open an issue, branch as
 `type/NNN-short-description`, write the test first, write a spec under `docs/specs/` for
-anything non trivial, use Conventional Commits, open a PR.
+anything non-trivial, use Conventional Commits, open a PR.
 
 ## License
 
