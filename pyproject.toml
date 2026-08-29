@@ -113,7 +113,11 @@ addopts = [
     "--cov=verification",
     "--cov-report=term-missing",
     "--cov-report=xml",
-    "--cov-fail-under=23",  # Adjusted after T45 multi-provider entropy (79 stmts, 0% covered)
+    # A floor, not a ratchet. Measured coverage is around 90%; 70 is the target the
+    # README names and leaves headroom, so an honest refactor that moves a few
+    # statements does not turn CI red for no defect. It was 23, lowered when the
+    # multi-provider entropy work landed uncovered; that code is covered now.
+    "--cov-fail-under=70",
 ]
 markers = [
     "requires_infra: test needs a live external service (Ollama/Qdrant); excluded from the default CI selection via -m 'not requires_infra'",
