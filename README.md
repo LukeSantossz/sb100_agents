@@ -164,10 +164,10 @@ Without a `GROQ_API_KEY` the score is not computed and every answer comes back w
 neutral `0.5`. Set `VERIFICATION_PROVIDER=ollama` for a real score with no key, or
 `VERIFICATION_ENABLED=false` to skip scoring and get faster answers.
 
-Those two settings work when you run the API natively. Under `docker compose --profile app`
-they do not: `.env` is in `.dockerignore` and compose forwards an explicit list of five
-variables, so nothing else in the file reaches the container. See
-[Known Issues & Limitations](#known-issues--limitations).
+Both work under `docker compose --profile app` too: the compose services read `.env` at up
+time. Three values are deliberately not yours to set there, because they are facts about the
+container rather than settings: `QDRANT_URL` names a service on the compose network,
+`OLLAMA_HOST` reaches the host, and `JWT_SECRET_KEY` must come from the environment.
 
 ### Running
 
@@ -363,13 +363,6 @@ The sequencing is in the [migration roadmap](./docs/roadmap.md).
   app up`.
 - **Accounts predating the bcrypt gate do not work.** They were stored as SHA-256 hashes and
   have to be registered again.
-- **The Docker app profile ignores most of `.env`.** `.env` is listed in `.dockerignore`, so it
-  never enters the image, and the `api` service in `docker-compose.yml` forwards an explicit
-  list: `QDRANT_URL`, `CHAT_MODEL`, `EMBED_MODEL`, `OLLAMA_HOST` and `JWT_SECRET_KEY`. Every
-  other setting falls back to its `Settings` default inside the container, so containerised
-  answers always score the neutral `0.5`, `OLLAMA_TIMEOUT` is 240 rather than the 540 in
-  `.env.example`, and `AGENT_ENABLED` cannot be switched on. Add the variable to the compose
-  `environment:` list to change any of them.
 - **The Qdrant client logs a version warning.** `qdrant-client` resolves to 1.17 while
   `qdrant/qdrant:latest` is on 1.19, so the client prints an incompatibility `UserWarning` on
   the first search. Search works; pin the image tag to match the client if the warning

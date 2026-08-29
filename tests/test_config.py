@@ -339,3 +339,31 @@ def test_intent_threshold_rejects_above_one() -> None:
 def test_intent_threshold_accepts_boundaries() -> None:
     assert Settings(**_kwargs(intent_threshold=0.0)).intent_threshold == 0.0
     assert Settings(**_kwargs(intent_threshold=1.0)).intent_threshold == 1.0
+
+
+# ----------------------------- agent settings are discoverable (#215) -----------------------------
+
+
+def test_env_example_documents_the_agent_settings() -> None:
+    """.env.example must name the agent knobs, or they are unreachable in practice.
+
+    The agent path is complete and bounded, but it ships off and was absent from
+    the file an operator copies, so it could not be turned on without reading
+    ``core/config.py``. Forwarding the variables to the container (#215) only
+    helps if the operator knows they exist.
+    """
+    env_example = (_REPO_ROOT / ".env.example").read_text(encoding="utf-8")
+    for name in ("AGENT_ENABLED", "AGENT_PROVIDER", "AGENT_MODEL", "INTENT_THRESHOLD"):
+        assert name in env_example, f".env.example does not mention {name}"
+
+
+def test_env_example_ships_the_agent_path_disabled() -> None:
+    """Whatever .env.example says about AGENT_ENABLED must not switch it on.
+
+    Turning the flag on is a separate decision (ADR-0015). Documenting it must
+    not make it the default for anyone who copies the file.
+    """
+    for line in (_REPO_ROOT / ".env.example").read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("AGENT_ENABLED="):
+            assert stripped.split("=", 1)[1].strip().lower() in ("false", ""), stripped

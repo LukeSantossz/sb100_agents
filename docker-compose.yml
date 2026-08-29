@@ -49,10 +49,25 @@ services:
     profiles: ["app"]
     ports:
       - "8000:8000"
+    # Everything the operator tuned. Compose reads this from the host at up time,
+    # so .dockerignore is irrelevant and no secret enters the image. Before this
+    # existed only the explicit list below reached the container, and every other
+    # Settings field silently fell back to its class default: verification scored a
+    # constant 0.5, OLLAMA_TIMEOUT stayed at 240 whatever .env said, and
+    # AGENT_ENABLED could not be turned on at all.
+    #
+    # required: false because .env is gitignored, so a clean clone has none and
+    # compose must not refuse to start over a file the repository never ships.
+    env_file:
+      - path: .env
+        required: false
+    # Not operator settings, so they are not left to .env. `environment` wins over
+    # `env_file`, which is what makes these three authoritative:
+    #   QDRANT_URL   - inside the container Qdrant is a service name, not localhost.
+    #   OLLAMA_HOST  - keeps the inline override documented in SETUP 9.1 working.
+    #   JWT_SECRET_KEY - must fail loudly rather than default.
     environment:
       - QDRANT_URL=http://qdrant:6333
-      - CHAT_MODEL=llama3.2:3b
-      - EMBED_MODEL=nomic-embed-text
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in the host environment or .env}
     volumes:
@@ -83,6 +98,11 @@ services:
     profiles: ["app"]
     ports:
       - "7860:7860"
+    # Same reasoning as the api service. The UI reads CHAT_TIMEOUT from Settings,
+    # so without this its timeout was pinned to the class default too.
+    env_file:
+      - path: .env
+        required: false
     environment:
       - API_URL=http://api:8000
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in the host environment or .env}
