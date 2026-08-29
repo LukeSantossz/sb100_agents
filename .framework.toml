@@ -70,8 +70,18 @@ backends = ["superpowers"]
 backends = ["codex", "agy"]
 require_cross_provider = true
 
-# Left empty: no automated pull-request reviewer is wired for this repository,
-# and a chain naming one that does not run would read as a review that happened.
+# Left empty, but not because nothing reviews. CodeRabbit reviews every pull
+# request on this repository and posts inline findings; Greptile and Copilot are
+# installed too and currently report themselves out of credit. R3 is served, just
+# not from here.
+#
+# It stays empty because an `mf` backend is something `mf` can start as a
+# subprocess, and a GitHub App is not that. Naming CodeRabbit below would make
+# `mf review --role r3` claim to run something it cannot reach, which is the
+# failure this list is meant to avoid, pointing the other way.
+#
+# The PR template asks for the app's result instead, so the review that does
+# happen is recorded where a reviewer will look for it.
 [roles.r3]
 backends = []
 
