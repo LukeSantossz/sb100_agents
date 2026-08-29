@@ -5,16 +5,18 @@ Living document. It organizes the project's recorded decisions (the ADRs under
 remain the durable, authoritative decision records; this file is the operational plan that
 sequences the work and is updated as Waves progress.
 
-## Current State (2026-07-13)
+## Current State (2026-08-28)
 
 - **Product:** MVP-complete RAG monolith (`/chat`: embed → search → generate → entropy-score),
   actively hardened. See the README Project Status.
-- **Migration in progress (Wave A core landed):** ADR-0008 (deepagents/LangGraph as the orchestration
-  substrate) and ADR-0009 (hosted Groq as the agent reasoning model) are **Accepted**; a go/no-go spike
+- **Migration in progress (Wave A landed, flag still off):** ADR-0008 (deepagents/LangGraph as the orchestration
+  substrate) and ADR-0009 (hosted Groq as the agent reasoning model, since superseded in practice by ADR-0013's
+  configurable provider with a local default) are **Accepted**; a go/no-go spike
   (#163) proved the substrate. The `agent/` package now exists and Wave A slices **A1 (#170), A2 (#171),
   and A3 (#172) are merged**: the `search_corpus` tool boundary, the agent-backed `/chat` handler behind
   the `agent_enabled` flag (default off, legacy path preserved per ADR-0005), and the agricultural intent
-  filter (ADR-0010). **A4 (#173, bound the agent loop) is open.** A5 is satisfied for the score itself —
+  filter (ADR-0010). **A4 (#173, bound the agent loop) is merged** (ADR-0012), with its thresholds and bounds
+  calibrated against the live environment afterwards (ADR-0015). A5 is satisfied for the score itself —
   the entropy Hallucination Score wraps the agent answer — while the retry/fallback gate behavior is
   deferred to Wave C (see the Wave C list).
 - **Taxonomy:** the ADRs reference "Wave A" but never define the wave set. This document defines it.
@@ -27,7 +29,7 @@ alongside all of them.
 
 | Wave | Outcome | Grounding |
 |------|---------|-----------|
-| **A — Agentic core** | `/chat` runs through a bounded `deepagents` + Groq agent behind an `agent/` boundary, with retrieval as a tool and an agricultural intent filter. | ADR-0008, ADR-0009; README "LangGraph migration" |
+| **A — Agentic core** | `/chat` runs through a bounded `deepagents` agent behind an `agent/` boundary, driven by the configured agent provider, with retrieval as a tool and an agricultural intent filter. | ADR-0008, ADR-0009 (superseded on the model by ADR-0013); README "LangGraph migration" |
 | **B — Retrieval quality** | The agent's retrieval tool gains source citations, score threshold/filters, corpus management, hybrid search (RRF), reranking, and per-user ACL. | ADR-0008 ("retrieval, hybrid search, reranking, ACL"); README "Hybrid search" |
 | **C — Verification & trust** | Answers carry claim-level verification and per-message quality signals; the verification gate wraps the agent path. | ADR-0002; README "Claim verification" |
 | **D — Conversation UX & streaming** | Durable history, SSE streaming, feedback, and export over the agentic `/chat`. | ADR-0005/0008 ("SSE slice", #132) |
@@ -41,9 +43,11 @@ eval robustness, and standalone bugfixes/features. See the mapping table for the
 
 ## Wave A — Agentic core
 
-**Goal:** replace the hand-rolled synchronous chat loop with a `deepagents` agent driven by a hosted
-Groq model, isolated behind an `agent/` package, invoked synchronously (`graph.invoke(...)`) so the
-ADR-0005 synchronous `/chat` contract is preserved. No existing issue covers Wave A — its slices need
+**Goal:** replace the hand-rolled synchronous chat loop with a `deepagents` agent, isolated behind an
+`agent/` package, invoked synchronously (`graph.invoke(...)`) so the ADR-0005 synchronous `/chat`
+contract is preserved. The Goal was written against a hosted Groq model per ADR-0009; ADR-0013 later
+made the provider configurable and moved the default to a local Ollama model, and the slices below
+were delivered against that. No existing issue covers Wave A — its slices need
 new issues created.
 
 | Slice | Scope | Notes |
@@ -51,7 +55,7 @@ new issues created.
 | **A1 — `agent/` scaffold + `search_corpus` tool** | Create the `agent/` package boundary; wrap the existing retrieval (`retrieval.search_context`) as a `deepagents` tool; build the agent via `create_deep_agent(model=ChatGroq(...), tools=[search_corpus])`; unit-test the wiring with a stubbed model. `/chat` unchanged. | De-risked by spike #163. Foundational; unblocks the rest. **Merged (#170).** |
 | **A2 — Route `/chat` through the agent** | Add the agentic handler invoked via synchronous `graph.invoke(...)`; map agent output → `ChatResponse`; keep the legacy path switchable behind config during rollout. | Preserves ADR-0005. **Merged (#171).** |
 | **A3 — Agricultural intent filter** | Cheap pre-flight classification to deflect off-domain questions before entering the agent loop. | README "agricultural intent filter". **Merged (#172, ADR-0010).** |
-| **A4 — Bound the agent loop** | Enforce a recursion limit and a per-run token budget to respect Groq free-tier limits and control latency. | ADR-0009 explicitly defers this to "a later Wave A slice". **Open (#173).** |
+| **A4 — Bound the agent loop** | Enforce a recursion limit and a per-run token budget to respect Groq free-tier limits and control latency. | ADR-0009 explicitly defers this to "a later Wave A slice"; ADR-0012 realizes it and ADR-0015 calibrates the bounds. **Merged (#173).** |
 | **A5 — Preserve the verification gate** | Ensure the entropy hallucination score still wraps the agent's final answer (deep claim-verification is Wave C). | ADR-0002 contract kept. **Score wrapping done; retry/fallback gate deferred to Wave C.** |
 
 **Done when:** `/chat` answers are produced by the agent, bounded and intent-filtered, with the
