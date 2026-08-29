@@ -1,6 +1,7 @@
 import argparse
 import logging
 import re
+import sys
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -285,12 +286,47 @@ def process_pdf(pdf_path: str, client: QdrantClient) -> int:
     return count
 
 
+def discover_pdfs(path: Path) -> list[Path]:
+    """Return the PDFs ``path`` denotes: the file itself, or everything beneath a directory.
+
+    Globbing ``**/*.pdf`` beneath the argument is what made a path to a single PDF
+    match nothing, so the run indexed nothing and still exited 0 (#100). A file is
+    now answered with itself, and anything that is neither a PDF file nor a
+    directory answers with nothing, which ``process_folder`` turns into a failure
+    rather than a silent success.
+
+    Args:
+        path: A PDF file, a directory to search recursively, or a path that is
+            neither, including one that does not exist.
+
+    Returns:
+        Matching PDF paths, sorted so a run is reproducible.
+    """
+    if path.is_file():
+        return [path] if path.suffix.lower() == ".pdf" else []
+    if path.is_dir():
+        return sorted(path.glob("**/*.pdf"))
+    return []
+
+
+class NoPDFsFoundError(RuntimeError):
+    """Raised when a path denotes no PDF, so the run fails instead of reporting success."""
+
+
 def process_folder(folder_path: str):
-    """Process all PDFs in a folder."""
-    pdf_files = list(Path(folder_path).glob("**/*.pdf"))
+    """Index every PDF the given path denotes.
+
+    Raises:
+        NoPDFsFoundError: When the path denotes no PDF. Indexing nothing is a
+            failure: it leaves an empty collection behind and a ``/chat`` that
+            answers from no context, and reporting success hides that.
+    """
+    pdf_files = discover_pdfs(Path(folder_path))
     if not pdf_files:
         logger.warning("semantic_chunker.no_pdfs_found", extra={"folder": folder_path})
-        return
+        raise NoPDFsFoundError(
+            f"no PDF found at {folder_path}. Pass a .pdf file, or a directory containing one."
+        )
 
     logger.info(
         "semantic_chunker.folder_start",
@@ -351,8 +387,17 @@ def search(query: str, top_k: int = 5):
 # ─────────────────────────────────────────────
 
 
-def main() -> None:
-    """Entry point for CLI usage. Parses arguments and runs index or search."""
+def main(argv: list[str] | None = None) -> int:
+    """Entry point for CLI usage. Parses arguments and runs index or search.
+
+    Args:
+        argv: Argument list to parse; defaults to ``sys.argv[1:]``. Passing it
+            explicitly is what lets the tests drive this without touching argv.
+
+    Returns:
+        Process exit code. Non-zero when the path denotes no PDF, so a run that
+        indexed nothing cannot be mistaken for one that worked.
+    """
     global OLLAMA_MODEL, SIMILARITY_THRESHOLD, QDRANT_URL, QDRANT_API_KEY, COLLECTION_NAME
 
     logging.basicConfig(
@@ -387,7 +432,7 @@ def main() -> None:
     )
     search_parser.add_argument("--collection", default=COLLECTION_NAME)
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.command == "index":
         OLLAMA_MODEL = args.model
@@ -395,7 +440,11 @@ def main() -> None:
         QDRANT_URL = args.qdrant_url
         QDRANT_API_KEY = args.api_key
         COLLECTION_NAME = args.collection
-        process_folder(args.folder)
+        try:
+            process_folder(args.folder)
+        except NoPDFsFoundError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
 
     elif args.command == "search":
         QDRANT_URL = args.qdrant_url
@@ -405,7 +454,10 @@ def main() -> None:
 
     else:
         parser.print_help()
+        return 2
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
