@@ -72,3 +72,27 @@ def test_chat_response_accepts_score_boundaries() -> None:
     high = ChatResponse(answer="ok", hallucination_score=1.0)
     assert low.hallucination_score == 0.0
     assert high.hallucination_score == 1.0
+
+
+# ---------------- a blank question is rejected up front (issue #95) ----------------
+
+
+@pytest.mark.parametrize("question", ["   ", "\t", "\n", " \n \t "])
+def test_a_whitespace_only_question_is_rejected(question: str) -> None:
+    """It used to pass min_length=1, spend the whole pipeline, and 500 at the buffer."""
+    with pytest.raises(ValidationError):
+        ChatRequest(
+            session_id="s1",
+            question=question,
+            profile=UserProfile(name="U", expertise="beginner"),
+        )
+
+
+def test_a_question_is_stripped_before_use() -> None:
+    """The pipeline should embed the question, not the whitespace around it."""
+    request = ChatRequest(
+        session_id="s1",
+        question="  como corrigir a acidez do solo?  ",
+        profile=UserProfile(name="U", expertise="beginner"),
+    )
+    assert request.question == "como corrigir a acidez do solo?"

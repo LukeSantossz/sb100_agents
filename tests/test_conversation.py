@@ -2,6 +2,8 @@
 
 import unittest
 
+import pytest
+
 from memory.conversation import ConversationBuffer
 
 
@@ -110,3 +112,54 @@ class TestConversationBuffer(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------- atomic turns (issue #95) ----------------
+#
+# The handler appended the question and the answer with two separate `add` calls.
+# When the buffer refused the answer, the question was already stored, so the
+# history held half a conversation and the request became a 500 after the answer
+# had already been generated.
+
+
+def test_add_turn_appends_both_on_success() -> None:
+    buffer = ConversationBuffer(maxlen=10)
+
+    buffer.add_turn("qual a epoca de plantio?", "depende do regime de chuvas")
+
+    assert buffer.to_messages() == [
+        {"role": "user", "content": "qual a epoca de plantio?"},
+        {"role": "assistant", "content": "depende do regime de chuvas"},
+    ]
+
+
+@pytest.mark.parametrize("answer", ["", "   ", "\n\t"])
+def test_add_turn_appends_neither_when_the_answer_is_blank(answer: str) -> None:
+    """The defect: the question was stored and the answer was not."""
+    buffer = ConversationBuffer(maxlen=10)
+
+    with pytest.raises(ValueError):
+        buffer.add_turn("uma pergunta", answer)
+
+    assert buffer.to_messages() == [], "the question was stored without its answer"
+
+
+@pytest.mark.parametrize("question", ["", "   "])
+def test_add_turn_appends_neither_when_the_question_is_blank(question: str) -> None:
+    buffer = ConversationBuffer(maxlen=10)
+
+    with pytest.raises(ValueError):
+        buffer.add_turn(question, "uma resposta")
+
+    assert buffer.to_messages() == []
+
+
+def test_add_turn_leaves_earlier_history_untouched_when_it_refuses() -> None:
+    """A refused turn must not disturb what was already there."""
+    buffer = ConversationBuffer(maxlen=10)
+    buffer.add_turn("primeira", "resposta um")
+
+    with pytest.raises(ValueError):
+        buffer.add_turn("segunda", "")
+
+    assert [m["content"] for m in buffer.to_messages()] == ["primeira", "resposta um"]

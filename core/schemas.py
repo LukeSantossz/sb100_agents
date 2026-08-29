@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ExpertiseLevel(StrEnum):
@@ -75,6 +75,22 @@ class ChatRequest(BaseModel):
         ...,
         description="User profile used to adjust the answer's tone and depth.",
     )
+
+    @field_validator("question")
+    @classmethod
+    def _strip_and_require_content(cls, value: str) -> str:
+        """Reject a whitespace-only question here, before the pipeline is spent.
+
+        ``min_length=1`` counts characters and pydantic does not strip, so ``"   "``
+        used to pass validation, run embedding, search and generation, and only then
+        fail with a 500 when the conversation buffer refused to store it (#95).
+        Rejecting at the boundary that already claims the field is non-empty turns
+        that into a 422 before anything is embedded.
+        """
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("question must contain more than whitespace")
+        return stripped
 
 
 class ChatResponse(BaseModel):
