@@ -289,3 +289,89 @@ def test_gate_logs_warning_not_traceback_when_verifier_key_missing(
     assert gate_records, "gate must log the missing-key degrade"
     assert all(r.levelname == "WARNING" for r in gate_records)
     assert all(r.exc_info is None for r in gate_records)
+
+
+# ---------- partial sampling failure must not read as grounded (issue #102) ----------
+#
+# `_generate_samples` tolerates partial failure on purpose, so one 429 does not fail
+# the request. But with the default of two samples, one failure left one sample, one
+# cluster, and `_shannon_entropy(clusters, 1)` returns 0.0 by definition. The gate read
+# that as a confidently grounded answer and delivered it as trustworthy. Entropy over
+# one sample is not a low value, it is no value.
+
+
+def _failing_then_ok(failures: int):
+    """A sample function that raises for the first ``failures`` calls, then succeeds."""
+    calls = {"n": 0}
+
+    def _fn(question: str, context: str, model: str) -> str:
+        calls["n"] += 1
+        if calls["n"] <= failures:
+            raise RuntimeError("rate limit")
+        return f"resposta {calls['n']}"
+
+    return _fn
+
+
+def test_one_surviving_sample_raises_instead_of_scoring_zero(monkeypatch) -> None:
+    """The defect: two requested, one failed, score 0.0 = 'fully grounded'."""
+    monkeypatch.setattr(entropy_module.settings, "verification_provider", "ollama")
+    monkeypatch.setattr(entropy_module.settings, "entropy_num_samples", 2)
+    monkeypatch.setattr(entropy_module, "_generate_one_ollama", _failing_then_ok(1))
+
+    with pytest.raises(entropy_module.InsufficientSamplesError):
+        entropy_module.compute_entropy_score(question="q", context="c")
+
+
+def test_two_surviving_samples_still_score(monkeypatch) -> None:
+    """A real measurement must not be thrown away just because a call was lost.
+
+    Discarding it would let one flaky call silently disable verification, which is
+    the same failure this fixes, pointed the other way.
+    """
+    monkeypatch.setattr(entropy_module.settings, "verification_provider", "ollama")
+    monkeypatch.setattr(entropy_module.settings, "entropy_num_samples", 3)
+    monkeypatch.setattr(entropy_module, "_generate_one_ollama", _failing_then_ok(1))
+    monkeypatch.setattr(entropy_module, "_compute_similarity", lambda *a, **k: 0.0)
+
+    score = entropy_module.compute_entropy_score(question="q", context="c")
+
+    assert 0.0 <= score <= 1.0
+
+
+def test_every_sample_failing_still_propagates(monkeypatch) -> None:
+    """Unchanged behaviour: the last exception reaches the gate."""
+    monkeypatch.setattr(entropy_module.settings, "verification_provider", "ollama")
+    monkeypatch.setattr(entropy_module.settings, "entropy_num_samples", 2)
+    monkeypatch.setattr(entropy_module, "_generate_one_ollama", _failing_then_ok(99))
+
+    with pytest.raises(RuntimeError):
+        entropy_module.compute_entropy_score(question="q", context="c")
+
+
+def test_the_gate_returns_the_neutral_score_on_insufficient_samples(monkeypatch) -> None:
+    """The answer is still delivered; only the score degrades."""
+
+    def _raise(**kwargs):
+        raise entropy_module.InsufficientSamplesError("1 of 2")
+
+    monkeypatch.setattr(gate_module, "compute_entropy_score", _raise)
+    monkeypatch.setattr(gate_module, "generate", lambda **kwargs: "uma resposta")
+
+    response = gate_module.evaluate(
+        question="q", context="c", history=[], profile=UserProfile(name="U", expertise="beginner")
+    )
+
+    assert response.answer == "uma resposta"
+    assert response.hallucination_score == gate_module.NEUTRAL_SCORE
+
+
+def test_score_context_returns_the_neutral_score_on_insufficient_samples(monkeypatch) -> None:
+    """The agent path shares the policy."""
+
+    def _raise(**kwargs):
+        raise entropy_module.InsufficientSamplesError("1 of 2")
+
+    monkeypatch.setattr(gate_module, "compute_entropy_score", _raise)
+
+    assert gate_module.score_context("q", "algum contexto") == gate_module.NEUTRAL_SCORE

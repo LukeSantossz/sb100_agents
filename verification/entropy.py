@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
 
 _EPSILON = 1e-10
 
+# A distribution needs at least two observations. ``entropy_num_samples`` is already
+# validated ``>= 2``; this is the floor on what actually came back.
+_MIN_SAMPLES_FOR_ENTROPY = 2
+
 DEFAULT_VERIFICATION_MODELS = {
     "groq": "llama-3.1-8b-instant",
     "ollama": "llama3.2:3b",
@@ -33,6 +37,16 @@ DEFAULT_VERIFICATION_MODELS = {
 }
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+
+class InsufficientSamplesError(RuntimeError):
+    """Raised when fewer than two samples survived, so no distribution exists to measure.
+
+    Entropy over a single sample is not a low value, it is no value: one sample
+    forms one cluster and :func:`_shannon_entropy` returns ``0.0`` by definition.
+    The gate used to read that as a confidently grounded answer, so a provider
+    failing half its calls silently turned verification into "always trust" (#102).
+    """
 
 
 class MissingVerifierKeyError(RuntimeError):
@@ -218,6 +232,8 @@ def compute_entropy_score(question: str, context: str) -> float:
     Raises:
         MissingVerifierKeyError: When the configured provider (groq/openrouter) has no API key,
             so the gate degrades to the neutral score instead of a confident 0.0.
+        InsufficientSamplesError: When fewer than two samples survived, for the same
+            reason: one sample scores 0.0 by definition, not by measurement.
         ValueError: If ``settings.verification_provider`` is not in
             :data:`DEFAULT_VERIFICATION_MODELS` (should not happen with the enum).
     """
@@ -238,7 +254,27 @@ def compute_entropy_score(question: str, context: str) -> float:
         raise MissingVerifierKeyError(provider)
 
     model = settings.verification_chat_model or DEFAULT_VERIFICATION_MODELS[provider]
-    samples = _generate_samples(provider, question, context, model, settings.entropy_num_samples)
+    requested = settings.entropy_num_samples
+    samples = _generate_samples(provider, question, context, model, requested)
+
+    if len(samples) < _MIN_SAMPLES_FOR_ENTROPY:
+        logger.warning(
+            "verification.entropy.insufficient_samples",
+            extra={"provider": provider, "requested": requested, "generated": len(samples)},
+        )
+        raise InsufficientSamplesError(
+            f"{len(samples)} of {requested} samples generated; at least "
+            f"{_MIN_SAMPLES_FOR_ENTROPY} are needed for a distribution"
+        )
+    if len(samples) < requested:
+        # Enough to measure, so the score stands, but the loss is worth seeing:
+        # a provider degrading steadily shows up here before it shows up as a
+        # neutral score.
+        logger.warning(
+            "verification.entropy.partial_samples",
+            extra={"provider": provider, "requested": requested, "generated": len(samples)},
+        )
+
     clusters = _cluster_responses(samples)
     score = _shannon_entropy(clusters, len(samples))
 
