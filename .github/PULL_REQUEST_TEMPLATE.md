@@ -32,4 +32,4 @@
 - [ ] Review layers recorded:
   - R1 (internal review): <!-- ran / did not run; Author model -->
   - R2 (cross-provider review): Codex `gpt-5.5`/high pre-push gate (advisory) — record the Reviewer model, or note when it did not run.
-  - R3 (automated PR review): not configured.
+  - R3 (automated PR review): which GitHub App reviewed (CodeRabbit reviews every PR here), what it raised, and what you did with each finding, including any you rejected and why. Note an app that reported itself out of credit rather than omitting it.
