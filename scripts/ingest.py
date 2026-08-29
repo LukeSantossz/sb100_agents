@@ -7,7 +7,9 @@ It provides a simpler interface for indexing documents.
 
 Usage:
     python scripts/ingest.py ./archives/
-    python scripts/ingest.py ./archives/document.pdf
+
+The argument must be a directory: the indexer globs ``**/*.pdf`` beneath it, so a path
+to a single PDF matches nothing and the run exits 0 having indexed nothing.
 
 The actual indexing logic is in database/semantic_chunker.py.
 """

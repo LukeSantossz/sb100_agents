@@ -161,11 +161,8 @@ curl http://<REMOTE_HOST_ZEROTIER>:6333/healthz
 Before using the system, index the PDF documents into Qdrant:
 
 ```bash
-# Index every PDF in the archives/ directory
+# Index every PDF found under the given directory, recursively
 python scripts/ingest.py ./archives/
-
-# Or index a specific file
-python scripts/ingest.py ./archives/smart_boletim.pdf
 ```
 
 > **Alternative**: call the semantic chunker as a module, so the repository root stays on
@@ -177,6 +174,10 @@ python scripts/ingest.py ./archives/smart_boletim.pdf
 > ```
 
 The script processes the PDFs, extracts text, generates embeddings, and stores them in Qdrant.
+
+The argument must be a directory. The indexer globs `**/*.pdf` under whatever it is given, so a
+path to a single PDF matches nothing: the run logs `semantic_chunker.no_pdfs_found` and exits `0`
+without indexing anything. To index one file, put it in a directory of its own and pass that.
 
 ---
 
