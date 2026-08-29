@@ -1,66 +1,71 @@
-# SmartB100 - Script de Inicializacao (PowerShell)
+# SmartB100 - Startup script (PowerShell)
 Write-Host "=== SmartB100 Startup ===" -ForegroundColor Green
 Write-Host ""
 
-# Localizar Ollama dinamicamente via PATH
+# Locate Ollama dynamically via PATH
 $ollamaCmd = Get-Command ollama -ErrorAction SilentlyContinue
 
 if (-not $ollamaCmd) {
-    Write-Host "ERRO: Ollama nao encontrado no PATH do sistema." -ForegroundColor Red
+    Write-Host "ERROR: Ollama was not found on the system PATH." -ForegroundColor Red
     Write-Host ""
-    Write-Host "Instale o Ollama em: https://ollama.com" -ForegroundColor Yellow
-    Write-Host "Apos instalar, reinicie o terminal e execute este script novamente."
+    Write-Host "Install Ollama from: https://ollama.com" -ForegroundColor Yellow
+    Write-Host "Then restart the terminal and run this script again."
     exit 1
 }
 
 $ollamaPath = $ollamaCmd.Source
 
-# 1. Verificar Qdrant
-Write-Host "[1/4] Verificando Qdrant..." -ForegroundColor Yellow
+# 1. Check Qdrant
+Write-Host "[1/4] Checking Qdrant..." -ForegroundColor Yellow
 try {
     docker compose --profile infra up -d
     Write-Host "Qdrant: OK" -ForegroundColor Green
 } catch {
-    Write-Host "Qdrant: ERRO - Verifique se o Docker esta rodando" -ForegroundColor Red
+    Write-Host "Qdrant: ERROR - check that Docker is running" -ForegroundColor Red
 }
 
-# 2. Verificar modelos Ollama
+# 2. Check the Ollama models
 Write-Host ""
-Write-Host "[2/4] Verificando modelos Ollama..." -ForegroundColor Yellow
+Write-Host "[2/4] Checking Ollama models..." -ForegroundColor Yellow
 
-$models = & $ollamaPath list 2>$null
-if ($models -notmatch "nomic-embed-text") {
-    Write-Host "Baixando modelo de embeddings..."
+# Joined into one string on purpose. `ollama list` returns an array of lines, and
+# `-notmatch` against an array filters it instead of answering yes or no: it returns
+# every line that does not match, which is almost always non-empty, so `if` saw True
+# and both models were re-downloaded on every run even when already installed.
+$models = (& $ollamaPath list 2>$null) -join [Environment]::NewLine
+
+if ($models -notlike "*nomic-embed-text*") {
+    Write-Host "Downloading the embedding model..."
     & $ollamaPath pull nomic-embed-text
 }
-if ($models -notmatch "llama3.2:3b") {
-    Write-Host "Baixando modelo de chat..."
+if ($models -notlike "*llama3.2:3b*") {
+    Write-Host "Downloading the chat model..."
     & $ollamaPath pull llama3.2:3b
 }
 Write-Host "Ollama: OK" -ForegroundColor Green
 
-# 3. Exibir URLs
+# 3. Show the service URLs
 Write-Host ""
-Write-Host "[3/4] URLs dos servicos:" -ForegroundColor Yellow
+Write-Host "[3/4] Service URLs:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "API: http://localhost:8000" -ForegroundColor Cyan
 Write-Host "Gradio UI: http://localhost:7860" -ForegroundColor Cyan
 Write-Host "Qdrant: http://localhost:6333" -ForegroundColor Cyan
 Write-Host ""
 
-# 4. Iniciar servicos
-Write-Host "[4/4] Iniciando servicos..." -ForegroundColor Yellow
+# 4. Start the services
+Write-Host "[4/4] Starting the services..." -ForegroundColor Yellow
 
-# Iniciar API em background
+# Start the API in its own window
 Start-Process -FilePath ".venv\Scripts\python.exe" -ArgumentList "-m", "uvicorn", "api.main:app", "--reload" -WindowStyle Normal
 
-# Aguardar API iniciar
+# Give the API a moment to come up
 Start-Sleep -Seconds 3
 
-# Iniciar Gradio UI
+# Start the Gradio UI
 Start-Process -FilePath ".venv\Scripts\python.exe" -ArgumentList "ui/chat_ui.py" -WindowStyle Normal
 
 Write-Host ""
-Write-Host "Servicos iniciados em janelas separadas." -ForegroundColor Green
-Write-Host "Pressione Enter para fechar esta janela..."
+Write-Host "Services started in separate windows." -ForegroundColor Green
+Write-Host "Press Enter to close this window..."
 Read-Host
