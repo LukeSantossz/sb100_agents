@@ -105,9 +105,10 @@ framework's model-vendor Provider in `.standards/CONTEXT.md`.
 _Avoid_: backend, vendor, service.
 
 **Neutral Score**:
-The `0.5` Hallucination Score the Verification Gate returns when the entropy computation raises (a
-provider or runtime failure). A missing API key instead short-circuits to `0.0`, skipping
-verification — not the Neutral Score. A declared degraded path, not an error.
+The `0.5` Hallucination Score the Verification Gate returns when the entropy computation cannot
+produce one: a provider or runtime failure, and equally a missing API key for the configured
+Provider, which raises `MissingVerifierKeyError` and reaches the same degraded path. A declared
+degraded path, not an error.
 _Avoid_: default score, error score, fallback (reserve for the fallback answer).
 
 **Threshold**:
