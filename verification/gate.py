@@ -10,7 +10,11 @@ import logging
 from core.config import settings
 from core.schemas import ChatResponse, UserProfile
 from generation.llm import generate
-from verification.entropy import MissingVerifierKeyError, compute_entropy_score
+from verification.entropy import (
+    InsufficientSamplesError,
+    MissingVerifierKeyError,
+    compute_entropy_score,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +63,15 @@ def evaluate(
                 extra={"attempt": attempt},
             )
             return ChatResponse(answer=answer, hallucination_score=NEUTRAL_SCORE)
+        except InsufficientSamplesError as exc:
+            # Too few samples survived to form a distribution. Same policy as a
+            # missing key: neutral, not the 0.0 that one sample would have scored
+            # by definition (#102). The answer is still delivered.
+            logger.warning(
+                "verification.gate.insufficient_samples",
+                extra={"attempt": attempt, "error": str(exc)},
+            )
+            return ChatResponse(answer=answer, hallucination_score=NEUTRAL_SCORE)
         except Exception as exc:  # noqa: BLE001
             logger.exception(
                 "verification.gate.entropy_failure",
@@ -84,6 +97,9 @@ def score_context(question: str, context: str) -> float:
         return compute_entropy_score(question=question, context=context)
     except MissingVerifierKeyError:
         logger.warning("verification.score_context.verifier_key_missing")
+        return NEUTRAL_SCORE
+    except InsufficientSamplesError as exc:
+        logger.warning("verification.score_context.insufficient_samples", extra={"error": str(exc)})
         return NEUTRAL_SCORE
     except Exception as exc:  # noqa: BLE001
         logger.exception("verification.score_context.failure", extra={"error": str(exc)})
