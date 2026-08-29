@@ -300,12 +300,19 @@ def discover_pdfs(path: Path) -> list[Path]:
             neither, including one that does not exist.
 
     Returns:
-        Matching PDF paths, sorted so a run is reproducible.
+        Matching PDF paths, sorted so a run is reproducible. The extension is
+        matched case-insensitively, in a directory as well as on a direct path.
     """
     if path.is_file():
         return [path] if path.suffix.lower() == ".pdf" else []
     if path.is_dir():
-        return sorted(path.glob("**/*.pdf"))
+        # Filtering on the lowercased suffix rather than globbing "**/*.pdf":
+        # that pattern is case-sensitive on Linux, so REPORT.PDF was accepted
+        # when passed directly and skipped when found in a directory, and the
+        # same file was indexed or ignored depending on how it was named on the
+        # command line. set() because a case-insensitive filesystem can return
+        # one entry more than once.
+        return sorted({p for p in path.rglob("*") if p.is_file() and p.suffix.lower() == ".pdf"})
     return []
 
 
