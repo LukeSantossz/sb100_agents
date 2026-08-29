@@ -21,7 +21,7 @@ retrieved.
 - **Three reader profiles.** The same retrieved context is rendered for `beginner`,
   `intermediate` or `expert` through different system prompts.
 - **Hallucination score.** The API samples several answers to the same question, clusters
-  them by embedding similarity and returns the normalised Shannon entropy of the clusters
+  them by embedding similarity and returns the normalized Shannon entropy of the clusters
   as a `0.0` to `1.0` value. Read the limits of this number in
   [Known Issues & Limitations](#known-issues--limitations) before trusting it.
 - **Authenticated API.** Passwords are bcrypt hashed, `/chat` needs a JWT, and register,
@@ -224,24 +224,33 @@ A full run, from no account to an answer:
 curl -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
   -d '{"username":"demo","password":"demo-password-123"}'
+# {"message":"User created successfully","username":"demo"}
 
 # 2. Exchange the credentials for a token
-TOKEN=$(curl -s -X POST http://localhost:8000/auth/token \
-  -d "username=demo&password=demo-password-123" | jq -r .access_token)
+curl -X POST http://localhost:8000/auth/token \
+  -d "username=demo&password=demo-password-123"
+# {"access_token":"eyJhbGciOiJIUzI1NiIs...","token_type":"bearer"}
 
-# 3. Ask a question
+# 3. Ask a question, pasting the access_token from step 2
 curl -X POST http://localhost:8000/chat \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer PASTE_THE_ACCESS_TOKEN_HERE" \
   -H "Content-Type: application/json" \
   -d '{
     "session_id": "demo-session",
     "question": "Como corrigir a acidez do solo?",
     "profile": {"name": "User", "expertise": "beginner"}
   }'
+# {"answer":"A acidez do solo ...","hallucination_score":0.5}
 ```
 
-The shipped corpus is a Portuguese language agricultural bulletin, so ask in Portuguese.
-The answer follows the language of the question.
+With `jq` on the path, step 2 becomes
+`TOKEN=$(curl -s -X POST http://localhost:8000/auth/token -d "username=demo&password=demo-password-123" | jq -r .access_token)`
+and step 3 can send `-H "Authorization: Bearer $TOKEN"`.
+
+The answer takes a while: see the timings in
+[Known Issues & Limitations](#known-issues--limitations). The shipped corpus is a Portuguese
+language agricultural bulletin, so ask in Portuguese. The answer follows the language of the
+question.
 
 Without the `Authorization` header `/chat` returns `401`.
 
@@ -268,7 +277,7 @@ sb100_agents/
 ├── agent/              # deepagents loop, tools, intent gate, run bounds
 ├── core/               # settings (pydantic-settings) and the request/response schemas
 ├── retrieval/          # embedding calls and Qdrant search
-├── generation/         # prompt building, sanitising, and the Ollama chat call
+├── generation/         # prompt building, sanitizing, and the Ollama chat call
 ├── memory/             # in memory conversation buffer
 ├── verification/       # semantic entropy and the score gate
 ├── database/           # SQLAlchemy models, session, PDF semantic chunker
@@ -296,6 +305,11 @@ Working:
 - [x] Docker Compose deployment with healthchecks and log rotation
 - [x] Offline evaluation pipeline in `eval/`
 - [x] Agent path behind `AGENT_ENABLED`: retrieval as a tool, domain gate, bounded loop
+
+`uv run --extra dev pytest tests/ -m "not requires_infra"` reports 370 passing tests and 90
+percent line coverage over the modules listed under `[tool.coverage.run]` in
+`pyproject.toml`. The CI floor is set far below that, at 23 percent, which is the gap the
+next list names.
 
 Not done:
 
@@ -340,6 +354,10 @@ The sequencing is in the [migration roadmap](./docs/roadmap.md).
   app up`.
 - **Accounts predating the bcrypt gate do not work.** They were stored as SHA-256 hashes and
   have to be registered again.
+- **The Qdrant client logs a version warning.** `qdrant-client` resolves to 1.17 while
+  `qdrant/qdrant:latest` is on 1.19, so the client prints an incompatibility `UserWarning` on
+  the first search. Search works; pin the image tag to match the client if the warning
+  matters to you.
 
 ## Contributing
 
