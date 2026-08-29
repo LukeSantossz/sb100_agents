@@ -9,7 +9,12 @@ and the System-1 fast path stay local, so ADR-0003 still holds for retrieval.
 
 ## Status
 
-Accepted.
+Superseded by ADR-0013 for the model choice. Measurement while preparing the loop-bounds
+calibration showed a single deep-agent call costs about 9.8k tokens, over the free-tier 8000
+TPM cap on `gpt-oss-20b`, so the hosted default this record chose is not reachable on the tier
+it assumed. ADR-0013 makes the provider configurable and moves the default to a local Ollama
+model. Everything below stands as approved and is still the reasoning ADR-0013 builds on,
+including why `llama-3.3-70b-versatile` was rejected.
 
 ## Considered Options
 
