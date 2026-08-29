@@ -74,7 +74,7 @@ def test_an_empty_result_ends_the_run_non_zero(
 
     exit_code = main(["index", str(target)])
 
-    assert exit_code != 0, f"{case}: indexing nothing reported success"
+    assert exit_code == 1, f"{case}: expected exit code 1, got {exit_code}"
     assert str(target) in capsys.readouterr().err, f"{case}: the message does not name the path"
 
 
@@ -85,10 +85,44 @@ def test_the_wrapper_propagates_the_exit_code(tmp_path: Path, monkeypatch) -> No
     monkeypatch.setattr(ingest.sys, "argv", ["ingest.py", str(tmp_path / "no-such-place")])
     with pytest.raises(SystemExit) as excinfo:
         ingest.main()
-    assert excinfo.value.code != 0
+    assert excinfo.value.code == 1
 
 
 def test_no_argument_still_prints_help_and_fails(capsys: pytest.CaptureFixture[str]) -> None:
     """`main` with no subcommand must not look like a successful run either."""
-    assert main([]) != 0
+    assert main([]) == 2
     assert "usage" in capsys.readouterr().out.lower()
+
+
+# ------------------- case-insensitive extensions (#100 follow-up) -------------------
+#
+# The file branch lowercased the suffix while the directory branch globbed the
+# case-sensitive "**/*.pdf", so on Linux the same REPORT.PDF was indexed when
+# named on the command line and ignored when found in a directory.
+
+
+@pytest.mark.parametrize("name", ["REPORT.PDF", "Report.Pdf", "boletim.pdf"])
+def test_an_extension_is_matched_in_any_case_inside_a_directory(tmp_path: Path, name: str) -> None:
+    pdf = _touch(tmp_path / name)
+    assert discover_pdfs(tmp_path) == [pdf]
+
+
+@pytest.mark.parametrize("name", ["REPORT.PDF", "Report.Pdf", "boletim.pdf"])
+def test_both_branches_agree_on_the_same_file(tmp_path: Path, name: str) -> None:
+    """Passing the file and passing its directory must reach the same conclusion."""
+    pdf = _touch(tmp_path / name)
+    assert discover_pdfs(pdf) == discover_pdfs(tmp_path) == [pdf]
+
+
+def test_a_file_is_not_reported_twice(tmp_path: Path) -> None:
+    """A case-insensitive filesystem can answer the same entry to more than one pattern."""
+    _touch(tmp_path / "a.pdf")
+    _touch(tmp_path / "sub" / "B.PDF")
+    found = discover_pdfs(tmp_path)
+    assert len(found) == len(set(found)) == 2
+
+
+def test_a_directory_named_like_a_pdf_is_not_indexed(tmp_path: Path) -> None:
+    """rglob("*") returns directories too; only files are PDFs."""
+    (tmp_path / "looks_like.pdf").mkdir()
+    assert discover_pdfs(tmp_path) == []
