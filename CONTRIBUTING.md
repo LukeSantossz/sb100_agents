@@ -20,8 +20,8 @@ clone without them leaves every gate reading an empty directory.
 ### 2. Set up the environment
 
 ```bash
-uv sync
-cp .env.example .env
+uv sync --extra dev   # the dev extra carries ruff, mypy and pytest-cov
+cp .env.example .env  # then set JWT_SECRET_KEY; it has no default
 docker compose --profile infra up -d
 
 # Wire the gates in this clone. `core.hooksPath` is local git config: it is not
@@ -82,14 +82,14 @@ Skip the spec only for changes too small to have a design (a typo, a one-line fi
 
 ```bash
 # Test suite (infra-bound tests excluded via the requires_infra marker)
-pytest tests/ -m "not requires_infra"
+uv run --extra dev pytest tests/ -m "not requires_infra"
 
 # Lint
-ruff check .
-ruff format --check .
+uv run --extra dev ruff check .
+uv run --extra dev ruff format --check .
 
-# Type check
-mypy retrieval/ generation/ memory/ --strict
+# Type check (strict comes from [tool.mypy] in pyproject.toml; this is the CI call)
+uv run --extra dev mypy retrieval/ generation/ memory/
 ```
 
 ### 7. Commit

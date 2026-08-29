@@ -41,10 +41,10 @@ Extracts agriculture-domain questions from PDF/TXT documents:
 ```bash
 # Using Groq API (recommended for quality)
 export GROQ_API_KEY=your_key_here
-python eval/generate_questions.py ./archives/boletim_sb100.pdf --num-questions 300
+python eval/generate_questions.py ./archives/smart_boletim.pdf --num-questions 300
 
 # Using local Ollama
-python eval/generate_questions.py ./archives/boletim_sb100.pdf --num-questions 300 --provider ollama
+python eval/generate_questions.py ./archives/smart_boletim.pdf --num-questions 300 --provider ollama
 ```
 
 **Output:** `eval/dataset/questions.json`
