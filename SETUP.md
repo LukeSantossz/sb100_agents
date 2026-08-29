@@ -171,6 +171,7 @@ python scripts/ingest.py ./archives/smart_boletim.pdf
 > **Alternative**: call the semantic chunker as a module, so the repository root stays on
 > `sys.path`. Running it as a file path (`python database/semantic_chunker.py`) fails with
 > `ModuleNotFoundError: No module named 'retrieval'`.
+>
 > ```bash
 > python -m database.semantic_chunker index ./archives/
 > ```
@@ -231,7 +232,7 @@ curl -X POST http://localhost:8000/auth/register \
 ```bash
 curl -X POST http://localhost:8000/auth/token \
   -d "username=testuser&password=testpass123"
-# {"access_token":"eyJhbGciOiJIUzI1NiIs...","token_type":"bearer"}
+# {"access_token":"<access_token>","token_type":"bearer"}
 ```
 
 With `jq` on the path the token can be captured straight into a variable:
@@ -261,6 +262,7 @@ Without the `Authorization` header the endpoint answers `401 Unauthorized`. The 
 corpus is in Portuguese, and the answer follows the language of the question.
 
 **Expected response:**
+
 ```json
 {
   "answer": "A acidez do solo e um problema comum no Brasil...",
@@ -359,7 +361,7 @@ docker compose exec api curl -fsS "$OLLAMA_HOST/api/tags"
 
 ### Nothing starts, including the ingestion script
 
-```
+```text
 ValidationError: 1 validation error for Settings
 jwt_secret_key
   Value error, JWT_SECRET_KEY must be configured in .env or environment variables
@@ -368,13 +370,14 @@ jwt_secret_key
 **Fix**: `JWT_SECRET_KEY` has no default and `.env.example` ships it empty on purpose. Every
 entry point that imports `core.config` needs it, indexing included. Generate one and paste
 it into `.env`:
+
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
 ### The first /chat call returns 503 after a few minutes
 
-```
+```text
 {"detail":"Answer generation failed: timed out. Check that Ollama is running."}
 ```
 

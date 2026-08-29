@@ -29,7 +29,7 @@ alongside all of them.
 
 | Wave | Outcome | Grounding |
 |------|---------|-----------|
-| **A — Agentic core** | `/chat` runs through a bounded `deepagents` + Groq agent behind an `agent/` boundary, with retrieval as a tool and an agricultural intent filter. | ADR-0008, ADR-0009; README "LangGraph migration" |
+| **A — Agentic core** | `/chat` runs through a bounded `deepagents` agent behind an `agent/` boundary, driven by the configured agent provider, with retrieval as a tool and an agricultural intent filter. | ADR-0008, ADR-0009 (superseded on the model by ADR-0013); README "LangGraph migration" |
 | **B — Retrieval quality** | The agent's retrieval tool gains source citations, score threshold/filters, corpus management, hybrid search (RRF), reranking, and per-user ACL. | ADR-0008 ("retrieval, hybrid search, reranking, ACL"); README "Hybrid search" |
 | **C — Verification & trust** | Answers carry claim-level verification and per-message quality signals; the verification gate wraps the agent path. | ADR-0002; README "Claim verification" |
 | **D — Conversation UX & streaming** | Durable history, SSE streaming, feedback, and export over the agentic `/chat`. | ADR-0005/0008 ("SSE slice", #132) |
@@ -43,9 +43,11 @@ eval robustness, and standalone bugfixes/features. See the mapping table for the
 
 ## Wave A — Agentic core
 
-**Goal:** replace the hand-rolled synchronous chat loop with a `deepagents` agent driven by a hosted
-Groq model, isolated behind an `agent/` package, invoked synchronously (`graph.invoke(...)`) so the
-ADR-0005 synchronous `/chat` contract is preserved. No existing issue covers Wave A — its slices need
+**Goal:** replace the hand-rolled synchronous chat loop with a `deepagents` agent, isolated behind an
+`agent/` package, invoked synchronously (`graph.invoke(...)`) so the ADR-0005 synchronous `/chat`
+contract is preserved. The Goal was written against a hosted Groq model per ADR-0009; ADR-0013 later
+made the provider configurable and moved the default to a local Ollama model, and the slices below
+were delivered against that. No existing issue covers Wave A — its slices need
 new issues created.
 
 | Slice | Scope | Notes |
