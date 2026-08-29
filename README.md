@@ -35,7 +35,8 @@ A REST API built with FastAPI, plus an optional Gradio web page that talks to it
 RAG pipeline is one process: `api/main.py` imports every domain module directly and calls it
 in the same interpreter, so no part of the pipeline is reached over a network. Around it run
 Qdrant for the vectors, Ollama for the models, and, when you want the web page, a separate
-Gradio process that is an HTTP client of the API and imports no domain module. User accounts
+Gradio process that reaches the API over HTTP and imports only `core.config`, for shared
+client settings, rather than any part of the pipeline. User accounts
 sit in a SQLite file next to the code.
 
 It is aimed at agricultural extension workers and agronomists who need an answer out of a
