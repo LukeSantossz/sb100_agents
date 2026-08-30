@@ -13,6 +13,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 from tqdm import tqdm
 
+from core.config import settings
 from retrieval.ollama_embeddings import embed_text
 
 logger = logging.getLogger(__name__)
@@ -21,8 +22,12 @@ logger = logging.getLogger(__name__)
 # Global settings
 # ─────────────────────────────────────────────
 
-OLLAMA_MODEL = "nomic-embed-text"  # embeddings model via Ollama
-EMBED_DIM = 768  # nomic-embed-text dimension
+# The CLI override, and nothing else. None means "follow settings.embed_model",
+# which is the same source retrieval/embedder.py reads: the corpus and the query
+# have to be embedded by the same model or they land in different vector spaces,
+# and a hardcoded name here meant EMBED_MODEL moved only the query (#105).
+OLLAMA_MODEL: str | None = None
+EMBED_DIM = 768  # collection vector size; retrieval/vector_store refuses any other
 QDRANT_URL = "http://localhost:6333"
 QDRANT_API_KEY: str | None = None  # for authenticated Qdrant servers
 COLLECTION_NAME = "archives_v2"
@@ -90,9 +95,45 @@ def split_into_sentences(text: str) -> list[str]:
 # ─────────────────────────────────────────────
 
 
+class EmbeddingDimensionError(RuntimeError):
+    """Raised when the configured model does not produce the collection's vector shape."""
+
+
+def resolve_embed_model() -> str:
+    """The model to embed with: the ``--model`` override when given, else the setting.
+
+    Resolved per call rather than at import, so a test or a caller that changes
+    ``settings.embed_model`` is obeyed without reloading this module.
+    """
+    return OLLAMA_MODEL or settings.embed_model
+
+
+def verify_embedding_dimension() -> None:
+    """Fail before indexing if the configured model is not the shape the collection holds.
+
+    ``EMBED_MODEL`` now reaches the indexer, which is the point of the fix, and that
+    makes a model of another dimension reachable for the first time. Without this
+    probe such a run embeds every sentence of every PDF, then fails at the Qdrant
+    upsert with a vector-shape error that names neither the model nor the setting
+    that chose it. One short call costs about a second and says both.
+
+    Raises:
+        EmbeddingDimensionError: If the model returns a vector of another length.
+    """
+    model = resolve_embed_model()
+    actual_dim = len(embed_text(model, "dimension probe"))
+    if actual_dim != EMBED_DIM:
+        raise EmbeddingDimensionError(
+            f"model {model!r} returns {actual_dim}-dimension vectors; this indexer "
+            f"writes {EMBED_DIM}-dimension collections and retrieval/vector_store "
+            f"refuses anything else. Set EMBED_MODEL to a {EMBED_DIM}-dimension "
+            f"model, or change EMBED_DIM and re-index from scratch."
+        )
+
+
 def get_embedding(text: str) -> np.ndarray:
-    """Generate an embedding for a text using the Llama model via Ollama."""
-    vec = embed_text(OLLAMA_MODEL, text)
+    """Generate an embedding for a text using the configured model via Ollama."""
+    vec = embed_text(resolve_embed_model(), text)
     return np.array(vec, dtype=np.float32)
 
 
@@ -259,7 +300,7 @@ def process_pdf(pdf_path: str, client: QdrantClient) -> int:
         return 0
 
     # 3. Sentence embeddings
-    logger.info("semantic_chunker.embeddings_start", extra={"model": OLLAMA_MODEL})
+    logger.info("semantic_chunker.embeddings_start", extra={"model": resolve_embed_model()})
     texts = list(raw_sentences)
     embeddings = get_embeddings_batch(texts)
 
@@ -340,6 +381,9 @@ def process_folder(folder_path: str):
         extra={"folder": folder_path, "pdf_count": len(pdf_files)},
     )
 
+    # Fail on a wrong-shape model now, not after embedding every PDF.
+    verify_embedding_dimension()
+
     # Initialize Qdrant
     client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     init_qdrant(client, EMBED_DIM)
@@ -418,7 +462,11 @@ def main(argv: list[str] | None = None) -> int:
     # Command: index
     index_parser = subparsers.add_parser("index", help="Index PDFs from a folder")
     index_parser.add_argument("folder", help="Path to the folder containing the PDFs")
-    index_parser.add_argument("--model", default=OLLAMA_MODEL, help="Ollama model for embeddings")
+    index_parser.add_argument(
+        "--model",
+        default=None,
+        help="Ollama model for embeddings (default: EMBED_MODEL, the same setting the API reads)",
+    )
     index_parser.add_argument(
         "--threshold",
         type=float,

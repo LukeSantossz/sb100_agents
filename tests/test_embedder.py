@@ -34,7 +34,7 @@ class TestGenerateEmbedding(unittest.TestCase):
 
     @patch("retrieval.embedder.embed_text")
     def test_long_string_is_forwarded(self, mock_embed):
-        """Long string (10k chars) is forwarded; embed_text truncates at 8192."""
+        """Long string (10k chars) is forwarded; embed_text is what truncates it."""
         mock_embed.return_value = [0.5] * 768
         long_text = "a" * 10_000
         out = generate_embedding(long_text)
