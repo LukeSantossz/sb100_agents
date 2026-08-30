@@ -43,6 +43,13 @@ demonstrate a mismatch either way; that is logged with the number of points it
 covers rather than refused, because refusing would break every install that
 predates the stamp.
 
+The coverage gate is widened to the packages that hold domain code. This is here
+rather than in its own change because it is about this one: nearly all of the code
+added here lives in `database/`, which no `--cov` flag measured, so every coverage
+number reported for this PR described the other seven packages. #133 raised the
+floor and widened the mypy scope and missed this; the scope is now derived from the
+filesystem by a test, so the next package cannot be forgotten the same way.
+
 `_MAX_EMBED_CHARS` drops to a measured value below the ceiling rather than a round
 number above it. Counting tokens properly would mean carrying the tokenizer as a
 dependency for one bound, which is not proportionate here; a character limit set
@@ -87,7 +94,9 @@ constant.
 - Includes: `resolve_embed_model()`, the dimension probe and the collection-model
   guard in `database/semantic_chunker.py`; the `embed_model` payload stamp; the
   `--model` default; the lowered `_MAX_EMBED_CHARS`; the `.env.example` note that
-  changing `EMBED_MODEL` now means re-indexing; tests for all of it.
+  changing `EMBED_MODEL` now means rebuilding the corpus; `database` and `ui` in the
+  coverage scope, with a test deriving that scope from the filesystem; tests for all
+  of it.
 - Does NOT include: making `EMBED_DIM` or the collection name configurable;
   changing how the query path embeds; re-indexing the shipped corpus, which is
   unnecessary because the default model does not change; de-duplicating chunks when
@@ -125,12 +134,22 @@ constant.
   `_MAX_EMBED_CHARS` long.
 - `the_limit_still_admits_a_chat_question`: the limit stays above the 2000-character
   cap `ChatRequest.question` enforces, so nothing the API accepts gets truncated.
+- `coverage_measures_every_package_holding_domain_code`: no top-level package with
+  modules in it sits outside `--cov`, checked against the filesystem rather than a
+  list.
+- `the_two_coverage_scopes_agree`: `[tool.coverage.run] source` and the `--cov` flags
+  name the same packages, so neither can go stale unnoticed.
 - `full_suite_stays_green`: `pytest tests/ -m "not requires_infra"`, `ruff check .`,
   `ruff format --check .` and the CI mypy invocation all pass.
 
 ## Reproducibility
 
-`uv run --extra dev pytest tests/test_embedding_config.py -v`.
+`uv run --extra dev pytest tests/test_embedding_config.py tests/test_quality_gates.py -v`.
+
+Widening the coverage scope was measured before it was done: with `database` and
+`ui` included the total is 82.53%, against a floor of 70, so the honest scope passes
+the gate without moving the floor. `database/semantic_chunker.py` alone is at 54%
+and `ui/chat_ui.py` at 67%; both numbers were invisible before.
 
 The ceiling was measured against the live model, not assumed: a binary search for
 the largest accepted prefix of each of the five longest chunks in the shipped
@@ -182,6 +201,10 @@ why the limit is set from the corpus and not from a constructed worst case.
   `nomic-embed-text`. A model with a smaller context could still refuse a truncated
   input. This is strictly better than the 8192 it replaces and the per-model version
   is filed separately.
+- Consequence accepted deliberately: the reported total drops from 92.94% to 82.53%.
+  Nothing got worse; the smaller number is the first one that describes the whole
+  product. Two packages now sitting inside the gate at 54% and 67% will make future
+  changes there visible, which is the point.
 - What would invalidate this spec: embedding whole chunks or whole documents, which
   #106 would do if it is ever implemented. That change has to re-measure the ceiling
   for the text it actually sends, prefix included.

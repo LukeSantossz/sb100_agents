@@ -24,6 +24,11 @@ _CI_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "ci.yml"
 
 _MINIMUM_FLOOR = 70
 
+# Directories at the repository root that hold Python but are not the product:
+# the test suite itself, the offline evaluation harness, and one-shot entry points.
+# Everything else with modules in it is domain code and belongs to the gates.
+_NOT_DOMAIN_CODE = {"tests", "eval", "scripts"}
+
 
 def _pyproject() -> dict:
     return tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))
@@ -36,6 +41,32 @@ def _coverage_floor() -> int:
         if match:
             return int(match.group(1))
     raise AssertionError("no --cov-fail-under in the pytest addopts")
+
+
+def _domain_packages() -> set[str]:
+    """Top-level directories holding Python modules, read from disk rather than listed.
+
+    Derived so the gates cannot silently stop covering a package somebody adds: a
+    hand-written list is what let ``database`` and ``ui`` sit outside coverage.
+    """
+    return {
+        path.name
+        for path in _REPO_ROOT.iterdir()
+        if path.is_dir()
+        and not path.name.startswith((".", "_"))
+        and path.name not in _NOT_DOMAIN_CODE
+        and any(path.glob("*.py"))
+    }
+
+
+def _coverage_scope() -> set[str]:
+    """Packages the pytest addopts actually measure."""
+    addopts = _pyproject()["tool"]["pytest"]["ini_options"]["addopts"]
+    return {
+        match.group(1)
+        for match in (re.fullmatch(r"--cov=(\w+)", option.strip()) for option in addopts)
+        if match
+    }
 
 
 def _packages_declared_strict() -> set[str]:
@@ -88,6 +119,34 @@ def test_the_typecheck_job_installs_the_project() -> None:
     assert "pip install -e ." in typecheck_job, (
         "the typecheck job does not install the project, so mypy sees Any for every "
         "third-party import"
+    )
+
+
+def test_coverage_measures_every_package_holding_domain_code() -> None:
+    """A package outside --cov contributes nothing to the number the gate checks.
+
+    ``database`` and ``ui`` were both outside it, so the reported total described the
+    other seven packages. ``database/semantic_chunker.py`` is the whole indexing
+    pipeline and the only writer to the vector store, and it was invisible.
+    """
+    missing = sorted(_domain_packages() - _coverage_scope())
+    assert not missing, (
+        f"these hold domain code and no coverage flag measures them: {missing}\n"
+        f"pytest addopts measure: {sorted(_coverage_scope())}"
+    )
+
+
+def test_the_two_coverage_scopes_agree() -> None:
+    """``[tool.coverage.run] source`` and the addopts are one setting written twice.
+
+    When they disagree the effective scope is their union, which is nobody's stated
+    intent and hides which list is stale.
+    """
+    source = set(_pyproject()["tool"]["coverage"]["run"]["source"])
+    assert source == _coverage_scope(), (
+        "coverage.run source and the --cov flags name different packages:\n"
+        f"  source only: {sorted(source - _coverage_scope())}\n"
+        f"  --cov only:  {sorted(_coverage_scope() - source)}"
     )
 
 

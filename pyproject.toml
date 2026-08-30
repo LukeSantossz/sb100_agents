@@ -104,12 +104,18 @@ python_files = ["test_*.py"]
 pythonpath = ["."]
 addopts = [
     "-v",
+    # Every top-level package holding domain code. database/ and ui/ were both
+    # missing, so the reported total described the other seven and said nothing
+    # about the indexing pipeline or the UI. tests/test_quality_gates.py derives
+    # this set from the filesystem so the next package cannot be forgotten.
     "--cov=agent",
     "--cov=api",
     "--cov=core",
-    "--cov=retrieval",
+    "--cov=database",
     "--cov=generation",
     "--cov=memory",
+    "--cov=retrieval",
+    "--cov=ui",
     "--cov=verification",
     "--cov-report=term-missing",
     "--cov-report=xml",
@@ -128,7 +134,19 @@ markers = [
 # ============================================================================
 [tool.coverage.run]
 branch = true
-source = ["api", "core", "retrieval", "generation", "memory", "verification"]
+# Same set as the --cov flags above; a test asserts the two agree, because when
+# they disagree the effective scope is their union and neither list is the truth.
+source = [
+    "agent",
+    "api",
+    "core",
+    "database",
+    "generation",
+    "memory",
+    "retrieval",
+    "ui",
+    "verification",
+]
 omit = ["tests/*", "eval/*", "scripts/*"]
 
 [tool.coverage.report]
