@@ -21,8 +21,21 @@ from core.ollama_clients import get_embed_client
 
 logger = logging.getLogger(__name__)
 
-# Conservative limit for the embedding model context (characters).
-_MAX_EMBED_CHARS = 8192
+# Truncation guard for the embedding model context, in characters.
+#
+# It was 8192, which is above what nomic-embed-text accepts, so the truncation ran
+# and the call still failed with "the input length exceeds the context length"
+# (#225). The model has a 2048-token context and how many characters fit depends on
+# the tokenizer and the text, so the bound has to be measured, not derived: a binary
+# search for the largest accepted prefix of the longest chunks in the shipped
+# collection found a worst case of 6203 characters, or 3.03 characters per token.
+# 4000 is 1.95 characters per token, a third under that worst case, and is the value
+# 519 chunks were embedded at during the #106 benchmark without a rejection.
+#
+# It stays above the 2000-character cap on ChatRequest.question, so nothing the API
+# accepts is truncated. Counting real tokens would be exact and would cost a
+# model-specific tokenizer dependency to bound one call. See docs/specs/0020.
+_MAX_EMBED_CHARS = 4000
 _MAX_RETRIES = 4
 _RETRY_BASE_SEC = 0.75
 _RETRY_MAX_SEC = 2.0
