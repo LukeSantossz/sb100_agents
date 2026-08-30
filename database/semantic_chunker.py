@@ -31,6 +31,8 @@ EMBED_DIM = 768  # collection vector size; retrieval/vector_store refuses any ot
 QDRANT_URL = "http://localhost:6333"
 QDRANT_API_KEY: str | None = None  # for authenticated Qdrant servers
 COLLECTION_NAME = "archives_v2"
+# Payload key stamping each point with the model that embedded it.
+EMBED_MODEL_PAYLOAD_KEY = "embed_model"
 
 # Semantic chunking thresholds
 SIMILARITY_THRESHOLD = 0.75  # below this → new chunk
@@ -99,6 +101,10 @@ class EmbeddingDimensionError(RuntimeError):
     """Raised when the configured model does not produce the collection's vector shape."""
 
 
+class EmbeddingModelMismatchError(RuntimeError):
+    """Raised when the collection already holds vectors from a different embedding model."""
+
+
 def resolve_embed_model() -> str:
     """The model to embed with: the ``--model`` override when given, else the setting.
 
@@ -128,6 +134,53 @@ def verify_embedding_dimension() -> None:
             f"writes {EMBED_DIM}-dimension collections and retrieval/vector_store "
             f"refuses anything else. Set EMBED_MODEL to a {EMBED_DIM}-dimension "
             f"model, or change EMBED_DIM and re-index from scratch."
+        )
+
+
+def verify_collection_model(client: QdrantClient) -> None:
+    """Refuse to add vectors from one model to a collection another model built.
+
+    ``verify_embedding_dimension`` only proves the shape matches, and two different
+    768-dimension models produce two incompatible spaces of the same shape.
+    ``init_qdrant`` keeps an existing collection and ``upsert_chunks`` writes fresh
+    UUIDs, so nothing else stops a second model's vectors being appended to the
+    first model's corpus, after which every search compares across both.
+
+    The check samples one point. That is enough for the case worth catching, a
+    collection built entirely by one model and now being indexed with another, and
+    it is not a proof for a collection that is already mixed. A collection written
+    before the stamp existed carries no model name; an absent stamp cannot
+    demonstrate a mismatch, so it is logged and allowed rather than breaking every
+    install that predates this.
+
+    Raises:
+        EmbeddingModelMismatchError: If the sampled point names another model.
+    """
+    model = resolve_embed_model()
+    existing = [c.name for c in client.get_collections().collections]
+    if COLLECTION_NAME not in existing:
+        return
+
+    points, _ = client.scroll(
+        collection_name=COLLECTION_NAME, limit=1, with_payload=True, with_vectors=False
+    )
+    if not points:
+        return
+
+    recorded = (points[0].payload or {}).get(EMBED_MODEL_PAYLOAD_KEY)
+    if recorded is None:
+        logger.warning(
+            "semantic_chunker.collection_model_unknown",
+            extra={"collection": COLLECTION_NAME, "model": model},
+        )
+        return
+
+    if recorded != model:
+        raise EmbeddingModelMismatchError(
+            f"collection {COLLECTION_NAME!r} holds vectors from {recorded!r} and "
+            f"EMBED_MODEL is {model!r}. Two models of the same dimension still "
+            f"produce different spaces, so indexing would mix them. Re-create the "
+            f"collection to switch models, or set EMBED_MODEL back to {recorded!r}."
         )
 
 
@@ -265,6 +318,10 @@ def upsert_chunks(client: QdrantClient, chunks: list[Chunk]):
                 "num_sentences": chunk.metadata.get("num_sentences", 0),
                 "source_file": chunk.metadata.get("source_file", ""),
                 "source_path": chunk.metadata.get("source_path", ""),
+                # Which model produced this vector. verify_collection_model reads it
+                # to refuse mixing two models in one space; points written before the
+                # stamp existed simply do not carry it.
+                EMBED_MODEL_PAYLOAD_KEY: resolve_embed_model(),
             },
         )
         points.append(point)
@@ -386,6 +443,7 @@ def process_folder(folder_path: str):
 
     # Initialize Qdrant
     client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+    verify_collection_model(client)
     init_qdrant(client, EMBED_DIM)
 
     total_chunks = 0
