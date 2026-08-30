@@ -33,10 +33,15 @@ Matching the dimension is not the same as matching the model: two 768-dimension
 models produce two incompatible spaces of the same shape, and `init_qdrant` keeps
 an existing collection while `upsert_chunks` writes fresh UUIDs, so a second model's
 vectors would simply be appended to the first model's corpus. Each point is
-therefore stamped with the model that embedded it, and the run refuses a collection
-whose stamp names another model. A collection written before the stamp existed
-carries none; an absent stamp cannot demonstrate a mismatch, so it is logged and
-allowed rather than breaking every install that predates this.
+therefore stamped with the model that embedded it, and the run counts the points
+whose stamp names another model and refuses if there are any. Counting rather than
+sampling, because the case that matters is a partly stamped collection: the shipped
+one carries 519 points written before the stamp existed, so re-indexing it with
+another model leaves both kinds side by side and a single sampled point answers
+whichever the scroll order returns. A collection with no stamp at all cannot
+demonstrate a mismatch either way; that is logged with the number of points it
+covers rather than refused, because refusing would break every install that
+predates the stamp.
 
 `_MAX_EMBED_CHARS` drops to a measured value below the ceiling rather than a round
 number above it. Counting tokens properly would mean carrying the tokenizer as a
@@ -61,11 +66,17 @@ constant.
   any check, and it silently doubles the corpus on disk and leaves `COLLECTION_NAME`
   meaning two things, one of which `retrieval/vector_store` does not know about.
   Refusing is the behaviour the operator can act on.
-- **Scan every point for its model rather than sampling one.** It is the only way to
-  prove a collection is not already mixed, and it costs a full scroll of the
-  collection on every run to defend against a state this change is what prevents.
-  Sampling catches the case worth catching and the docstring says which case it does
-  not.
+- **Sample one point instead of counting.** One `scroll` call rather than three
+  `count` calls, and it was the first implementation. It was wrong for the case that
+  matters: on a partly stamped collection the answer depends on which point the
+  scroll order returns, so the same mismatch is found or missed at random.
+  Demonstrated against a live collection holding one unstamped point and one stamped
+  with another model, where sampling allowed the run and counting refused it.
+- **A payload index plus `facet` to name every model present in one call.** It gives
+  a better message, and Qdrant refuses to facet a field with no payload index, so it
+  would mean creating and maintaining an index on every existing collection to
+  improve an error string. The failing path fetches one offending point instead,
+  which names the model at no standing cost.
 - **Leave `_MAX_EMBED_CHARS` at 8192 and catch the failure.** The retry loop
   already catches it and retries four times, spending the whole budget on an input
   that cannot succeed. Truncating below the limit is the fix; catching it is the
@@ -93,13 +104,21 @@ constant.
 - `a_model_of_the_wrong_shape_fails_before_indexing`: the probe raises
   `EmbeddingDimensionError` naming the model and both dimensions.
 - `the_expected_shape_passes_the_probe`: a 768-dimension model indexes as before.
-- `a_collection_built_by_another_model_is_refused`: a stamp naming another model
-  raises `EmbeddingModelMismatchError` naming both models.
+- `a_collection_built_by_another_model_is_refused`: raises
+  `EmbeddingModelMismatchError` naming both models and how many points are affected.
+- `a_partly_stamped_collection_is_still_refused`: the upgrade path, where stamped and
+  unstamped points sit side by side.
 - `the_same_model_may_add_to_its_own_collection`: the ordinary re-index still runs.
 - `a_collection_predating_the_stamp_is_allowed`: no stamp is not a mismatch.
+- `an_unstamped_collection_says_how_many_it_cannot_vouch_for`: the warning carries the
+  count, so allowing it is not silent.
 - `a_collection_that_does_not_exist_yet_is_allowed`: a first run is not blocked.
 - `indexed_points_record_the_model_that_embedded_them`: the stamp the guard reads is
   actually written.
+- `a_wrong_shape_model_stops_the_run_before_any_pdf_is_read` and
+  `a_foreign_collection_stops_the_run_before_anything_is_written`: the guards are
+  called by the pipeline, not merely correct in isolation. Both fail if the calls are
+  removed from `process_folder`, which the earlier tests did not.
 - `the_truncation_limit_is_below_the_measured_ceiling`: `_MAX_EMBED_CHARS` is at or
   under the worst ceiling measured.
 - `a_long_text_is_truncated_to_the_limit`: the prompt reaching Ollama is exactly
@@ -153,10 +172,12 @@ why the limit is set from the corpus and not from a constructed worst case.
   a stored vector. The chunker embeds sentences, `ChatRequest.question` is capped at
   2000 characters, and the agent's `search_corpus` embeds a query it wrote. A test
   pins the 2000-character half of that.
-- Known limit, stated rather than hidden: the collection guard samples one point, so
-  it cannot detect a collection that is already mixed. Nothing shipped could have
-  produced one, because until this change `EMBED_MODEL` did not reach the indexer at
-  all.
+- Known limit, stated rather than hidden: a collection whose points carry no stamp
+  cannot be checked at all, because nothing recorded which model wrote them. The
+  shipped collection is exactly that, so the first model switch on an existing
+  install is warned about and allowed, and only the runs after it are protected. No
+  scheme can recover a fact that was never written; the warning names the number of
+  points it covers so the operator knows the guard proved nothing.
 - Known limit: `_MAX_EMBED_CHARS` is one number for every model, measured against
   `nomic-embed-text`. A model with a smaller context could still refuse a truncated
   input. This is strictly better than the 8192 it replaces and the per-model version

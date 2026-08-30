@@ -18,10 +18,13 @@ and the truncation is measured on the argument ``embed_text`` passes down.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+from qdrant_client.models import MatchExcept
 
 import database.semantic_chunker as chunker
 from core.config import settings
@@ -113,14 +116,35 @@ def test_the_expected_shape_passes_the_probe(monkeypatch: pytest.MonkeyPatch) ->
         chunker.verify_embedding_dimension()
 
 
-def _client_with(payload: dict | None, collection_exists: bool = True) -> MagicMock:
-    """A Qdrant client holding one point with the given payload, or an absent collection."""
+def _client(
+    *,
+    foreign: int = 0,
+    total: int = 0,
+    mine: int = 0,
+    foreign_model: str = "",
+    exists: bool = True,
+) -> MagicMock:
+    """A Qdrant client answering the three counts the guard makes.
+
+    ``foreign`` are points stamped with another model, ``mine`` points stamped with
+    the configured one, and ``total`` everything, so ``total - mine`` is what carries
+    no stamp at all.
+    """
     client = MagicMock()
     named = MagicMock()
-    named.name = chunker.COLLECTION_NAME if collection_exists else "something-else"
+    named.name = chunker.COLLECTION_NAME if exists else "some-other-collection"
     client.get_collections.return_value.collections = [named]
+
+    def count(collection_name: str, count_filter=None, exact: bool = True) -> SimpleNamespace:
+        if count_filter is None:
+            return SimpleNamespace(count=total)
+        if isinstance(count_filter.must[0].match, MatchExcept):
+            return SimpleNamespace(count=foreign)
+        return SimpleNamespace(count=mine)
+
+    client.count.side_effect = count
     point = MagicMock()
-    point.payload = payload
+    point.payload = {chunker.EMBED_MODEL_PAYLOAD_KEY: foreign_model}
     client.scroll.return_value = ([point], None)
     return client
 
@@ -133,19 +157,37 @@ def test_a_collection_built_by_another_model_is_refused(monkeypatch: pytest.Monk
     model's corpus and every later search compares across both.
     """
     monkeypatch.setattr(settings, "embed_model", "mxbai-embed-large")
-    client = _client_with({"embed_model": "nomic-embed-text"})
 
     with pytest.raises(chunker.EmbeddingModelMismatchError) as excinfo:
-        chunker.verify_collection_model(client)
+        chunker.verify_collection_model(
+            _client(foreign=519, total=519, foreign_model="nomic-embed-text")
+        )
 
     message = str(excinfo.value)
     assert "nomic-embed-text" in message and "mxbai-embed-large" in message
+    assert "519" in message, "the operator needs to know how much is affected"
+
+
+def test_a_partly_stamped_collection_is_still_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The upgrade path, and the case a single sampled point misses.
+
+    The shipped collection carries 519 unstamped points. Re-index it with another
+    model and it holds both. Sampling one point answers whichever the scroll order
+    returns, so the mismatch is found or missed at random; counting finds it every
+    time.
+    """
+    monkeypatch.setattr(settings, "embed_model", "nomic-embed-text")
+
+    with pytest.raises(chunker.EmbeddingModelMismatchError):
+        chunker.verify_collection_model(
+            _client(foreign=12, total=531, foreign_model="mxbai-embed-large")
+        )
 
 
 def test_the_same_model_may_add_to_its_own_collection(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "embed_model", "nomic-embed-text")
 
-    chunker.verify_collection_model(_client_with({"embed_model": "nomic-embed-text"}))
+    chunker.verify_collection_model(_client(foreign=0, total=519, mine=519))
 
 
 def test_a_collection_predating_the_stamp_is_allowed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -156,13 +198,26 @@ def test_a_collection_predating_the_stamp_is_allowed(monkeypatch: pytest.MonkeyP
     """
     monkeypatch.setattr(settings, "embed_model", "nomic-embed-text")
 
-    chunker.verify_collection_model(_client_with({"source_file": "boletim.pdf"}))
+    chunker.verify_collection_model(_client(foreign=0, total=519, mine=0))
+
+
+def test_an_unstamped_collection_says_how_many_it_cannot_vouch_for(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Allowing it silently would hide that the guard proved nothing."""
+    monkeypatch.setattr(settings, "embed_model", "nomic-embed-text")
+
+    with caplog.at_level("WARNING"):
+        chunker.verify_collection_model(_client(foreign=0, total=519, mine=100))
+
+    record = next(r for r in caplog.records if r.message == "semantic_chunker.collection_unstamped")
+    assert record.unverifiable == 419
 
 
 def test_a_collection_that_does_not_exist_yet_is_allowed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "embed_model", "nomic-embed-text")
 
-    chunker.verify_collection_model(_client_with(None, collection_exists=False))
+    chunker.verify_collection_model(_client(exists=False))
 
 
 def test_indexed_points_record_the_model_that_embedded_them(
@@ -181,7 +236,58 @@ def test_indexed_points_record_the_model_that_embedded_them(
     chunker.upsert_chunks(client, [chunk])
 
     point = client.upsert.call_args.kwargs["points"][0]
-    assert point.payload["embed_model"] == "nomic-embed-text"
+    assert point.payload[chunker.EMBED_MODEL_PAYLOAD_KEY] == "nomic-embed-text"
+
+
+# ─────────────────────────────────────────────
+# The guards have to run, not merely work
+# ─────────────────────────────────────────────
+
+
+@pytest.fixture
+def _one_pdf(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    pdf = tmp_path / "boletim.pdf"
+    pdf.write_bytes(b"%PDF-1.4 stub")
+    monkeypatch.setattr(chunker, "QdrantClient", MagicMock())
+    monkeypatch.setattr(chunker, "init_qdrant", MagicMock())
+    return pdf
+
+
+def test_a_wrong_shape_model_stops_the_run_before_any_pdf_is_read(
+    _one_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tests that prove a guard works prove nothing if the pipeline never calls it."""
+    monkeypatch.setattr(
+        chunker,
+        "verify_embedding_dimension",
+        MagicMock(side_effect=chunker.EmbeddingDimensionError("wrong shape")),
+    )
+    process_pdf = MagicMock()
+    monkeypatch.setattr(chunker, "process_pdf", process_pdf)
+
+    with pytest.raises(chunker.EmbeddingDimensionError):
+        chunker.process_folder(str(_one_pdf))
+
+    process_pdf.assert_not_called()
+
+
+def test_a_foreign_collection_stops_the_run_before_anything_is_written(
+    _one_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(chunker, "verify_embedding_dimension", MagicMock())
+    monkeypatch.setattr(
+        chunker,
+        "verify_collection_model",
+        MagicMock(side_effect=chunker.EmbeddingModelMismatchError("another model")),
+    )
+    process_pdf = MagicMock()
+    monkeypatch.setattr(chunker, "process_pdf", process_pdf)
+
+    with pytest.raises(chunker.EmbeddingModelMismatchError):
+        chunker.process_folder(str(_one_pdf))
+
+    process_pdf.assert_not_called()
+    chunker.init_qdrant.assert_not_called()
 
 
 # ─────────────────────────────────────────────
