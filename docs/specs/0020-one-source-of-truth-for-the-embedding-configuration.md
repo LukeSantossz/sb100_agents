@@ -139,6 +139,11 @@ constant.
   list.
 - `the_two_coverage_scopes_agree`: `[tool.coverage.run] source` and the `--cov` flags
   name the same packages, so neither can go stale unnoticed.
+- `domain_discovery_finds_a_package_whose_modules_are_all_nested`,
+  `domain_discovery_finds_a_package_named_with_a_leading_underscore` and
+  `domain_discovery_ignores_a_directory_with_no_python`: the discovery rules
+  themselves, against a tree built for the purpose, because a check that derives the
+  package set is only as good as its definition of a package.
 - `full_suite_stays_green`: `pytest tests/ -m "not requires_infra"`, `ruff check .`,
   `ruff format --check .` and the CI mypy invocation all pass.
 
@@ -191,6 +196,16 @@ why the limit is set from the corpus and not from a constructed worst case.
   a stored vector. The chunker embeds sentences, `ChatRequest.question` is capped at
   2000 characters, and the agent's `search_corpus` embeds a query it wrote. A test
   pins the 2000-character half of that.
+- Known limit, accepted: the check and the writes are not serialised, so two
+  `process_folder` runs started at the same time against an unstamped or empty
+  collection can both pass and then both write. It does not apply to a stamped
+  collection, where the second run is refused at once. Closing it means an
+  inter-process lock held for the whole indexing run, measured at about 15 minutes
+  for 519 chunks, across processes that need not share a host, and Qdrant offers no
+  lock primitive. Disproportionate for a CLI an operator runs by hand, where the
+  same scenario already duplicates every chunk (#128). It stops being theoretical if
+  #129 lands a `POST /documents` endpoint, since concurrent callers become ordinary;
+  noted there.
 - Known limit, stated rather than hidden: a collection whose points carry no stamp
   cannot be checked at all, because nothing recorded which model wrote them. The
   shipped collection is exactly that, so the first model switch on an existing

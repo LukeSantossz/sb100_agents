@@ -27,7 +27,9 @@ _MINIMUM_FLOOR = 70
 # Directories at the repository root that hold Python but are not the product:
 # the test suite itself, the offline evaluation harness, and one-shot entry points.
 # Everything else with modules in it is domain code and belongs to the gates.
-_NOT_DOMAIN_CODE = {"tests", "eval", "scripts"}
+# __pycache__ is named explicitly rather than skipped by its leading underscore,
+# because a package legitimately named _something must still be discovered.
+_NOT_DOMAIN_CODE = {"tests", "eval", "scripts", "__pycache__"}
 
 
 def _pyproject() -> dict:
@@ -43,19 +45,28 @@ def _coverage_floor() -> int:
     raise AssertionError("no --cov-fail-under in the pytest addopts")
 
 
-def _domain_packages() -> set[str]:
+def _domain_packages(root: Path = _REPO_ROOT) -> set[str]:
     """Top-level directories holding Python modules, read from disk rather than listed.
 
     Derived so the gates cannot silently stop covering a package somebody adds: a
     hand-written list is what let ``database`` and ``ui`` sit outside coverage.
+
+    Searched recursively, and a leading underscore does not disqualify a name. Both
+    matter for a package that does not exist yet: a directory whose modules all sit
+    in sub-packages, or one named ``_internal``, would otherwise be skipped by the
+    very check written to stop a package being forgotten.
+
+    Args:
+        root: Directory to search. A parameter so the discovery rules themselves can
+            be tested against a tree built for the purpose.
     """
     return {
         path.name
-        for path in _REPO_ROOT.iterdir()
+        for path in root.iterdir()
         if path.is_dir()
-        and not path.name.startswith((".", "_"))
+        and not path.name.startswith(".")
         and path.name not in _NOT_DOMAIN_CODE
-        and any(path.glob("*.py"))
+        and any(module for module in path.rglob("*.py") if "__pycache__" not in module.parts)
     }
 
 
@@ -134,6 +145,47 @@ def test_coverage_measures_every_package_holding_domain_code() -> None:
         f"these hold domain code and no coverage flag measures them: {missing}\n"
         f"pytest addopts measure: {sorted(_coverage_scope())}"
     )
+
+
+def test_domain_discovery_finds_a_package_whose_modules_are_all_nested(
+    tmp_path: Path,
+) -> None:
+    """A package with no module directly inside it is still a package.
+
+    ``glob("*.py")`` looked one level down, so a directory laid out as
+    ``service/routes/handler.py`` would be reported as holding no Python and quietly
+    excused from the gates, by the check written to prevent exactly that.
+    """
+    nested = tmp_path / "service" / "routes"
+    nested.mkdir(parents=True)
+    (nested / "handler.py").write_text("x = 1", encoding="utf-8")
+
+    assert _domain_packages(tmp_path) == {"service"}
+
+
+def test_domain_discovery_finds_a_package_named_with_a_leading_underscore(
+    tmp_path: Path,
+) -> None:
+    """``__pycache__`` is what the underscore rule was aimed at, not ``_internal``."""
+    (tmp_path / "_internal").mkdir()
+    (tmp_path / "_internal" / "engine.py").write_text("x = 1", encoding="utf-8")
+    cache = tmp_path / "_internal" / "__pycache__"
+    cache.mkdir()
+    (cache / "engine.cpython-312.py").write_text("x = 1", encoding="utf-8")
+
+    assert _domain_packages(tmp_path) == {"_internal"}
+
+
+def test_domain_discovery_ignores_a_directory_with_no_python(tmp_path: Path) -> None:
+    """Compiled artefacts and data directories are not packages to cover."""
+    (tmp_path / "archives").mkdir()
+    (tmp_path / "archives" / "boletim.pdf").write_bytes(b"%PDF-1.4")
+    (tmp_path / "__pycache__").mkdir()
+    (tmp_path / "__pycache__" / "stale.py").write_text("x = 1", encoding="utf-8")
+    (tmp_path / ".venv").mkdir()
+    (tmp_path / ".venv" / "site.py").write_text("x = 1", encoding="utf-8")
+
+    assert _domain_packages(tmp_path) == set()
 
 
 def test_the_two_coverage_scopes_agree() -> None:
