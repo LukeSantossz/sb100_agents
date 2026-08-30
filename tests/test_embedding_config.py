@@ -18,8 +18,9 @@ and the truncation is measured on the argument ``embed_text`` passes down.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 import database.semantic_chunker as chunker
@@ -110,6 +111,77 @@ def test_the_expected_shape_passes_the_probe(monkeypatch: pytest.MonkeyPatch) ->
 
     with patch.object(chunker, "embed_text", return_value=[0.0] * chunker.EMBED_DIM):
         chunker.verify_embedding_dimension()
+
+
+def _client_with(payload: dict | None, collection_exists: bool = True) -> MagicMock:
+    """A Qdrant client holding one point with the given payload, or an absent collection."""
+    client = MagicMock()
+    named = MagicMock()
+    named.name = chunker.COLLECTION_NAME if collection_exists else "something-else"
+    client.get_collections.return_value.collections = [named]
+    point = MagicMock()
+    point.payload = payload
+    client.scroll.return_value = ([point], None)
+    return client
+
+
+def test_a_collection_built_by_another_model_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Same dimension, different model: the vectors do not belong in one space.
+
+    ``init_qdrant`` keeps an existing collection and ``upsert_chunks`` writes fresh
+    UUIDs, so without this the run appends vectors from a second model to the first
+    model's corpus and every later search compares across both.
+    """
+    monkeypatch.setattr(settings, "embed_model", "mxbai-embed-large")
+    client = _client_with({"embed_model": "nomic-embed-text"})
+
+    with pytest.raises(chunker.EmbeddingModelMismatchError) as excinfo:
+        chunker.verify_collection_model(client)
+
+    message = str(excinfo.value)
+    assert "nomic-embed-text" in message and "mxbai-embed-large" in message
+
+
+def test_the_same_model_may_add_to_its_own_collection(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "embed_model", "nomic-embed-text")
+
+    chunker.verify_collection_model(_client_with({"embed_model": "nomic-embed-text"}))
+
+
+def test_a_collection_predating_the_stamp_is_allowed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The shipped collection has no stamp, and an absent stamp proves no mismatch.
+
+    Refusing here would break every existing install to guard against a state that
+    cannot be demonstrated. It is logged instead.
+    """
+    monkeypatch.setattr(settings, "embed_model", "nomic-embed-text")
+
+    chunker.verify_collection_model(_client_with({"source_file": "boletim.pdf"}))
+
+
+def test_a_collection_that_does_not_exist_yet_is_allowed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "embed_model", "nomic-embed-text")
+
+    chunker.verify_collection_model(_client_with(None, collection_exists=False))
+
+
+def test_indexed_points_record_the_model_that_embedded_them(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The stamp the check reads has to be written, or it never protects anything."""
+    monkeypatch.setattr(settings, "embed_model", "nomic-embed-text")
+    chunk = chunker.Chunk(
+        text="corpo do texto",
+        sentences=["corpo do texto"],
+        embedding=np.zeros(chunker.EMBED_DIM, dtype=np.float32),
+        metadata={"num_sentences": 1, "source_file": "a.pdf", "source_path": "/a.pdf"},
+    )
+    client = MagicMock()
+
+    chunker.upsert_chunks(client, [chunk])
+
+    point = client.upsert.call_args.kwargs["points"][0]
+    assert point.payload["embed_model"] == "nomic-embed-text"
 
 
 # ─────────────────────────────────────────────

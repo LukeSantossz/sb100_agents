@@ -29,6 +29,15 @@ setting that chose it. Without the probe such a run embeds every sentence of eve
 PDF and then fails at the Qdrant upsert with a vector-shape error that names none
 of them.
 
+Matching the dimension is not the same as matching the model: two 768-dimension
+models produce two incompatible spaces of the same shape, and `init_qdrant` keeps
+an existing collection while `upsert_chunks` writes fresh UUIDs, so a second model's
+vectors would simply be appended to the first model's corpus. Each point is
+therefore stamped with the model that embedded it, and the run refuses a collection
+whose stamp names another model. A collection written before the stamp existed
+carries none; an absent stamp cannot demonstrate a mismatch, so it is logged and
+allowed rather than breaking every install that predates this.
+
 `_MAX_EMBED_CHARS` drops to a measured value below the ceiling rather than a round
 number above it. Counting tokens properly would mean carrying the tokenizer as a
 dependency for one bound, which is not proportionate here; a character limit set
@@ -48,6 +57,15 @@ constant.
 - **Count tokens with the real tokenizer for the truncation.** Correct, and it
   costs a model-specific dependency plus a load at import to bound one call. The
   measured character limit is a worse instrument for a much lower price.
+- **A collection name per model instead of a stamp.** It isolates the spaces without
+  any check, and it silently doubles the corpus on disk and leaves `COLLECTION_NAME`
+  meaning two things, one of which `retrieval/vector_store` does not know about.
+  Refusing is the behaviour the operator can act on.
+- **Scan every point for its model rather than sampling one.** It is the only way to
+  prove a collection is not already mixed, and it costs a full scroll of the
+  collection on every run to defend against a state this change is what prevents.
+  Sampling catches the case worth catching and the docstring says which case it does
+  not.
 - **Leave `_MAX_EMBED_CHARS` at 8192 and catch the failure.** The retry loop
   already catches it and retries four times, spending the whole budget on an input
   that cannot succeed. Truncating below the limit is the fix; catching it is the
@@ -55,11 +73,15 @@ constant.
 
 ## Scope
 
-- Includes: `resolve_embed_model()` and the probe in `database/semantic_chunker.py`;
-  the `--model` default; the lowered `_MAX_EMBED_CHARS`; tests for both.
+- Includes: `resolve_embed_model()`, the dimension probe and the collection-model
+  guard in `database/semantic_chunker.py`; the `embed_model` payload stamp; the
+  `--model` default; the lowered `_MAX_EMBED_CHARS`; the `.env.example` note that
+  changing `EMBED_MODEL` now means re-indexing; tests for all of it.
 - Does NOT include: making `EMBED_DIM` or the collection name configurable;
   changing how the query path embeds; re-indexing the shipped corpus, which is
-  unnecessary because the default model does not change; the eight `database/`
+  unnecessary because the default model does not change; de-duplicating chunks when
+  the same PDF is indexed twice, which is #128 and predates this; a truncation limit
+  derived per model rather than measured for the default one; the eight `database/`
   type errors (#227); task prefixes (#106).
 
 ## Acceptance Criteria
@@ -71,6 +93,13 @@ constant.
 - `a_model_of_the_wrong_shape_fails_before_indexing`: the probe raises
   `EmbeddingDimensionError` naming the model and both dimensions.
 - `the_expected_shape_passes_the_probe`: a 768-dimension model indexes as before.
+- `a_collection_built_by_another_model_is_refused`: a stamp naming another model
+  raises `EmbeddingModelMismatchError` naming both models.
+- `the_same_model_may_add_to_its_own_collection`: the ordinary re-index still runs.
+- `a_collection_predating_the_stamp_is_allowed`: no stamp is not a mismatch.
+- `a_collection_that_does_not_exist_yet_is_allowed`: a first run is not blocked.
+- `indexed_points_record_the_model_that_embedded_them`: the stamp the guard reads is
+  actually written.
 - `the_truncation_limit_is_below_the_measured_ceiling`: `_MAX_EMBED_CHARS` is at or
   under the worst ceiling measured.
 - `a_long_text_is_truncated_to_the_limit`: the prompt reaching Ollama is exactly
@@ -124,6 +153,14 @@ why the limit is set from the corpus and not from a constructed worst case.
   a stored vector. The chunker embeds sentences, `ChatRequest.question` is capped at
   2000 characters, and the agent's `search_corpus` embeds a query it wrote. A test
   pins the 2000-character half of that.
+- Known limit, stated rather than hidden: the collection guard samples one point, so
+  it cannot detect a collection that is already mixed. Nothing shipped could have
+  produced one, because until this change `EMBED_MODEL` did not reach the indexer at
+  all.
+- Known limit: `_MAX_EMBED_CHARS` is one number for every model, measured against
+  `nomic-embed-text`. A model with a smaller context could still refuse a truncated
+  input. This is strictly better than the 8192 it replaces and the per-model version
+  is filed separately.
 - What would invalidate this spec: embedding whole chunks or whole documents, which
   #106 would do if it is ever implemented. That change has to re-measure the ceiling
   for the text it actually sends, prefix included.
