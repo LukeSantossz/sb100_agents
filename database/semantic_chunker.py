@@ -10,7 +10,15 @@ from typing import Any
 import fitz  # PyMuPDF
 import numpy as np
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchExcept,
+    MatchValue,
+    PointStruct,
+    VectorParams,
+)
 from tqdm import tqdm
 
 from core.config import settings
@@ -146,41 +154,72 @@ def verify_collection_model(client: QdrantClient) -> None:
     UUIDs, so nothing else stops a second model's vectors being appended to the
     first model's corpus, after which every search compares across both.
 
-    The check samples one point. That is enough for the case worth catching, a
-    collection built entirely by one model and now being indexed with another, and
-    it is not a proof for a collection that is already mixed. A collection written
-    before the stamp existed carries no model name; an absent stamp cannot
-    demonstrate a mismatch, so it is logged and allowed rather than breaking every
-    install that predates this.
+    Counting rather than sampling, because the case that matters most is a partly
+    stamped collection: the shipped one carries 519 points written before the stamp
+    existed, and re-indexing it with another model leaves both kinds side by side.
+    One sampled point answers whichever the scroll order returns, so the mismatch is
+    found or missed at random. The filter matches only points that carry a stamp
+    naming another model, so unstamped points never trigger it.
+
+    A collection with no stamp at all cannot demonstrate a mismatch either way. That
+    is logged with the number of points it covers rather than refused, because
+    refusing would break every install that predates the stamp.
 
     Raises:
-        EmbeddingModelMismatchError: If the sampled point names another model.
+        EmbeddingModelMismatchError: If any point names another model.
     """
     model = resolve_embed_model()
-    existing = [c.name for c in client.get_collections().collections]
-    if COLLECTION_NAME not in existing:
+    if COLLECTION_NAME not in [c.name for c in client.get_collections().collections]:
         return
 
-    points, _ = client.scroll(
-        collection_name=COLLECTION_NAME, limit=1, with_payload=True, with_vectors=False
+    # MatchExcept matches points whose stamp is present and is not this model; a
+    # point without the field matches no FieldCondition, so it is not counted here.
+    foreign_filter = Filter(
+        must=[
+            FieldCondition(
+                key=EMBED_MODEL_PAYLOAD_KEY,
+                match=MatchExcept(**{"except": [model]}),
+            )
+        ]
     )
-    if not points:
-        return
-
-    recorded = (points[0].payload or {}).get(EMBED_MODEL_PAYLOAD_KEY)
-    if recorded is None:
-        logger.warning(
-            "semantic_chunker.collection_model_unknown",
-            extra={"collection": COLLECTION_NAME, "model": model},
+    foreign = client.count(
+        collection_name=COLLECTION_NAME, count_filter=foreign_filter, exact=True
+    ).count
+    if foreign:
+        points, _ = client.scroll(
+            collection_name=COLLECTION_NAME,
+            scroll_filter=foreign_filter,
+            limit=1,
+            with_payload=True,
+            with_vectors=False,
         )
-        return
-
-    if recorded != model:
+        other = (
+            (points[0].payload or {}).get(EMBED_MODEL_PAYLOAD_KEY) if points else "another model"
+        )
         raise EmbeddingModelMismatchError(
-            f"collection {COLLECTION_NAME!r} holds vectors from {recorded!r} and "
-            f"EMBED_MODEL is {model!r}. Two models of the same dimension still "
-            f"produce different spaces, so indexing would mix them. Re-create the "
-            f"collection to switch models, or set EMBED_MODEL back to {recorded!r}."
+            f"collection {COLLECTION_NAME!r} holds {foreign} vector(s) embedded by "
+            f"{other!r} and EMBED_MODEL is {model!r}. Two models of the same "
+            f"dimension still produce different spaces, so indexing would mix them. "
+            f"Re-create the collection to switch models, or set EMBED_MODEL back to "
+            f"{other!r}."
+        )
+
+    total = client.count(collection_name=COLLECTION_NAME, exact=True).count
+    stamped = client.count(
+        collection_name=COLLECTION_NAME,
+        count_filter=Filter(
+            must=[FieldCondition(key=EMBED_MODEL_PAYLOAD_KEY, match=MatchValue(value=model))]
+        ),
+        exact=True,
+    ).count
+    if total > stamped:
+        logger.warning(
+            "semantic_chunker.collection_unstamped",
+            extra={
+                "collection": COLLECTION_NAME,
+                "model": model,
+                "unverifiable": total - stamped,
+            },
         )
 
 
