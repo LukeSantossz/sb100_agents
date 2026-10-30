@@ -265,7 +265,7 @@ With `jq` on the path, step 2 becomes
 and step 3 can send `-H "Authorization: Bearer $TOKEN"`.
 
 The answer takes a while: see the timings in
-[Known Issues & Limitations](#known-issues--limitations). The shipped corpus is a
+[Known Issues & Limitations](#known-issues--limitations). The corpus is a
 Portuguese-language agricultural bulletin, so ask in Portuguese. The answer follows the language of the
 question.
 

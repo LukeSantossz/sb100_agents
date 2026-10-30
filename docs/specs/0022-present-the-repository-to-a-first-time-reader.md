@@ -19,15 +19,17 @@ reader where the corpus comes from.
   ignoring everything under `archives/` except a `.gitkeep` that keeps the folder; the mypy command
   copied from `.github/workflows/ci.yml`; the test count and coverage measured on a fresh
   clone of `3f9bf6e`; dropping the done item from Not done; a table of the command-line
-  entry points under API Reference.
-- Does NOT include: SETUP.md, CONTRIBUTING.md, any code, the visual identity, or the
+  entry points under API Reference; the one sentence in README.md and the one in SETUP.md
+  that still call the corpus shipped.
+- Does NOT include: the rest of SETUP.md, CONTRIBUTING.md, any code, the visual identity, or the
   history rewrite itself, which happens outside any commit.
 
 ## Acceptance Criteria
 
 - `readme_names_the_corpus`: the README names the bulletin, its publisher and its year.
 - `bulletin_is_not_shipped`: `git check-ignore archives/smart_boletim.pdf` matches, the
-  folder exists on a fresh clone, and the README says the reader brings their own copy.
+  folder exists on a fresh clone, the README says the reader brings their own copy, and
+  `git grep -n "shipped corpus" README.md SETUP.md` finds nothing.
 - `every_documented_command_runs`: each command in the new table starts and prints its
   help with `--help` on a fresh `uv sync --extra dev`.
 - `mypy_command_matches_ci`: the README mypy line lists the same packages and flag as
