@@ -49,7 +49,7 @@ Write-Host ""
 Write-Host "[3/4] Service URLs:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "API: http://localhost:8000" -ForegroundColor Cyan
-Write-Host "Gradio UI: http://localhost:7860" -ForegroundColor Cyan
+Write-Host "Web page: http://localhost:5173" -ForegroundColor Cyan
 Write-Host "Qdrant: http://localhost:6333" -ForegroundColor Cyan
 Write-Host ""
 
@@ -62,8 +62,15 @@ Start-Process -FilePath ".venv\Scripts\python.exe" -ArgumentList "-m", "uvicorn"
 # Give the API a moment to come up
 Start-Sleep -Seconds 3
 
-# Start the Gradio UI
-Start-Process -FilePath ".venv\Scripts\python.exe" -ArgumentList "ui/chat_ui.py" -WindowStyle Normal
+# Start the web page. It needs Node.js; without it the API still starts on its own.
+if (Get-Command npm -ErrorAction SilentlyContinue) {
+    if (-not (Test-Path "web\node_modules")) {
+        npm --prefix web ci
+    }
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/k", "npm --prefix web run dev" -WindowStyle Normal
+} else {
+    Write-Host "Web page: skipped - Node.js 22.12+ is not on the PATH" -ForegroundColor Yellow
+}
 
 Write-Host ""
 Write-Host "Services started in separate windows." -ForegroundColor Green

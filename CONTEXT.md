@@ -124,7 +124,7 @@ in-process function calls rather than a network boundary. See ADR-0001.
 _Avoid_: microservice, per-module service, monolith (unqualified, implies non-modular).
 
 **Compose profile**:
-A Docker Compose activation group — `infra` (Qdrant) or `app` (API + Gradio). Distinct from
+A Docker Compose activation group: `infra` (Qdrant) or `app` (API + web page). Distinct from
 Expertise Profile.
 _Avoid_: profile (unqualified), environment, stack.
 

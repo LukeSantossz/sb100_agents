@@ -22,5 +22,9 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // colours.test.ts reads the stylesheets as text; Vitest stubs CSS imports otherwise.
+    css: true,
+    // Node 25 defines its own localStorage, which hides the one jsdom provides.
+    execArgv: ["--no-experimental-webstorage"],
   },
 });

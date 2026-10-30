@@ -44,6 +44,9 @@ eval/
 *.md
 docs/
 
+# The web app has its own image (web/Dockerfile)
+web/
+
 # CI/CD
 .github/
 

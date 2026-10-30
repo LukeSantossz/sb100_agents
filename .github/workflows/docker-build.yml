@@ -1,8 +1,8 @@
 name: Docker Build
 
-# Validates that the multi-stage Dockerfile builds in CI and that the final
-# image does not contain build-essential. Triggers only on relevant changes
-# to reduce cost.
+# Validates that both multi-stage Dockerfiles build in CI: the API image must not
+# contain build-essential, and the web image must hold a valid nginx config.
+# Triggers only on relevant changes to reduce cost.
 
 on:
   push:
@@ -13,6 +13,8 @@ on:
       - ".dockerignore"
       - "uv.lock"
       - "pyproject.toml"
+      - "web/**"
+      - "docs/brand/**"
       - ".github/workflows/docker-build.yml"
   pull_request:
     branches: [main]
@@ -22,6 +24,8 @@ on:
       - ".dockerignore"
       - "uv.lock"
       - "pyproject.toml"
+      - "web/**"
+      - "docs/brand/**"
       - ".github/workflows/docker-build.yml"
 
 jobs:
@@ -60,6 +64,22 @@ jobs:
           # curl must be installed for the docker-compose healthchecks to work.
           docker run --rm --entrypoint sh smartb100_api:ci -c "command -v curl"
 
+      # The context is the repository root because the page reads docs/brand/;
+      # web/Dockerfile.dockerignore keeps it to web/ and docs/brand/.
+      - name: Build web image (multi-stage)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./web/Dockerfile
+          push: false
+          load: true
+          tags: smartb100_web:ci
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      - name: Assert the web image's nginx config is valid
+        run: docker run --rm smartb100_web:ci nginx -t
+
       - name: Validate compose configuration
         env:
           # docker-compose.yml now requires JWT_SECRET_KEY via the fail-fast
@@ -73,3 +93,4 @@ jobs:
       - name: Show image size summary
         run: |
           docker images smartb100_api:ci --format "{{.Repository}}:{{.Tag}} {{.Size}}"
+          docker images smartb100_web:ci --format "{{.Repository}}:{{.Tag}} {{.Size}}"
