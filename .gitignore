@@ -12,7 +12,6 @@ Lib/
 .venv/Scripts/
 Include/
 pyvenv.cfg
-.python-version
 
 # Virtual environment
 *.egg-info/
