@@ -44,8 +44,10 @@ long technical manual without reading it, and who need to know when the answer i
 
 The corpus in `archives/` is *Boletim 100 (B-100): Recomendações de adubação e calagem para
 o Estado de São Paulo*, published by the Instituto Agronômico (IAC), Campinas, in 2022. It is
-written in Portuguese, so questions work best in Portuguese. Any other folder of PDFs can be
-indexed in its place.
+written in Portuguese, so questions work best in Portuguese. The repository does not include
+it: the bulletin is sold, through the [Fundag store](https://loja.fundag.br/products/boletim-100).
+Put your own PDF copy in `archives/` before indexing. Any other folder of PDFs can be indexed
+in its place.
 
 ## Tech Stack
 
@@ -180,7 +182,7 @@ container rather than settings: `QDRANT_URL` names a service on the compose netw
 # 1. Vector database
 docker compose --profile infra up -d
 
-# 2. Index the PDFs in archives/ (first run only)
+# 2. Index the PDFs you put in archives/ (first run only)
 uv run python scripts/ingest.py ./archives/
 
 # 3. API
@@ -190,7 +192,7 @@ uv run python -m uvicorn api.main:app --reload
 uv run python ui/chat_ui.py
 ```
 
-Step 2 embeds one sentence at a time. The 511-page PDF shipped in `archives/` produced 815
+Step 2 embeds one sentence at a time. The 511-page bulletin produced 815
 chunks in 11 minutes 26 seconds on a CPU-only Windows host, measured on a fresh clone of
 `92fc9a1`. It is the slowest part of the
 setup and it only happens once.
@@ -313,7 +315,7 @@ sb100_agents/
 ├── tests/              # the whole test suite
 ├── docs/adr/           # decision records
 ├── docs/specs/         # approved specs
-└── archives/           # the PDF corpus that gets indexed
+└── archives/           # the PDFs to index; not versioned, bring your own
 ```
 
 Start reading at `api/routes/chat.py`. It is the whole pipeline in one function.
