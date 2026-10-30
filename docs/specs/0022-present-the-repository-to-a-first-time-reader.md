@@ -18,7 +18,7 @@ reader where the corpus comes from.
 - Includes: naming the IAC Boletim 100 as the corpus in `archives/` and where to get it;
   ignoring everything under `archives/` except a `.gitkeep` that keeps the folder; the mypy command
   copied from `.github/workflows/ci.yml`; the test count and coverage measured on a fresh
-  clone of `92fc9a1`; dropping the done item from Not done; a table of the command-line
+  clone of `3f9bf6e`; dropping the done item from Not done; a table of the command-line
   entry points under API Reference.
 - Does NOT include: SETUP.md, CONTRIBUTING.md, any code, the visual identity, or the
   history rewrite itself, which happens outside any commit.
@@ -33,4 +33,4 @@ reader where the corpus comes from.
 - `mypy_command_matches_ci`: the README mypy line lists the same packages and flag as
   the CI typecheck job.
 - `figures_match_a_measured_run`: the test count and coverage are the ones a fresh
-  clone of `92fc9a1` reported (465 passed, 82.53 percent, floor 70).
+  clone of `3f9bf6e` reported (465 passed, 82.53 percent, floor 70).

@@ -192,10 +192,9 @@ uv run python -m uvicorn api.main:app --reload
 uv run python ui/chat_ui.py
 ```
 
-Step 2 embeds one sentence at a time. The 511-page bulletin produced 815
-chunks in 11 minutes 26 seconds on a CPU-only Windows host, measured on a fresh clone of
-`92fc9a1`. It is the slowest part of the
-setup and it only happens once.
+Step 2 embeds one sentence at a time. The 511-page bulletin produced 815 chunks in 11
+minutes 26 seconds on a CPU-only Windows host, with the code at `3f9bf6e`. It is the
+slowest part of the setup and it only happens once.
 
 Checks that the stack is up:
 
@@ -334,7 +333,7 @@ Working:
 - [x] Offline evaluation pipeline in `eval/`
 - [x] Agent path behind `AGENT_ENABLED`: retrieval as a tool, domain gate, bounded loop
 
-On a fresh clone of commit `92fc9a1`, `uv run --extra dev pytest tests/ -m "not requires_infra"`
+On a fresh clone of commit `3f9bf6e`, `uv run --extra dev pytest tests/ -m "not requires_infra"`
 reported 465 passing tests and 82.53 percent line coverage over the nine packages listed
 under `--cov` in `pyproject.toml`. The run fails below 70 percent.
 
