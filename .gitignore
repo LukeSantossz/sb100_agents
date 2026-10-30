@@ -62,3 +62,6 @@ coverage.xml
 
 # Generated from uv.lock in the image build (Dockerfile.api); never committed.
 /requirements.txt
+
+# Node (web/)
+node_modules/

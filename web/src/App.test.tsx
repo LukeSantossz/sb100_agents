@@ -1,0 +1,261 @@
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import App from "./App";
+
+const TOKEN = "header.payload.signature";
+
+type Reply = Response | Promise<Response> | ((init: RequestInit) => Response | Promise<Response>);
+
+interface Call {
+  url: string;
+  init: RequestInit;
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/** Stub fetch with one queue of replies per path; record every call. */
+function stubApi(routes: Record<string, Reply[]>): Call[] {
+  const calls: Call[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+      const url = String(input);
+      calls.push({ url, init });
+      const queue = routes[url];
+      if (!queue || queue.length === 0) throw new Error(`unexpected request to ${url}`);
+      const reply = queue.length > 1 ? queue.shift()! : queue[0];
+      return typeof reply === "function" ? reply(init) : reply;
+    }),
+  );
+  return calls;
+}
+
+function config(threshold = 0.5, timeout = 600): Reply[] {
+  return [json({ hallucination_threshold: threshold, chat_timeout: timeout })];
+}
+
+function signedIn(): Reply[] {
+  return [json({ access_token: TOKEN, token_type: "bearer" })];
+}
+
+function chatCalls(calls: Call[]): Call[] {
+  return calls.filter((call) => call.url === "/api/chat");
+}
+
+function body(call: Call): Record<string, unknown> {
+  return JSON.parse(String(call.init.body)) as Record<string, unknown>;
+}
+
+async function signIn(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await user.type(screen.getByLabelText("Username"), "farmer");
+  await user.type(screen.getByLabelText("Password"), "correct horse");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  await screen.findByText(/signed in/i);
+}
+
+async function ask(user: ReturnType<typeof userEvent.setup>, question: string): Promise<void> {
+  await user.clear(screen.getByLabelText("Your question"));
+  await user.type(screen.getByLabelText("Your question"), question);
+  await user.click(screen.getByRole("button", { name: "Send" }));
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+describe("web app", () => {
+  it("sign_in_keeps_the_token_in_memory", async () => {
+    const calls = stubApi({ "/api/config": config(), "/api/auth/token": signedIn() });
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).disabled).toBe(true);
+    await signIn(user);
+
+    const login = calls.find((call) => call.url === "/api/auth/token")!;
+    expect(login.init.method).toBe("POST");
+    const form = new URLSearchParams(String(login.init.body));
+    expect(form.get("username")).toBe("farmer");
+    expect(form.get("password")).toBe("correct horse");
+    await waitFor(() =>
+      expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).disabled).toBe(false),
+    );
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
+    expect(document.cookie).not.toContain(TOKEN);
+  });
+
+  it("a_question_carries_the_token_session_and_profile", async () => {
+    const calls = stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [json({ answer: "Apply lime.", hallucination_score: 0.1 })],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    await user.clear(screen.getByLabelText("Name"));
+    await user.type(screen.getByLabelText("Name"), "Ana");
+    await user.selectOptions(screen.getByLabelText("Expertise"), "expert");
+    await ask(user, "How do I correct soil acidity?");
+    await screen.findByText("Apply lime.");
+
+    const [chat] = chatCalls(calls);
+    expect(chat.init.method).toBe("POST");
+    expect(new Headers(chat.init.headers).get("Authorization")).toBe(`Bearer ${TOKEN}`);
+    const sent = body(chat);
+    expect(sent.question).toBe("How do I correct soil acidity?");
+    expect(sent.profile).toEqual({ name: "Ana", expertise: "expert" });
+    expect(typeof sent.session_id).toBe("string");
+    expect(String(sent.session_id).length).toBeGreaterThan(0);
+  });
+
+  const failures: [string, Reply, RegExp][] = [
+    [
+      "a timeout",
+      (init) =>
+        new Promise<Response>((_, reject) => {
+          init.signal?.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError")),
+          );
+        }),
+      /may still finish/i,
+    ],
+    ["a 503", json({ detail: "unavailable" }, 503), /temporarily unavailable/i],
+    ["a 504", json({ detail: "timeout" }, 504), /gateway timed out/i],
+    [
+      "a network error",
+      () => Promise.reject(new TypeError("Failed to fetch")),
+      /could not connect to the api/i,
+    ],
+  ];
+
+  it.each(failures)("a_failed_question_is_not_resent: %s", async (_name, reply, message) => {
+    // A 50 ms chat timeout, so the timeout case fires within the test.
+    const calls = stubApi({
+      "/api/config": config(0.5, 0.05),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [reply],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    await ask(user, "How much lime per hectare?");
+
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      expect.stringMatching(message),
+    );
+    // Long enough for a 1 s retry backoff, the shortest the Gradio page used.
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(chatCalls(calls)).toHaveLength(1);
+    expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).value).toBe(
+      "How much lime per hectare?",
+    );
+  });
+
+  it("unauthorized_signs_out", async () => {
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [json({ detail: "Could not validate credentials" }, 401)],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    await ask(user, "How much lime per hectare?");
+
+    expect((await screen.findByRole("alert")).textContent).toMatch(/sign in again/i);
+    expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+  });
+
+  it("each_score_sits_under_its_answer", async () => {
+    stubApi({
+      "/api/config": config(0.5),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [
+        json({ answer: "First answer.", hallucination_score: 0.1 }),
+        json({ answer: "Second answer.", hallucination_score: 0.9 }),
+      ],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    await ask(user, "First question?");
+    await screen.findByText("First answer.");
+    await ask(user, "Second question?");
+    await screen.findByText("Second answer.");
+
+    const first = screen.getByText("First answer.").closest("article")!;
+    const second = screen.getByText("Second answer.").closest("article")!;
+    expect(within(first).getByText(/0\.10/)).toBeTruthy();
+    expect(within(first).getByText(/low risk/i)).toBeTruthy();
+    expect(within(second).getByText(/0\.90/)).toBeTruthy();
+    expect(within(second).getByText(/high risk/i)).toBeTruthy();
+  });
+
+  it("new_session_keeps_the_sign_in", async () => {
+    const calls = stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [json({ answer: "An answer.", hallucination_score: 0.1 })],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    await ask(user, "First question?");
+    await screen.findByText("An answer.");
+    await user.click(screen.getByRole("button", { name: "New session" }));
+
+    expect(screen.queryByText("An answer.")).toBeNull();
+    await ask(user, "Second question?");
+    await waitFor(() => expect(chatCalls(calls)).toHaveLength(2));
+
+    const [before, after] = chatCalls(calls);
+    expect(body(after).session_id).not.toBe(body(before).session_id);
+    expect(new Headers(after.init.headers).get("Authorization")).toBe(`Bearer ${TOKEN}`);
+  });
+
+  it("markdown_renders_without_html", async () => {
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [
+        json({
+          answer: "Use **dolomitic lime**.\n\n<img src=x onerror=alert(1)>",
+          hallucination_score: 0.1,
+        }),
+      ],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    await ask(user, "Which lime?");
+
+    const bold = await screen.findByText("dolomitic lime");
+    expect(bold.tagName).toBe("STRONG");
+    const answer = bold.closest("article")!;
+    expect(answer.querySelector("img")).toBeNull();
+    expect(answer.textContent).toContain("<img src=x onerror=alert(1)>");
+  });
+});

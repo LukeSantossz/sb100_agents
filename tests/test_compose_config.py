@@ -84,13 +84,24 @@ def test_compose_config_api_environment_contains_jwt_secret():
     assert api_environment.get("JWT_SECRET_KEY") == VALID_SECRET
 
 
-def test_compose_config_gradio_environment_contains_jwt_secret():
-    """The gradio service carries JWT_SECRET_KEY when the secret is set."""
+def test_compose_serves_the_web_app():
+    """The app profile serves the web app on 8080 once the API answers, and no Gradio.
+
+    The web service holds no secret and reads no Settings: it serves static files and
+    proxies /api, and the page asks GET /config for the two values it needs.
+    """
     env = _env_without_secret()
     env["JWT_SECRET_KEY"] = VALID_SECRET
     result = _run_compose_config(env, "infra", "app")
-    gradio_environment = _service_environment(result, "gradio")
-    assert gradio_environment.get("JWT_SECRET_KEY") == VALID_SECRET
+    assert result.returncode == 0, result.stderr
+    services = json.loads(result.stdout)["services"]
+
+    assert "gradio" not in services
+    web = services["web"]
+    assert Path(web["build"]["context"]).resolve() == PROJECT_ROOT
+    assert Path(web["build"]["dockerfile"]).as_posix().endswith("web/Dockerfile")
+    assert [port.get("published") for port in web["ports"]] == ["8080"]
+    assert web["depends_on"]["api"]["condition"] == "service_healthy"
 
 
 def test_compose_qdrant_storage_is_a_named_volume_not_a_host_bind():
@@ -215,12 +226,6 @@ def test_config_succeeds_without_a_dotenv(tmp_path: Path):
         "JWT_SECRET_KEY",
         "SMARTB100_DB_PATH",
     }, api_environment
-
-
-def test_dotenv_values_reach_the_gradio_container(tmp_path: Path):
-    """The UI reads CHAT_TIMEOUT from Settings, so it needs the same forwarding."""
-    rendered = _render_in_project(tmp_path, "CHAT_TIMEOUT=900\n")
-    assert rendered["services"]["gradio"]["environment"].get("CHAT_TIMEOUT") == "900"
 
 
 # --------------- the database mount is a directory (issue #218) ---------------
