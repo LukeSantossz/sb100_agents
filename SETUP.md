@@ -262,8 +262,8 @@ curl -X POST http://localhost:8000/chat \
   }'
 ```
 
-Without the `Authorization` header the endpoint answers `401 Unauthorized`. The shipped
-corpus is in Portuguese, and the answer follows the language of the question.
+Without the `Authorization` header the endpoint answers `401 Unauthorized`. The bulletin
+is in Portuguese, and the answer follows the language of the question.
 
 **Expected response:**
 
