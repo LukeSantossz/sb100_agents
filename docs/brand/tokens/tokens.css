@@ -1,0 +1,46 @@
+/* SmartB100 design tokens. Same values as tokens.json; change both together. */
+:root {
+  --sb-ink: #0F1412;
+  --sb-paper: #F5F6F3;
+  --sb-sprout: #73E09A;
+  --sb-leaf: #1F7A47;
+  --sb-leaf-2: #2E9D5E;
+  --sb-root-dark: #5FB97E;
+  --sb-root-light: #2E7D4F;
+  --sb-evidence-dark: #F2B53A;
+  --sb-evidence-light: #8A5A00;
+  --sb-chunk-dark: #3A4540;
+  --sb-chunk-light: #B9C1BB;
+  --sb-text-muted-dark: #AEB7B1;
+  --sb-text-muted-light: #2A332F;
+  --sb-label-dark: #7E8983;
+  --sb-label-light: #5E6862;
+  --sb-rule-dark: #1C2420;
+  --sb-rule-light: #E2E6E0;
+  --sb-font-mono: 'Cascadia Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --sb-font-sans: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* semantic, light theme */
+  --sb-bg: var(--sb-paper);
+  --sb-fg: var(--sb-ink);
+  --sb-muted: var(--sb-text-muted-light);
+  --sb-label: var(--sb-label-light);
+  --sb-rule: var(--sb-rule-light);
+  --sb-accent: var(--sb-leaf);
+  --sb-root: var(--sb-root-light);
+  --sb-evidence: var(--sb-evidence-light);
+  --sb-chunk: var(--sb-chunk-light);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sb-bg: var(--sb-ink);
+    --sb-fg: var(--sb-paper);
+    --sb-muted: var(--sb-text-muted-dark);
+    --sb-label: var(--sb-label-dark);
+    --sb-rule: var(--sb-rule-dark);
+    --sb-accent: var(--sb-sprout);
+    --sb-root: var(--sb-root-dark);
+    --sb-evidence: var(--sb-evidence-dark);
+    --sb-chunk: var(--sb-chunk-dark);
+  }
+}

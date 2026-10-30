@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><style>.f-fg{fill:#0F1412}.s-fg{stroke:#0F1412}.f-leaf{fill:#1F7A47}.s-leaf{stroke:#1F7A47}.f-root{fill:#2E7D4F}.s-root{stroke:#2E7D4F}.f-ev{fill:#8A5A00}.s-ev{stroke:#8A5A00}@media (prefers-color-scheme:dark){.f-fg{fill:#F5F6F3}.s-fg{stroke:#F5F6F3}.f-leaf{fill:#73E09A}.s-leaf{stroke:#73E09A}.f-root{fill:#5FB97E}.s-root{stroke:#5FB97E}.f-ev{fill:#F2B53A}.s-ev{stroke:#F2B53A}}</style><path d="M24 20C23 26 16 28 11.5 33" class="s-root" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+<path d="M24 20C25 26 32 27 36.5 31" class="s-root" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+<path d="M24 20V36" class="s-ev" stroke-width="3" stroke-linecap="round"/>
+<rect x="22.5" y="7" width="3" height="11" class="f-leaf"/>
+<path d="M25.5 13C26.5 8 30.5 5 36.5 4.5C36 10 31.5 13.5 25.5 13.5Z" class="f-leaf"/>
+<rect x="4" y="17" width="40" height="3" class="f-fg"/>
+<rect x="7" y="33" width="9" height="9" class="f-root"/>
+<rect x="19.5" y="36" width="9" height="9" class="f-ev"/>
+<rect x="32" y="31" width="9" height="9" class="f-root"/></svg>
