@@ -36,9 +36,13 @@ logger = logging.getLogger(__name__)
 # and a hardcoded name here meant EMBED_MODEL moved only the query (#105).
 OLLAMA_MODEL: str | None = None
 EMBED_DIM = 768  # collection vector size; retrieval/vector_store refuses any other
-QDRANT_URL = "http://localhost:6333"
-QDRANT_API_KEY: str | None = None  # for authenticated Qdrant servers
-COLLECTION_NAME = "archives_v2"
+# Where the corpus is written. main() overwrites these on every CLI run with its
+# flags, which default to the same Settings the API reads: a constant of its own here
+# meant QDRANT_URL, QDRANT_API_KEY and COLLECTION_NAME in .env moved the query and
+# not the corpus (spec 0021).
+QDRANT_URL: str = settings.qdrant_url
+QDRANT_API_KEY: str | None = settings.qdrant_api_key  # for authenticated Qdrant servers
+COLLECTION_NAME: str = settings.collection_name
 # Payload key stamping each point with the model that embedded it.
 EMBED_MODEL_PAYLOAD_KEY = "embed_model"
 
@@ -570,19 +574,29 @@ def main(argv: list[str] | None = None) -> int:
         default=SIMILARITY_THRESHOLD,
         help="Similarity threshold for a new chunk (default: 0.75)",
     )
-    index_parser.add_argument("--qdrant-url", default=QDRANT_URL, help="Qdrant URL")
-    index_parser.add_argument("--api-key", default=QDRANT_API_KEY, help="Qdrant API key (optional)")
-    index_parser.add_argument("--collection", default=COLLECTION_NAME, help="Collection name")
+    index_parser.add_argument(
+        "--qdrant-url", default=settings.qdrant_url, help="Qdrant URL (default: QDRANT_URL)"
+    )
+    index_parser.add_argument(
+        "--api-key",
+        default=settings.qdrant_api_key,
+        help="Qdrant API key (default: QDRANT_API_KEY, optional)",
+    )
+    index_parser.add_argument(
+        "--collection",
+        default=settings.collection_name,
+        help="Collection name (default: COLLECTION_NAME)",
+    )
 
     # Command: search
     search_parser = subparsers.add_parser("search", help="Semantic search over the collection")
     search_parser.add_argument("query", help="Search text")
     search_parser.add_argument("--top-k", type=int, default=5, help="Number of results")
-    search_parser.add_argument("--qdrant-url", default=QDRANT_URL)
+    search_parser.add_argument("--qdrant-url", default=settings.qdrant_url)
     search_parser.add_argument(
-        "--api-key", default=QDRANT_API_KEY, help="Qdrant API key (optional)"
+        "--api-key", default=settings.qdrant_api_key, help="Qdrant API key (optional)"
     )
-    search_parser.add_argument("--collection", default=COLLECTION_NAME)
+    search_parser.add_argument("--collection", default=settings.collection_name)
 
     args = parser.parse_args(argv)
 
