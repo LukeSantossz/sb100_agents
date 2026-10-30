@@ -49,7 +49,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e .
-          pip install mypy==2.3.1 types-requests==2.33.0.20260712
+          pip install mypy==2.3.1
 
       # Every package pyproject.toml declares strict, not a subset. Checking
       # three of seven left the other four passing strict only by accident.
