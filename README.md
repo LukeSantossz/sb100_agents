@@ -5,9 +5,9 @@
 
 # SmartB100: Agriculture RAG Agent
 
-Answers questions about agriculture from your own PDF manuals, adapts the wording to the
-reader's expertise, and attaches a hallucination score to every answer. It runs on a local
-Ollama model, so the core pipeline needs no paid API key.
+Answers questions about soil liming and fertilization from a 511-page agronomy bulletin,
+adapts the wording to the reader's expertise, and attaches a hallucination score to every
+answer. It runs on a local Ollama model, so the core pipeline needs no paid API key.
 
 ## What It Does
 
@@ -41,6 +41,11 @@ sit in a SQLite file next to the code.
 
 It is aimed at agricultural extension workers and agronomists who need an answer out of a
 long technical manual without reading it, and who need to know when the answer is shaky.
+
+The corpus in `archives/` is *Boletim 100 (B-100): Recomendações de adubação e calagem para
+o Estado de São Paulo*, published by the Instituto Agronômico (IAC), Campinas, in 2022. It is
+written in Portuguese, so questions work best in Portuguese. Any other folder of PDFs can be
+indexed in its place.
 
 ## Tech Stack
 
@@ -185,8 +190,9 @@ uv run python -m uvicorn api.main:app --reload
 uv run python ui/chat_ui.py
 ```
 
-Step 2 embeds one sentence at a time. The 511-page PDF shipped in `archives/` produced 519
-chunks in 15 minutes 41 seconds on a CPU-only Windows host. It is the slowest part of the
+Step 2 embeds one sentence at a time. The 511-page PDF shipped in `archives/` produced 815
+chunks in 11 minutes 26 seconds on a CPU-only Windows host, measured on a fresh clone of
+`92fc9a1`. It is the slowest part of the
 setup and it only happens once.
 
 Checks that the stack is up:
@@ -209,7 +215,8 @@ in [`SETUP.md`](./SETUP.md).
 uv run --extra dev pytest tests/ -m "not requires_infra"   # unit and integration suite
 uv run --extra dev ruff check .                            # lint
 uv run --extra dev ruff format --check .                   # formatting
-uv run --extra dev mypy retrieval/ generation/ memory/     # types, as CI runs it
+uv run --extra dev mypy agent/ api/ core/ retrieval/ generation/ memory/ verification/ \
+  --ignore-missing-imports                                 # types, as CI runs it
 ```
 
 The `requires_infra` marker excludes the tests that need a live Ollama or Qdrant, which is
@@ -278,6 +285,16 @@ Without the `Authorization` header `/chat` returns `401`.
 The Gradio page at `:7860` logs in and chats, but it cannot create an account. Register
 through the API or through `/docs` first.
 
+Command-line entry points:
+
+| Command | What it does |
+| --- | --- |
+| `uv run python scripts/ingest.py <path>` | Indexes one PDF or every PDF under a folder into Qdrant. |
+| `uv run python -m database.semantic_chunker index <folder>` | Same indexing, with `--model`, `--threshold`, `--qdrant-url`, `--api-key` and `--collection` flags. |
+| `uv run python -m database.semantic_chunker search "<text>"` | Prints the closest chunks for a query, without the API. `--top-k` sets how many. |
+| `uv run python ui/chat_ui.py` | Starts the Gradio page on `:7860`. |
+| `uv run python eval/<script>.py` | Offline evaluation and agent calibration. The scripts and their order are in [`eval/README.md`](./eval/README.md). |
+
 ## Project Structure
 
 ```
@@ -315,16 +332,14 @@ Working:
 - [x] Offline evaluation pipeline in `eval/`
 - [x] Agent path behind `AGENT_ENABLED`: retrieval as a tool, domain gate, bounded loop
 
-`uv run --extra dev pytest tests/ -m "not requires_infra"` reports 370 passing tests and 90
-percent line coverage over the modules listed under `[tool.coverage.run]` in
-`pyproject.toml`. The CI floor is set far below that, at 23 percent, which is the gap the
-next list names.
+On a fresh clone of commit `92fc9a1`, `uv run --extra dev pytest tests/ -m "not requires_infra"`
+reported 465 passing tests and 82.53 percent line coverage over the nine packages listed
+under `--cov` in `pyproject.toml`. The run fails below 70 percent.
 
 Not done:
 
 - [ ] Turning `AGENT_ENABLED` on by default, which is a separate decision from building it
 - [ ] Persisting conversation history, so it survives a restart
-- [ ] Raising the CI coverage floor to match the coverage actually achieved
 - [ ] Hybrid search, dense plus sparse vectors with RRF fusion
 - [ ] Claim level verification, splitting an answer into claims and checking each
 - [ ] Streaming responses over SSE
