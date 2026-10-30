@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/cover-dark.svg">
+  <img src="docs/brand/cover-light.svg" alt="SmartB100: answers from IAC Boletim 100, each with a hallucination score" width="100%">
+</picture>
+
 ![Python](https://img.shields.io/badge/Python-3.12%2B-blue?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111%2B-009688?logo=fastapi&logoColor=white)
 ![CI](https://github.com/LukeSantossz/sb100_agents/actions/workflows/ci.yml/badge.svg)
@@ -374,3 +379,5 @@ anything non-trivial, use Conventional Commits, open a PR.
 ## License
 
 [MIT](./LICENSE)
+
+Independent project. Not affiliated with or endorsed by the Instituto Agronômico (IAC).
