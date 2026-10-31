@@ -3,14 +3,12 @@ import { describe, expect, it } from "vitest";
 import tokens from "../../docs/brand/tokens/tokens.css?raw";
 import styles from "./styles.css?raw";
 
-type Theme = "light" | "dark";
 const BANDS = ["low", "moderate", "high"] as const;
 
-/** Split a stylesheet into its light block and its prefers-color-scheme: dark block. */
-function themeBlocks(css: string): Record<Theme, string> {
+/** The light block of a stylesheet: everything before a prefers-color-scheme: dark rule. */
+function lightBlock(css: string): string {
   const at = css.indexOf("@media (prefers-color-scheme: dark)");
-  if (at < 0) throw new Error("stylesheet has no dark block");
-  return { light: css.slice(0, at), dark: css.slice(at) };
+  return at < 0 ? css : css.slice(0, at);
 }
 
 function variable(css: string, name: string): string {
@@ -20,12 +18,10 @@ function variable(css: string, name: string): string {
 }
 
 /** Resolve a token to a hex colour, following var() through the brand tokens. */
-function resolve(value: string, theme: Theme): string {
+function resolve(value: string): string {
   const ref = /^var\(--([\w-]+)\)$/.exec(value);
   if (!ref) return value;
-  const blocks = themeBlocks(tokens);
-  const own = new RegExp(`--${ref[1]}:`).test(blocks[theme]) ? blocks[theme] : blocks.light;
-  return resolve(variable(own, ref[1]), theme);
+  return resolve(variable(lightBlock(tokens), ref[1]));
 }
 
 function luminance(hex: string): number {
@@ -44,11 +40,11 @@ function contrast(a: string, b: string): number {
 }
 
 describe("status colours", () => {
-  it.each(["light", "dark"] as const)("status_colours_pass_contrast: %s", (theme) => {
-    const background = resolve(variable(themeBlocks(tokens)[theme], "sb-bg"), theme);
-    const own = themeBlocks(styles)[theme];
+  // The page is light only (spec 0026), so the light background is the only one.
+  it("status_colours_pass_contrast", () => {
+    const background = resolve(variable(lightBlock(tokens), "sb-bg"));
     for (const band of BANDS) {
-      const colour = resolve(variable(own, `status-${band}`), theme);
+      const colour = resolve(variable(styles, `status-${band}`));
       expect(contrast(colour, background), `${band} on ${background}`).toBeGreaterThanOrEqual(4.5);
     }
   });
