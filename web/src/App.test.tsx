@@ -235,6 +235,54 @@ describe("web app", () => {
     expect(new Headers(after.init.headers).get("Authorization")).toBe(`Bearer ${TOKEN}`);
   });
 
+  it("starts_without_a_secure_context", async () => {
+    // Over plain HTTP on a LAN address the browser offers getRandomValues but not
+    // randomUUID, which exists only in a secure context.
+    const { getRandomValues } = globalThis.crypto;
+    vi.stubGlobal("crypto", { getRandomValues: getRandomValues.bind(globalThis.crypto) });
+    const calls = stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [json({ answer: "An answer.", hallucination_score: 0.1 })],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    await ask(user, "First question?");
+    await screen.findByText("An answer.");
+    await user.click(screen.getByRole("button", { name: "New session" }));
+    await ask(user, "Second question?");
+    await waitFor(() => expect(chatCalls(calls)).toHaveLength(2));
+
+    const [before, after] = chatCalls(calls).map((call) => String(body(call).session_id));
+    expect(before).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(after).not.toBe(before);
+  });
+
+  it("a_draft_typed_while_waiting_is_kept", async () => {
+    let answer: (response: Response) => void = () => {};
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [() => new Promise<Response>((resolve) => (answer = resolve))],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    await ask(user, "First question?");
+    await screen.findByText(/waiting for the answer/i);
+    await user.clear(screen.getByLabelText("Your question"));
+    await user.type(screen.getByLabelText("Your question"), "Next question?");
+    answer(json({ answer: "An answer.", hallucination_score: 0.1 }));
+    await screen.findByText("An answer.");
+
+    expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).value).toBe(
+      "Next question?",
+    );
+  });
+
   it("markdown_renders_without_html", async () => {
     stubApi({
       "/api/config": config(),
