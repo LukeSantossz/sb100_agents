@@ -30,6 +30,16 @@ function userMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : "Something went wrong. Try again.";
 }
 
+// A v4 UUID from getRandomValues. crypto.randomUUID exists only in a secure context,
+// and the Docker page is plain HTTP when opened from another machine on the LAN.
+function newSessionId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join("-");
+}
+
 function Score({ score, threshold }: { score: number; threshold: number }) {
   const band = classifyScore(score, threshold);
   return (
@@ -54,7 +64,7 @@ export default function App() {
 
   const [name, setName] = useState("Farmer");
   const [expertise, setExpertise] = useState<Expertise>("intermediate");
-  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
+  const [sessionId, setSessionId] = useState(newSessionId);
 
   const [turns, setTurns] = useState<Turn[]>([]);
   const [question, setQuestion] = useState("");
@@ -98,7 +108,8 @@ export default function App() {
         ...previous,
         { id: previous.length, question: text, answer: reply.answer, score: reply.hallucination_score },
       ]);
-      setQuestion("");
+      // The field stays editable while waiting; keep a draft of the next question.
+      setQuestion((current) => (current.trim() === text ? "" : current));
     } catch (error) {
       // The question stays in the input; sending it again is the user's call.
       setChatError(userMessage(error));
@@ -121,7 +132,7 @@ export default function App() {
   }
 
   function newSession() {
-    setSessionId(crypto.randomUUID());
+    setSessionId(newSessionId());
     setTurns([]);
     setChatError(null);
   }
