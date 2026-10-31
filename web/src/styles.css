@@ -180,10 +180,47 @@ code {
   height: 100%;
 }
 
-.sidebar {
+/* The sign-in screen: one card, nothing else on the page. */
+
+.sign-in {
+  min-height: 100%;
   display: grid;
+  place-items: center;
+  padding: 1.5rem 1rem;
+}
+
+.sign-in-card {
+  width: 100%;
+  max-width: 24rem;
+  gap: 1rem;
+  padding: 2rem 1.75rem;
+  border: 1px solid var(--sb-rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.sign-in-card h1 {
+  margin-top: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.sign-in-card .notice-row {
+  margin: 0;
+}
+
+.logo {
+  display: block;
+  height: 2.25rem;
+  width: auto;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
-  align-content: start;
   padding: 1rem;
   border-bottom: 1px solid var(--sb-rule);
   background: var(--surface);
@@ -191,9 +228,7 @@ code {
 }
 
 .sidebar .logo {
-  display: block;
-  height: 2.25rem;
-  width: auto;
+  align-self: flex-start;
 }
 
 .new-chat {
@@ -209,6 +244,23 @@ code {
 
 .session-id {
   color: var(--sb-muted);
+}
+
+.account {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--sb-rule);
+}
+
+.account p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--sb-muted);
+  overflow-wrap: anywhere;
 }
 
 .main {
@@ -522,9 +574,10 @@ time {
   }
 }
 
+/* !important: the state selectors above are more specific than .agent-head *. */
 @media (prefers-reduced-motion: reduce) {
   .agent-head * {
-    animation: none;
-    transition: none;
+    animation: none !important;
+    transition: none !important;
   }
 }

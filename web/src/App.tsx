@@ -34,6 +34,9 @@ const EXPERTISE: [Expertise, string][] = [
   ["expert", "Especialista"],
 ];
 
+const DEFAULT_NAME = "Produtor";
+const DEFAULT_EXPERTISE: Expertise = "intermediate";
+
 const REMARK_PLUGINS = [remarkGfm];
 
 function userMessage(error: unknown): string {
@@ -121,8 +124,8 @@ export default function App() {
   const [signingIn, setSigningIn] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
 
-  const [name, setName] = useState("Produtor");
-  const [expertise, setExpertise] = useState<Expertise>("intermediate");
+  const [name, setName] = useState(DEFAULT_NAME);
+  const [expertise, setExpertise] = useState<Expertise>(DEFAULT_EXPERTISE);
   const [sessionId, setSessionId] = useState(newSessionId);
 
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -197,9 +200,14 @@ export default function App() {
       // The field stays editable while waiting; keep a draft of the next question.
       setQuestion((current) => (current.trim() === text ? "" : current));
     } catch (error) {
-      // The question stays in the input; sending it again is the user's call.
-      setChatError(userMessage(error));
-      if (error instanceof ApiError && error.unauthorized) setToken(null);
+      // The question stays in the input; sending it again is the user's call. An expired
+      // token sends the user back to sign in, with the conversation kept in memory.
+      if (error instanceof ApiError && error.unauthorized) {
+        setToken(null);
+        setSignInError(userMessage(error));
+      } else {
+        setChatError(userMessage(error));
+      }
     } finally {
       setPending(null);
     }
@@ -224,7 +232,71 @@ export default function App() {
     setMenuOpen(false);
   }
 
-  const canAsk = token !== null && config !== null && pending === null;
+  function signOut() {
+    setToken(null);
+    setSignedInAs("");
+    setUsername("");
+    setPassword("");
+    setSignInError(null);
+    setName(DEFAULT_NAME);
+    setExpertise(DEFAULT_EXPERTISE);
+    setQuestion("");
+    newSession();
+  }
+
+  const configNotice = configError && (
+    <div className="notice notice-row">
+      <p role="alert">{configError}</p>
+      <button type="button" onClick={loadConfig}>
+        Tentar de novo
+      </button>
+    </div>
+  );
+
+  if (token === null) {
+    return (
+      <main className="sign-in">
+        <div className="sign-in-card stack">
+          <img className="logo" src={logo} alt="SmartB100" width="201" height="48" />
+          <p className="tagline">Respostas do Boletim 100 do IAC</p>
+          {configNotice}
+          <form onSubmit={handleSignIn} className="stack" aria-labelledby="sign-in-heading">
+            <h1 id="sign-in-heading">Entre na sua conta</h1>
+            <label>
+              Usuário
+              <input
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
+              />
+            </label>
+            <label>
+              Senha
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+              />
+            </label>
+            <button type="submit" disabled={signingIn}>
+              Entrar
+            </button>
+            {signInError && (
+              <p className="notice" role="alert">
+                {signInError}
+              </p>
+            )}
+            <p className="hint">
+              As contas são criadas com <code>POST /auth/register</code>; veja o README.
+            </p>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
+  const canAsk = config !== null && pending === null;
   const empty = turns.length === 0 && pending === null && chatError === null;
 
   return (
@@ -248,44 +320,6 @@ export default function App() {
         <button type="button" className="new-chat" onClick={newSession} disabled={pending !== null}>
           Nova conversa
         </button>
-
-        <section aria-labelledby="sign-in-heading" className="stack">
-          <h2 id="sign-in-heading">Conta</h2>
-          {token ? (
-            <p role="status">Conectado como {signedInAs}.</p>
-          ) : (
-            <form onSubmit={handleSignIn} className="stack">
-              <label>
-                Usuário
-                <input
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  autoComplete="username"
-                />
-              </label>
-              <label>
-                Senha
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  autoComplete="current-password"
-                />
-              </label>
-              <button type="submit" disabled={signingIn}>
-                Entrar
-              </button>
-              {signInError && (
-                <p className="notice" role="alert">
-                  {signInError}
-                </p>
-              )}
-              <p className="hint">
-                As contas são criadas com <code>POST /auth/register</code>; veja o README.
-              </p>
-            </form>
-          )}
-        </section>
 
         <section aria-labelledby="profile-heading" className="stack">
           <h2 id="profile-heading">Perfil</h2>
@@ -315,17 +349,17 @@ export default function App() {
             {canCopy && <CopyButton text={sessionId} label="Copiar id da sessão" />}
           </div>
         </section>
+
+        <footer className="account">
+          <p role="status">Conectado como {signedInAs}.</p>
+          <button type="button" className="quiet" onClick={signOut} disabled={pending !== null}>
+            Sair
+          </button>
+        </footer>
       </aside>
 
       <div className="main">
-        {configError && (
-          <div className="notice notice-row">
-            <p role="alert">{configError}</p>
-            <button type="button" onClick={loadConfig}>
-              Tentar de novo
-            </button>
-          </div>
-        )}
+        {configNotice}
 
         <main className="chat">
           {empty ? (
@@ -336,7 +370,6 @@ export default function App() {
                 As respostas vêm do Boletim 100 do IAC. Cada uma traz uma pontuação de
                 alucinação.
               </p>
-              {!token && <p>Entre na sua conta para fazer uma pergunta.</p>}
             </div>
           ) : (
             <ol className="conversation" aria-label="Conversa">
@@ -395,8 +428,7 @@ export default function App() {
             rows={2}
             maxLength={2000}
             value={question}
-            disabled={token === null}
-            placeholder={token ? "Pergunte sobre calagem e adubação" : "Entre para fazer uma pergunta"}
+            placeholder="Pergunte sobre calagem e adubação"
             onChange={(event) => setQuestion(event.target.value)}
             onKeyDown={handleKeyDown}
           />
