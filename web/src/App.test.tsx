@@ -91,7 +91,7 @@ describe("web app", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect((screen.getByLabelText("Sua pergunta") as HTMLTextAreaElement).disabled).toBe(true);
+    expect(screen.queryByLabelText("Sua pergunta")).toBeNull();
     await signIn(user);
 
     const login = calls.find((call) => call.url === "/api/auth/token")!;
@@ -289,7 +289,7 @@ describe("web app", () => {
     await ask(user, "How much lime per hectare?");
 
     expect((await screen.findByRole("alert")).textContent).toMatch(/entre de novo/i);
-    expect((screen.getByLabelText("Sua pergunta") as HTMLTextAreaElement).disabled).toBe(true);
+    expect(screen.queryByLabelText("Sua pergunta")).toBeNull();
     expect(screen.getByRole("button", { name: "Entrar" })).toBeTruthy();
   });
 
@@ -419,14 +419,77 @@ describe("web app", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    for (const label of ["Usuário", "Senha", "Nome", "Nível de conhecimento", "Sua pergunta"]) {
+    for (const label of ["Usuário", "Senha"]) {
       expect(screen.getByLabelText(label)).toBeTruthy();
     }
-    for (const name of ["Entrar", "Nova conversa", "Enviar"]) {
+    expect(screen.getByRole("button", { name: "Entrar" })).toBeTruthy();
+    await signIn(user);
+    for (const label of ["Nome", "Nível de conhecimento", "Sua pergunta"]) {
+      expect(screen.getByLabelText(label)).toBeTruthy();
+    }
+    for (const name of ["Nova conversa", "Sair", "Enviar"]) {
       expect(screen.getByRole("button", { name })).toBeTruthy();
     }
-    await signIn(user);
     expect(indexHtml).toContain('<html lang="pt-BR">');
+  });
+
+  it("sign_in_has_its_own_screen", async () => {
+    stubApi({ "/api/config": config(), "/api/auth/token": signedIn() });
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByLabelText("Usuário")).toBeTruthy();
+    expect(screen.queryByLabelText("Sua pergunta")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Nova conversa" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Menu" })).toBeNull();
+
+    await signIn(user);
+    expect(screen.queryByLabelText("Usuário")).toBeNull();
+    expect(screen.queryByLabelText("Senha")).toBeNull();
+    expect(screen.getByLabelText("Sua pergunta")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Nova conversa" })).toBeTruthy();
+  });
+
+  it("sign_out_clears_the_conversation", async () => {
+    let answer: (response: Response) => void = () => {};
+    const calls = stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [
+        json({ answer: "First answer.", hallucination_score: 0.1 }),
+        () => new Promise<Response>((resolve) => (answer = resolve)),
+        json({ answer: "Later answer.", hallucination_score: 0.1 }),
+      ],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+    await user.clear(screen.getByLabelText("Nome"));
+    await user.type(screen.getByLabelText("Nome"), "Ana");
+    await ask(user, "First question?");
+    await screen.findByText("First answer.");
+
+    // A pending question keeps "Sair" disabled: its answer must not land after sign-out.
+    await ask(user, "Second question?");
+    await screen.findByText(/aguardando a resposta/i);
+    expect((screen.getByRole("button", { name: "Sair" }) as HTMLButtonElement).disabled).toBe(true);
+    answer(json({ answer: "Second answer.", hallucination_score: 0.1 }));
+    await screen.findByText("Second answer.");
+
+    await user.type(screen.getByLabelText("Sua pergunta"), "A draft");
+    await user.click(screen.getByRole("button", { name: "Sair" }));
+    expect((screen.getByLabelText("Usuário") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByLabelText("Sua pergunta")).toBeNull();
+
+    await signIn(user);
+    expect(screen.queryByText("First answer.")).toBeNull();
+    expect(screen.queryByText("Second answer.")).toBeNull();
+    expect((screen.getByLabelText("Nome") as HTMLInputElement).value).toBe("Produtor");
+    expect((screen.getByLabelText("Sua pergunta") as HTMLTextAreaElement).value).toBe("");
+    await ask(user, "Third question?");
+    await screen.findByText("Later answer.");
+    const [first, , third] = chatCalls(calls);
+    expect(body(third).session_id).not.toBe(body(first).session_id);
   });
 
   it("the_agent_head_follows_the_request", async () => {
@@ -545,9 +608,10 @@ describe("web app", () => {
   });
 
   it("the_menu_toggles_the_sidebar", async () => {
-    stubApi({ "/api/config": config() });
+    stubApi({ "/api/config": config(), "/api/auth/token": signedIn() });
     const user = userEvent.setup();
     render(<App />);
+    await signIn(user);
 
     const menu = screen.getByRole("button", { name: "Menu" });
     const sidebar = document.getElementById(menu.getAttribute("aria-controls")!)!;

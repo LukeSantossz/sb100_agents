@@ -18,7 +18,9 @@ function mediaBlock(css: string, query: string): string {
 describe("page styles", () => {
   it("motion_stops_when_reduced", () => {
     const reduced = mediaBlock(styles, "prefers-reduced-motion: reduce");
-    expect(reduced).toMatch(/\.agent-head[^{]*\{[^}]*animation:\s*none/);
+    // !important: the state selectors that start the motion are more specific than a
+    // rule covering every part of the head, so a plain override would lose.
+    expect(reduced).toMatch(/\.agent-head \*[^{]*\{[^}]*animation:\s*none\s*!important/);
   });
 
   it("the_page_stays_light", () => {
