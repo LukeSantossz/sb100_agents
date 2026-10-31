@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -83,6 +83,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("web app", () => {
@@ -545,24 +546,100 @@ describe("web app", () => {
   });
 
   it("each_message_shows_its_time", async () => {
+    const sentAt = new Date("2026-10-30T13:05:00Z");
+    const arrivedAt = new Date("2026-10-30T13:09:00Z");
+    // Only Date is faked: the timers the test helpers wait on keep running.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      stubApi({
+        "/api/config": config(),
+        "/api/auth/token": signedIn(),
+        "/api/chat": [
+          () => {
+            vi.setSystemTime(arrivedAt);
+            return json({ answer: "An answer.", hallucination_score: 0.1 });
+          },
+        ],
+      });
+      const user = userEvent.setup();
+      render(<App />);
+      await signIn(user);
+
+      vi.setSystemTime(sentAt);
+      await ask(user, "First question?");
+      await screen.findByText("An answer.");
+
+      const question = screen.getByText("First question?").closest("li")!;
+      const answer = screen.getByText("An answer.").closest("article")!;
+      expect(question.querySelector("time")!.dateTime).toBe(sentAt.toISOString());
+      expect(answer.querySelector("time")!.dateTime).toBe(arrivedAt.toISOString());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a_failed_question_stays_visible", async () => {
+    let fail: (response: Response) => void = () => {};
     stubApi({
       "/api/config": config(),
       "/api/auth/token": signedIn(),
-      "/api/chat": [json({ answer: "An answer.", hallucination_score: 0.1 })],
+      "/api/chat": [() => new Promise<Response>((resolve) => (fail = resolve))],
     });
     const user = userEvent.setup();
     render(<App />);
     await signIn(user);
 
-    await ask(user, "First question?");
-    await screen.findByText("An answer.");
+    await ask(user, "Which lime?");
+    await screen.findByText(/aguardando a resposta/i);
+    await user.clear(screen.getByLabelText("Sua pergunta"));
+    await user.type(screen.getByLabelText("Sua pergunta"), "A new draft");
+    fail(json({ detail: "unavailable" }, 503));
 
-    const question = screen.getByText("First question?").closest("li")!;
-    const answer = screen.getByText("An answer.").closest("article")!;
-    for (const message of [question, answer]) {
-      const time = message.querySelector("time");
-      expect(time).not.toBeNull();
-      expect(Number.isNaN(Date.parse(time!.dateTime))).toBe(false);
+    const error = await screen.findByRole("alert");
+    const entry = error.closest("li")!;
+    expect(within(entry).getByText("Which lime?")).toBeTruthy();
+    expect((screen.getByLabelText("Sua pergunta") as HTMLTextAreaElement).value).toBe(
+      "A new draft",
+    );
+  });
+
+  it("reading_back_is_not_interrupted", async () => {
+    let answer: (response: Response) => void = () => {};
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [
+        json({ answer: "First answer.", hallucination_score: 0.1 }),
+        () => new Promise<Response>((resolve) => (answer = resolve)),
+      ],
+    });
+    // jsdom has no layout: the scroll calls and the chat's geometry are set by hand.
+    const scrolls = vi.fn();
+    Element.prototype.scrollIntoView = scrolls;
+    try {
+      const user = userEvent.setup();
+      render(<App />);
+      await signIn(user);
+      await ask(user, "First question?");
+      await screen.findByText("First answer.");
+
+      scrolls.mockClear();
+      await ask(user, "Second question?");
+      await screen.findByText(/aguardando a resposta/i);
+      expect(scrolls).toHaveBeenCalled();
+
+      const chat = document.querySelector(".chat")!;
+      Object.defineProperty(chat, "scrollHeight", { value: 2000, configurable: true });
+      Object.defineProperty(chat, "clientHeight", { value: 500, configurable: true });
+      chat.scrollTop = 0;
+      fireEvent.scroll(chat);
+      scrolls.mockClear();
+      answer(json({ answer: "Second answer.", hallucination_score: 0.1 }));
+      await screen.findByText("Second answer.");
+
+      expect(scrolls).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(Element.prototype, "scrollIntoView");
     }
   });
 
@@ -582,6 +659,48 @@ describe("web app", () => {
     await user.click(screen.getByRole("button", { name: "Copiar" }));
 
     expect(await navigator.clipboard.readText()).toBe("Use **lime**.");
+  });
+
+  it("copy_needs_a_clipboard: the session id", async () => {
+    const calls = stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [json({ answer: "An answer.", hallucination_score: 0.1 })],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+    await ask(user, "First question?");
+    await screen.findByText("An answer.");
+
+    const button = () => screen.getByRole("button", { name: "Copiar id da sessão" });
+    await user.click(button());
+    expect(await navigator.clipboard.readText()).toBe(body(chatCalls(calls)[0]).session_id);
+    expect(button().textContent).toBe("Copiado");
+
+    // The new id was never copied, so the button must not claim it was.
+    await user.click(screen.getByRole("button", { name: "Nova conversa" }));
+    expect(button().textContent).toBe("Copiar");
+  });
+
+  it("copy_needs_a_clipboard: a refused write", async () => {
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [json({ answer: "An answer.", hallucination_score: 0.1 })],
+    });
+    const user = userEvent.setup();
+    vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(
+      new DOMException("Write permission denied.", "NotAllowedError"),
+    );
+    render(<App />);
+    await signIn(user);
+    await ask(user, "First question?");
+    await screen.findByText("An answer.");
+
+    await user.click(screen.getByRole("button", { name: "Copiar" }));
+
+    expect(await screen.findByRole("button", { name: "Falha ao copiar" })).toBeTruthy();
   });
 
   it("copy_needs_a_clipboard: without a clipboard", async () => {

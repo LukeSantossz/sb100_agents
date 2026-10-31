@@ -44,11 +44,17 @@ composer. The API contract does not change.
     it arrived.
   - Times come from the browser's clock at send and at arrival, shown as `HH:MM` in a
     `<time>` element.
+  - A failed question stays in the conversation, in its bubble above the error, even if
+    the composer was edited while it was pending.
+  - Sending a question scrolls to it. An answer or an error that arrives scrolls to it
+    only if the reader is already at the bottom, so a reader who scrolled up to an
+    earlier answer while waiting keeps their place.
 - **The agent head.**
   - What it is: a 44 px inline SVG component in the assistant slot. It is a rounded head
     with a matte neutral shell drawn with gradients, a dark face, two soft green eyes and
     a small sprout on top. It has no body.
-  - What it does not replace: the logo is untouched and appears only in the sidebar.
+  - What it does not replace: the logo is untouched. It appears on the sign-in card and
+    in the sidebar.
   - States, each set only by the request flow, never by a timer:
     - `idle`: an empty conversation.
     - `processing`: while `POST /chat` is in flight.
@@ -60,11 +66,13 @@ composer. The API contract does not change.
     than a rule that covers every part of the head. The head is
     `aria-hidden`, because the text beside it already says the same thing.
 - **Tables.** `remark-gfm` renders GFM tables, strikethrough and task lists. Raw HTML is
-  still not rendered.
+  still not rendered. Tables and code blocks scroll sideways inside their card instead of
+  widening the page.
 - **Copy.** An answer has a "Copiar" button, and the session id has one too. The buttons
   show only when `navigator.clipboard` exists: the API is limited to secure contexts, and
   the Docker page is plain HTTP on the LAN, where a button that does nothing would be a
-  lie.
+  lie. After a click the button reads "Copiado", or "Falha ao copiar" if the browser
+  refuses, for two seconds. A new session resets the session id's button.
 - **Light only.** The page pins the light semantic tokens and declares
   `color-scheme: light`, so an OS dark preference no longer changes it. The dark tokens
   and the dark logo stay in `docs/brand/` for the README. Status colours are checked
@@ -143,10 +151,18 @@ Portuguese names.
   state selectors whatever their specificity.
 - `tables_render`: an answer with a GFM table renders a `table` element with its cells.
   Raw HTML still renders as text.
-- `each_message_shows_its_time`: the question and the answer each carry a `<time>`
-  element with a `dateTime` that parses as a date.
+- `each_message_shows_its_time`: the question's `<time>` carries the browser clock at
+  send, and the answer's the clock at arrival.
+- `a_failed_question_stays_visible`: after a failed request, the question shows above the
+  error even though the composer was edited while it was pending.
+- `reading_back_is_not_interrupted`: sending scrolls to the new question; an answer that
+  arrives while the reader is scrolled up does not scroll.
+- `wide_content_scrolls_in_the_card`: `styles.css` gives `.markdown pre` and
+  `.markdown table` `max-width: 100%` and `overflow-x: auto`.
 - `copy_needs_a_clipboard`: with `navigator.clipboard`, "Copiar" writes the answer's
-  Markdown to it. Without `navigator.clipboard`, no copy button is shown.
+  Markdown to it, and the session id's button writes the full session id and reads
+  "Copiar" again after "Nova conversa". A refused write reads "Falha ao copiar". Without
+  `navigator.clipboard`, no copy button is shown.
 - `the_menu_toggles_the_sidebar`: once signed in, the "Menu" button flips
   `aria-expanded` and the sidebar's visibility state.
 - `the_page_stays_light`: `styles.css` declares `color-scheme: light`, pins `--sb-bg` to

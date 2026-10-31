@@ -2,8 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import styles from "./styles.css?raw";
 
+/** The rules of `css` without its comments, so a commented-out rule never counts. */
+function code(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
 /** The body of the first `@media` block whose query contains `query`. */
-function mediaBlock(css: string, query: string): string {
+function mediaBlock(stylesheet: string, query: string): string {
+  const css = code(stylesheet);
   const at = css.indexOf(query);
   if (at < 0) throw new Error(`no @media block for ${query}`);
   const open = css.indexOf("{", at);
@@ -20,7 +26,16 @@ describe("page styles", () => {
     const reduced = mediaBlock(styles, "prefers-reduced-motion: reduce");
     // !important: the state selectors that start the motion are more specific than a
     // rule covering every part of the head, so a plain override would lose.
-    expect(reduced).toMatch(/\.agent-head \*[^{]*\{[^}]*animation:\s*none\s*!important/);
+    expect(reduced).toMatch(/\.agent-head \*\s*\{[^}]*animation:\s*none\s*!important/);
+  });
+
+  it("wide_content_scrolls_in_the_card", () => {
+    for (const selector of ["pre", "table"]) {
+      const rule = new RegExp(`\\.markdown ${selector}\\s*\\{([^}]*)\\}`).exec(code(styles));
+      expect(rule, selector).not.toBeNull();
+      expect(rule![1]).toMatch(/max-width:\s*100%/);
+      expect(rule![1]).toMatch(/overflow-x:\s*auto/);
+    }
   });
 
   it("the_page_stays_light", () => {
