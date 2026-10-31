@@ -41,8 +41,9 @@ function config(threshold = 0.5, timeout = 600): Reply[] {
   return [json({ hallucination_threshold: threshold, chat_timeout: timeout })];
 }
 
+// A factory, not one Response: a second sign-in would find the body already read.
 function signedIn(): Reply[] {
-  return [json({ access_token: TOKEN, token_type: "bearer" })];
+  return [() => json({ access_token: TOKEN, token_type: "bearer" })];
 }
 
 function chatCalls(calls: Call[]): Call[] {
@@ -135,6 +136,22 @@ describe("web app", () => {
         }),
       /may still finish/i,
     ],
+    [
+      "a body that stalls",
+      // Headers arrive at once, then the body never ends: the timeout must cover it too.
+      (init) =>
+        new Response(
+          new ReadableStream({
+            start(stream) {
+              init.signal?.addEventListener("abort", () =>
+                stream.error(new DOMException("aborted", "AbortError")),
+              );
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      /may still finish/i,
+    ],
     ["a 503", json({ detail: "unavailable" }, 503), /temporarily unavailable/i],
     ["a 504", json({ detail: "timeout" }, 504), /gateway timed out/i],
     [
@@ -144,29 +161,111 @@ describe("web app", () => {
     ],
   ];
 
-  it.each(failures)("a_failed_question_is_not_resent: %s", async (_name, reply, message) => {
-    // A 50 ms chat timeout, so the timeout case fires within the test.
-    const calls = stubApi({
-      "/api/config": config(0.5, 0.05),
+  it.each(failures)(
+    "a_failed_question_is_not_resent: %s",
+    { timeout: 10_000 },
+    async (_name, reply, message) => {
+      // A 50 ms chat timeout, so the timeout case fires within the test.
+      const calls = stubApi({
+        "/api/config": config(0.5, 0.05),
+        "/api/auth/token": signedIn(),
+        "/api/chat": [reply],
+      });
+      const user = userEvent.setup();
+      render(<App />);
+      await signIn(user);
+
+      await ask(user, "How much lime per hectare?");
+
+      expect(await screen.findByRole("alert")).toHaveProperty(
+        "textContent",
+        expect.stringMatching(message),
+      );
+      // Well past a 1 s retry backoff, the shortest the Gradio page used.
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      expect(chatCalls(calls)).toHaveLength(1);
+      expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).value).toBe(
+        "How much lime per hectare?",
+      );
+    },
+  );
+
+  it("the_settings_can_be_loaded_again", async () => {
+    stubApi({
+      "/api/config": [json({ detail: "error" }, 500), ...config()],
       "/api/auth/token": signedIn(),
-      "/api/chat": [reply],
+      "/api/chat": [json({ answer: "Apply lime.", hallucination_score: 0.1 })],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect((await screen.findByRole("alert")).textContent).toMatch(/page settings/i);
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+
+    await signIn(user);
+    await ask(user, "How much lime per hectare?");
+    await screen.findByText("Apply lime.");
+  });
+
+  it("another_account_starts_a_clean_conversation", async () => {
+    const calls = stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [
+        json({ answer: "First answer.", hallucination_score: 0.1 }),
+        json({ detail: "Could not validate credentials" }, 401),
+        json({ answer: "Other answer.", hallucination_score: 0.1 }),
+      ],
     });
     const user = userEvent.setup();
     render(<App />);
     await signIn(user);
+    await ask(user, "First question?");
+    await screen.findByText("First answer.");
+    await ask(user, "Second question?");
+    await screen.findByRole("button", { name: "Sign in" });
 
-    await ask(user, "How much lime per hectare?");
+    await user.clear(screen.getByLabelText("Username"));
+    await user.type(screen.getByLabelText("Username"), "other");
+    await user.type(screen.getByLabelText("Password"), "battery staple");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await screen.findByText(/signed in as other/i);
 
-    expect(await screen.findByRole("alert")).toHaveProperty(
-      "textContent",
-      expect.stringMatching(message),
-    );
-    // Long enough for a 1 s retry backoff, the shortest the Gradio page used.
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    expect(chatCalls(calls)).toHaveLength(1);
-    expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).value).toBe(
-      "How much lime per hectare?",
-    );
+    expect(screen.queryByText("First answer.")).toBeNull();
+    await ask(user, "Third question?");
+    await screen.findByText("Other answer.");
+    const [first, , third] = chatCalls(calls);
+    expect(body(third).session_id).not.toBe(body(first).session_id);
+  });
+
+  it("the_same_account_signing_in_again_keeps_the_conversation", async () => {
+    const calls = stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [
+        json({ answer: "First answer.", hallucination_score: 0.1 }),
+        json({ detail: "Could not validate credentials" }, 401),
+        json({ answer: "Later answer.", hallucination_score: 0.1 }),
+      ],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+    await ask(user, "First question?");
+    await screen.findByText("First answer.");
+    await ask(user, "Second question?");
+    await screen.findByRole("button", { name: "Sign in" });
+
+    await user.type(screen.getByLabelText("Password"), "correct horse");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await screen.findByText(/signed in as farmer/i);
+
+    expect(screen.getByText("First answer.")).toBeTruthy();
+    await ask(user, "Third question?");
+    await screen.findByText("Later answer.");
+    const [first, , third] = chatCalls(calls);
+    expect(body(third).session_id).toBe(body(first).session_id);
   });
 
   it("unauthorized_signs_out", async () => {
