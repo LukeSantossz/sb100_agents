@@ -1,0 +1,251 @@
+/*
+ * Page styles on top of docs/brand/tokens/tokens.css, which main.tsx loads first.
+ *
+ * The score bands get colours of their own. The brand amber is kept for retrieved
+ * evidence (docs/brand/README.md), and every band is also named in text, so colour
+ * is never the only signal. colours.test.ts checks each against the background of
+ * its theme at 4.5:1.
+ */
+:root {
+  --status-low: #1B6E3E;
+  --status-moderate: #A04400;
+  --status-high: #B3261E;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --status-low: #6FD99A;
+    --status-moderate: #FF9A52;
+    --status-high: #FF8A80;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--sb-bg);
+  color: var(--sb-fg);
+  font-family: var(--sb-font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.page {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--sb-rule);
+}
+
+.masthead img {
+  display: block;
+  height: 2.5rem;
+  width: auto;
+}
+
+.tagline {
+  margin: 0;
+  color: var(--sb-muted);
+}
+
+.layout {
+  display: grid;
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 48rem) {
+  .layout {
+    grid-template-columns: 17rem 1fr;
+  }
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-family: var(--sb-font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sb-label);
+}
+
+.panel {
+  display: grid;
+  gap: 1.75rem;
+  align-content: start;
+}
+
+.stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--sb-muted);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--sb-fg);
+  background: transparent;
+  border: 1px solid var(--sb-label);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  min-height: 2.75rem;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--sb-accent);
+  border-radius: 0.375rem;
+  background: var(--sb-accent);
+  color: var(--sb-bg);
+  cursor: pointer;
+}
+
+button[type="button"] {
+  background: transparent;
+  color: var(--sb-fg);
+}
+
+button:disabled,
+textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 2px solid var(--sb-accent);
+  outline-offset: 2px;
+}
+
+code {
+  font-family: var(--sb-font-mono);
+  font-size: 0.875em;
+}
+
+.hint,
+.session-id {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--sb-muted);
+}
+
+.notice {
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  border-left: 3px solid var(--status-high);
+}
+
+.notice-error {
+  color: var(--sb-fg);
+}
+
+.notice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.notice-row p {
+  margin: 0;
+}
+
+.chat {
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.conversation {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.conversation:empty {
+  display: none;
+}
+
+.question {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.answer {
+  padding: 0.25rem 0 0 1rem;
+  border-left: 2px solid var(--sb-rule);
+  overflow-wrap: anywhere;
+}
+
+.answer > :first-child {
+  margin-top: 0;
+}
+
+.waiting {
+  margin: 0;
+  color: var(--sb-muted);
+}
+
+.score {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  color: var(--sb-muted);
+}
+
+.score-low strong {
+  color: var(--status-low);
+}
+
+.score-moderate strong {
+  color: var(--status-moderate);
+}
+
+.score-high strong {
+  color: var(--status-high);
+}
+
+.ask {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ask label {
+  font-weight: 600;
+  color: var(--sb-fg);
+}
+
+.ask button {
+  justify-self: end;
+}

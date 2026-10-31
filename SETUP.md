@@ -17,6 +17,7 @@ The system supports two Qdrant operation modes:
 | Python | 3.12+ | `python --version` | [python.org](https://www.python.org/downloads/) |
 | Ollama | latest | `ollama --version` | [ollama.com](https://ollama.com) |
 | Git | any | `git --version` | [git-scm.com](https://git-scm.com) |
+| Node.js | 22.12+ | `node --version` | [nodejs.org](https://nodejs.org/), only for the web page outside Docker |
 
 ### Local Mode (additional)
 
@@ -208,7 +209,8 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
 .\start.ps1
 ```
 
-These scripts start the API and the Gradio interface automatically.
+These scripts start the API and the web page automatically. The web page is skipped
+when Node.js is not on the PATH.
 
 ---
 
@@ -280,21 +282,25 @@ default `VERIFICATION_PROVIDER=groq` does without a `GROQ_API_KEY`. Set
 
 ---
 
-## 9. Gradio Interface
+## 9. Web Page
 
-The system includes a Gradio web interface for interactive testing.
+A React page in `web/` signs in and chats with the API. It cannot create an account: do
+that with `POST /auth/register` first (section 8).
 
-### Start the Interface
+### Start the Page
 
 ```bash
-python ui/chat_ui.py
+npm --prefix web ci        # first run only
+npm --prefix web run dev
 ```
 
 ### Open in the Browser
 
-Go to: **http://localhost:7860**
+Go to: **http://localhost:5173**
 
-### Via Docker Compose (API + Gradio)
+The dev server forwards `/api` to the API on `:8000`, so start the API first.
+
+### Via Docker Compose (API + web page)
 
 ```bash
 docker compose --profile infra --profile app up -d
@@ -302,12 +308,13 @@ docker compose --profile infra --profile app up -d
 
 Access:
 - API: http://localhost:8000
-- Gradio: http://localhost:7860
+- Web page: http://localhost:8080
 - Qdrant Dashboard: http://localhost:6333/dashboard
 
-> The compose stack uses a **multi-stage build** (Dockerfile.api) — the final
-> image does not contain `build-essential`. **Healthchecks** enforce real
-> startup order: `api` only starts after `qdrant` is healthy; `gradio` only
+> The compose stack uses **multi-stage builds**: the API image (Dockerfile.api)
+> does not contain `build-essential`, and the web image (web/Dockerfile) is nginx
+> serving the built page, with no Node.js. **Healthchecks** enforce real
+> startup order: `api` only starts after `qdrant` is healthy; `web` only
 > starts after `api` is healthy. **Logging** with `max-size: 10m` and
 > `max-file: 3` prevents disk exhaustion on long runs.
 
@@ -356,7 +363,7 @@ docker compose exec api curl -fsS "$OLLAMA_HOST/api/tags"
 |---------|-----|-------------|
 | API | http://localhost:8000 | REST endpoints |
 | API Docs | http://localhost:8000/docs | Swagger UI |
-| Gradio UI | http://localhost:7860 | Chat interface |
+| Web page | http://localhost:5173 (native), http://localhost:8080 (Docker) | Chat interface |
 | Qdrant Dashboard | http://localhost:6333/dashboard | Vector management |
 
 ---

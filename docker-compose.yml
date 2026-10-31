@@ -36,7 +36,7 @@ services:
         max-file: "3"
 
   # ============================================================================
-  # Profile: app - Application services (API + Gradio UI)
+  # Profile: app - Application services (API + web app)
   # Usage: docker compose --profile infra --profile app up -d
   # OLLAMA_HOST override: native Linux uses http://172.17.0.1:11434 or host-net.
   # ============================================================================
@@ -97,23 +97,18 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  gradio:
+  web:
+    # The React app in web/, built and served by nginx, which also proxies /api to
+    # the api service. The context is the repository root because the app reads
+    # docs/brand/; web/Dockerfile.dockerignore keeps the rest out of it.
+    # No env_file and no secret: the page asks GET /config for what it needs.
     build:
       context: .
-      dockerfile: Dockerfile.api
-    container_name: smartb100_gradio
+      dockerfile: web/Dockerfile
+    container_name: smartb100_web
     profiles: ["app"]
     ports:
-      - "7860:7860"
-    # Same reasoning as the api service. The UI reads CHAT_TIMEOUT from Settings,
-    # so without this its timeout was pinned to the class default too.
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      - API_URL=http://api:8000
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in the host environment or .env}
-    command: ["python", "ui/chat_ui.py", "--api-url", "http://api:8000", "--port", "7860"]
+      - "8080:8080"
     restart: unless-stopped
     depends_on:
       api:
@@ -121,11 +116,11 @@ services:
     networks:
       - smartb100_net
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:7860/"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 10s
     logging:
       driver: json-file
       options:

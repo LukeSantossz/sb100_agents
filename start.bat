@@ -40,14 +40,25 @@ echo.
 echo [3/4] Starting the API...
 echo.
 echo API: http://localhost:8000
-echo Gradio UI: http://localhost:7860
+echo Web page: http://localhost:5173
 echo Qdrant: http://localhost:6333
 echo.
 
 echo [4/4] Starting the services...
 start "SmartB100 API" cmd /k ".venv\Scripts\python.exe -m uvicorn api.main:app --reload"
 timeout /t 3 /nobreak >NUL
-start "SmartB100 Gradio" cmd /k ".venv\Scripts\python.exe ui/chat_ui.py"
+REM The web page needs Node.js; without it the API still starts on its own.
+where npm >NUL 2>NUL
+if %ERRORLEVEL% NEQ 0 (
+    echo Web page: skipped - Node.js 22.12+ is not on the PATH
+) else (
+    if not exist web\node_modules call npm --prefix web ci
+    if errorlevel 1 (
+        echo Web page: skipped - npm ci failed in web\
+    ) else (
+        start "SmartB100 Web" cmd /k "npm --prefix web run dev"
+    )
+)
 
 echo.
 echo Services started in separate windows.

@@ -36,12 +36,11 @@ retrieved.
 
 ## What It Is
 
-A REST API built with FastAPI, plus an optional Gradio web page that talks to it. The whole
+A REST API built with FastAPI, plus an optional web page that talks to it. The whole
 RAG pipeline is one process: `api/main.py` imports every domain module directly and calls it
 in the same interpreter, so no part of the pipeline is reached over a network. Around it run
-Qdrant for the vectors, Ollama for the models, and, when you want the web page, a separate
-Gradio process that reaches the API over HTTP and imports only `core.config`, for shared
-client settings, rather than any part of the pipeline. User accounts
+Qdrant for the vectors, Ollama for the models, and, when you want the web page, a React app
+in `web/` that reaches the API over HTTP and shares no code with it. User accounts
 sit in a SQLite file next to the code.
 
 It is aimed at agricultural extension workers and agronomists who need an answer out of a
@@ -53,14 +52,14 @@ long technical manual without reading it, and who need to know when the answer i
 | --- | --- |
 | Language | Python 3.12 |
 | API and runtime | FastAPI, Uvicorn |
-| Web page | Gradio |
+| Web page | React, Vite, TypeScript |
 | Vector database | Qdrant, collection `archives_v2`, 768 dimensions, cosine |
 | Inference | Ollama: `llama3.2:3b` for chat, `nomic-embed-text` for embeddings |
 | Verification | Semantic entropy over Groq, Ollama or OpenRouter samples |
 | Agent path (off by default) | deepagents on LangGraph |
 | Persistence | SQLite for user accounts |
 | Auth | bcrypt via passlib, JWT via PyJWT, rate limiting via slowapi |
-| Testing and CI | pytest, ruff, mypy, GitHub Actions |
+| Testing and CI | pytest, ruff, mypy, Vitest, GitHub Actions |
 | Packaging | uv, Docker |
 
 ## Architecture
@@ -72,7 +71,7 @@ the database.
 
 ```mermaid
 flowchart LR
-    CLIENT["Gradio UI :7860<br/>or curl"] -->|"POST /chat + JWT"| API["FastAPI :8000"]
+    CLIENT["Web page<br/>or curl"] -->|"POST /chat + JWT"| API["FastAPI :8000"]
     API --> EMBED["Embedder<br/>nomic-embed-text"]
     EMBED --> SEARCH["Vector search<br/>top_k chunks"]
     SEARCH --> QDRANT[("Qdrant :6333<br/>archives_v2")]
@@ -93,7 +92,8 @@ What runs where:
 | Qdrant | vector database | `docker compose --profile infra` | HTTP `:6333`, gRPC `:6334` |
 | Ollama | chat and embedding models | on the host, not in Docker | HTTP `:11434` |
 | SQLite | user accounts | a file at the repository root | SQLAlchemy |
-| API and Gradio | the application | native, or `docker compose --profile app` | HTTP `:8000` and `:7860` |
+| API | the application | native, or `docker compose --profile app` | HTTP `:8000` |
+| Web page | the chat page | `npm run dev` in `web/`, or `docker compose --profile app` | HTTP `:5173` native, `:8080` in Docker |
 
 An agent path built on deepagents exists behind `AGENT_ENABLED` and is off by default. When
 it is on, `/chat` runs a bounded LangGraph loop that calls retrieval as a tool instead of
@@ -113,7 +113,7 @@ Each row points at the decision record holding the full rationale and the reject
 | deepagents as the agent substrate | raw LangGraph or a hand-written loop | [ADR-0008](./docs/adr/0008-deepagents-orchestration-substrate.md) |
 | Gate threshold and loop bounds set by measurement | guessed defaults | [ADR-0015](./docs/adr/0015-calibrated-agent-gate-and-loop-bounds.md) |
 
-Fifteen records in total, including the ones behind the auth gate, the synchronous handler
+Sixteen records in total, including the ones behind the auth gate, the synchronous handler
 and the Qdrant volume layout. They are in [`docs/adr/`](./docs/adr/).
 
 ## Getting Started
@@ -124,6 +124,7 @@ and the Qdrant volume layout. They are in [`docs/adr/`](./docs/adr/).
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - [Docker](https://www.docker.com/products/docker-desktop/), for Qdrant
 - [Ollama](https://ollama.com/download), running on the host
+- [Node.js 22+](https://nodejs.org/), only for the web page outside Docker
 
 The two Ollama models are about 2.2 GB together. A GPU is not required, but read the
 timings in [Known Issues & Limitations](#known-issues--limitations) before judging the
@@ -186,8 +187,9 @@ uv run python scripts/ingest.py ./archives/
 # 3. API
 uv run python -m uvicorn api.main:app --reload
 
-# 4. Optional web page, in a second terminal
-uv run python ui/chat_ui.py
+# 4. Optional web page, in a second terminal (http://localhost:5173)
+npm --prefix web ci
+npm --prefix web run dev
 ```
 
 Step 2 embeds one sentence at a time. The 511-page PDF shipped in `archives/` produced 519
@@ -280,14 +282,14 @@ Without the `Authorization` header `/chat` returns `401`.
 | `answer` | string | The generated answer. |
 | `hallucination_score` | float | `0.0` grounded to `1.0` likely hallucinated. `0.5` is also what the gate returns when verification could not run. |
 
-The Gradio page at `:7860` logs in and chats, but it cannot create an account. Register
-through the API or through `/docs` first.
+The web page logs in and chats, but it cannot create an account. Register through the API
+or through `/docs` first.
 
 ## Project Structure
 
 ```
 sb100_agents/
-├── api/                # FastAPI app: main.py plus routes/ (chat, auth, health)
+├── api/                # FastAPI app: main.py plus routes/ (chat, auth, config, health)
 ├── agent/              # deepagents loop, tools, intent gate, run bounds
 ├── core/               # settings (pydantic-settings) and the request/response schemas
 ├── retrieval/          # embedding calls and Qdrant search
@@ -295,7 +297,7 @@ sb100_agents/
 ├── memory/             # in-memory conversation buffer
 ├── verification/       # semantic entropy and the score gate
 ├── database/           # SQLAlchemy models, session, PDF semantic chunker
-├── ui/                 # Gradio page
+├── web/                # React web page (Vite, TypeScript) and its nginx image
 ├── eval/               # offline evaluation and agent-calibration scripts
 ├── scripts/ingest.py   # indexing entry point
 ├── tests/              # the whole test suite

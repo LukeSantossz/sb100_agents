@@ -2,8 +2,9 @@
 
 This module configures the FastAPI application with:
 
-- CORS middleware to allow access from the Gradio interface.
-- Chat, authentication and health check routers.
+- CORS middleware for local callers. The web app in web/ needs none: it calls the
+  API as /api on its own origin, through the Vite dev proxy or nginx.
+- Chat, authentication, page configuration and health check routers.
 - Lifespan handler for database initialization.
 
 Usage:
@@ -20,7 +21,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from api.dependencies import limiter
-from api.routes import auth, chat, health
+from api.routes import auth, chat, config, health
 from database.db import Base, engine
 
 # Baseline logging for the application (idempotent; basicConfig is a no-op if already set).
@@ -30,8 +31,6 @@ logging.basicConfig(
 )
 
 ALLOWED_ORIGINS = [
-    "http://localhost:7860",
-    "http://127.0.0.1:7860",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 ]
@@ -73,4 +72,5 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(chat.router)
+app.include_router(config.router)
 app.include_router(health.router)

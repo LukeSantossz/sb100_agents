@@ -1,0 +1,6 @@
+# Context is the repository root; send only what web/Dockerfile copies.
+*
+!web/
+!docs/brand/
+web/node_modules/
+web/dist/
