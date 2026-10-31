@@ -1,29 +1,46 @@
 /*
  * Page styles on top of docs/brand/tokens/tokens.css, which main.tsx loads first.
  *
+ * The page is light only (spec 0026). This :root comes after the tokens, so it wins
+ * over their dark media block and an OS dark preference changes
+ * nothing. The dark tokens stay in docs/brand/ for the README.
+ *
  * The score bands get colours of their own. The brand amber is kept for retrieved
  * evidence (docs/brand/README.md), and every band is also named in text, so colour
- * is never the only signal. colours.test.ts checks each against the background of
- * its theme at 4.5:1.
+ * is never the only signal. colours.test.ts checks each against the background at
+ * 4.5:1.
  */
 :root {
+  --sb-bg: var(--sb-paper);
+  --sb-fg: var(--sb-ink);
+  --sb-muted: var(--sb-text-muted-light);
+  --sb-label: var(--sb-label-light);
+  --sb-rule: var(--sb-rule-light);
+  --sb-accent: var(--sb-leaf);
+  --sb-root: var(--sb-root-light);
+  --sb-evidence: var(--sb-evidence-light);
+  --sb-chunk: var(--sb-chunk-light);
+
   --status-low: #1B6E3E;
   --status-moderate: #A04400;
   --status-high: #B3261E;
-  color-scheme: light dark;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --status-low: #6FD99A;
-    --status-moderate: #FF9A52;
-    --status-high: #FF8A80;
-  }
+
+  --surface: #FFFFFF;
+  --radius: 0.75rem;
+  --shadow: 0 1px 2px rgb(15 20 18 / 0.06), 0 2px 8px rgb(15 20 18 / 0.04);
+  color-scheme: light;
 }
 
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
@@ -35,63 +52,18 @@ body {
   line-height: 1.5;
 }
 
-.page {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
-}
-
-.masthead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1.5rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--sb-rule);
-}
-
-.masthead img {
-  display: block;
-  height: 2.5rem;
-  width: auto;
-}
-
-.tagline {
+h1,
+h2 {
   margin: 0;
-  color: var(--sb-muted);
-}
-
-.layout {
-  display: grid;
-  gap: 2rem;
-  margin-top: 1.5rem;
-}
-
-@media (min-width: 48rem) {
-  .layout {
-    grid-template-columns: 17rem 1fr;
-  }
 }
 
 h2 {
-  margin: 0 0 0.75rem;
   font-family: var(--sb-font-mono);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--sb-label);
-}
-
-.panel {
-  display: grid;
-  gap: 1.75rem;
-  align-content: start;
-}
-
-.stack {
-  display: grid;
-  gap: 0.75rem;
 }
 
 label {
@@ -106,15 +78,11 @@ select,
 textarea {
   font: inherit;
   color: var(--sb-fg);
-  background: transparent;
-  border: 1px solid var(--sb-label);
-  border-radius: 0.375rem;
+  background: var(--surface);
+  border: 1px solid var(--sb-chunk);
+  border-radius: 0.5rem;
   padding: 0.5rem 0.625rem;
   min-height: 2.75rem;
-}
-
-textarea {
-  resize: vertical;
 }
 
 button {
@@ -123,15 +91,28 @@ button {
   min-height: 2.75rem;
   padding: 0.5rem 1rem;
   border: 1px solid var(--sb-accent);
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   background: var(--sb-accent);
-  color: var(--sb-bg);
+  color: var(--sb-paper);
   cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 button[type="button"] {
-  background: transparent;
+  background: var(--surface);
+  border-color: var(--sb-chunk);
   color: var(--sb-fg);
+}
+
+button[type="button"]:hover:not(:disabled) {
+  border-color: var(--sb-label);
+}
+
+button.quiet {
+  min-height: 2rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 button:disabled,
@@ -150,10 +131,23 @@ code {
   font-size: 0.875em;
 }
 
-.hint,
-.session-id {
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hint {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--sb-muted);
 }
 
@@ -161,9 +155,6 @@ code {
   margin: 0;
   padding: 0.625rem 0.75rem;
   border-left: 3px solid var(--status-high);
-}
-
-.notice-error {
   color: var(--sb-fg);
 }
 
@@ -173,54 +164,277 @@ code {
   gap: 0.75rem;
   align-items: center;
   justify-content: space-between;
+  margin: 0.75rem 1rem 0;
+  background: var(--surface);
+  border-radius: 0.5rem;
 }
 
 .notice-row p {
   margin: 0;
 }
 
-.chat {
+/* Layout: the sidebar and the main column. */
+
+.app {
+  display: grid;
+  height: 100%;
+}
+
+.sidebar {
   display: grid;
   gap: 1.5rem;
   align-content: start;
+  padding: 1rem;
+  border-bottom: 1px solid var(--sb-rule);
+  background: var(--surface);
+  overflow-y: auto;
+}
+
+.sidebar .logo {
+  display: block;
+  height: 2.25rem;
+  width: auto;
+}
+
+.new-chat {
+  width: 100%;
+}
+
+.session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.session-id {
+  color: var(--sb-muted);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  min-height: 3.5rem;
+  border-bottom: 1px solid var(--sb-rule);
+}
+
+.tagline {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--sb-muted);
+}
+
+.chat {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem 1rem;
+}
+
+/* Narrow: the topbar, the sidebar when the menu opens it, then the conversation. */
+@media (max-width: 47.99rem) {
+  .app {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar[data-open="false"] {
+    display: none;
+  }
+
+  .sidebar[data-open="true"] {
+    flex: none;
+    max-height: 70dvh;
+  }
+
+  .main {
+    flex: 1;
+  }
+}
+
+@media (min-width: 48rem) {
+  .app {
+    grid-template-columns: 17rem minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .sidebar {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    border-bottom: 0;
+    border-right: 1px solid var(--sb-rule);
+    padding: 1.25rem;
+  }
+
+  .menu-toggle {
+    display: none;
+  }
+
+  .topbar {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 0.5rem 1.5rem;
+  }
+
+  .main {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .chat {
+    padding: 2rem 1.5rem;
+  }
+}
+
+/* The conversation. */
+
+.conversation,
+.empty,
+.composer {
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
 }
 
 .conversation {
   list-style: none;
-  margin: 0;
   padding: 0;
+  margin-block: 0;
   display: grid;
-  gap: 1.5rem;
+  gap: 1.75rem;
 }
 
-.conversation:empty {
-  display: none;
+.conversation > li {
+  display: grid;
+  gap: 1rem;
 }
 
-.question {
-  margin: 0 0 0.5rem;
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  padding-top: 12vh;
+  text-align: center;
+}
+
+.empty h1 {
+  font-size: 1.375rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-.answer {
-  padding: 0.25rem 0 0 1rem;
-  border-left: 2px solid var(--sb-rule);
-  overflow-wrap: anywhere;
-}
-
-.answer > :first-child {
-  margin-top: 0;
-}
-
-.waiting {
+.empty p {
   margin: 0;
+  max-width: 32rem;
   color: var(--sb-muted);
 }
 
+.question {
+  justify-self: end;
+  max-width: min(36rem, 85%);
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius) var(--radius) 0.25rem var(--radius);
+  background: var(--sb-rule);
+  overflow-wrap: anywhere;
+}
+
+.question p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.question time {
+  justify-self: end;
+}
+
+time {
+  font-size: 0.75rem;
+  color: var(--sb-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.answer {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.answer-card {
+  margin: 0;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--sb-rule);
+  border-radius: 0.25rem var(--radius) var(--radius) var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow-wrap: anywhere;
+}
+
+.answer-card.notice {
+  border-left: 3px solid var(--status-high);
+}
+
+.waiting {
+  color: var(--sb-muted);
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.9375rem;
+}
+
+.markdown th,
+.markdown td {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--sb-rule);
+  text-align: left;
+  overflow-wrap: normal;
+}
+
+.markdown th {
+  background: var(--sb-bg);
+  font-weight: 600;
+}
+
+.answer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 0.875rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--sb-rule);
+}
+
+.answer-meta button {
+  margin-left: auto;
+}
+
 .score {
-  margin: 0.75rem 0 0;
-  font-size: 0.875rem;
+  margin: 0;
+  font-size: 0.8125rem;
   color: var(--sb-muted);
 }
 
@@ -236,16 +450,81 @@ code {
   color: var(--status-high);
 }
 
-.ask {
-  display: grid;
+.composer {
+  display: flex;
   gap: 0.5rem;
+  align-items: flex-end;
+  padding: 0.75rem 1rem 1rem;
 }
 
-.ask label {
-  font-weight: 600;
-  color: var(--sb-fg);
+.composer textarea {
+  flex: 1;
+  resize: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
-.ask button {
-  justify-self: end;
+/* The agent head. Motion only while a request is in flight. */
+
+.agent-head {
+  display: block;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+}
+
+.agent-eye {
+  fill: var(--sb-sprout);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 200ms ease, fill 200ms ease;
+}
+
+.agent-sprout {
+  transform-box: view-box;
+  transform-origin: 24px 12px;
+}
+
+.agent-head[data-state="idle"] .agent-eye {
+  transform: scaleY(0.85);
+}
+
+.agent-head[data-state="error"] .agent-eye {
+  fill: #8C9590;
+  transform: scaleY(0.35);
+}
+
+.agent-head[data-state="processing"] .agent-eye {
+  animation: agent-pulse 1.4s ease-in-out infinite;
+}
+
+.agent-head[data-state="processing"] .agent-sprout {
+  animation: agent-sway 2.4s ease-in-out infinite;
+}
+
+@keyframes agent-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes agent-sway {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(7deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-head * {
+    animation: none;
+    transition: none;
+  }
 }
