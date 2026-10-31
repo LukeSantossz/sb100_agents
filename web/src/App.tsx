@@ -1,8 +1,9 @@
-import { type FormEvent, type KeyboardEvent, useEffect, useState } from "react";
+import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
-import logoDark from "../../docs/brand/smartb100-logo-dark.svg";
-import logoLight from "../../docs/brand/smartb100-logo.svg";
+import logo from "../../docs/brand/smartb100-logo.svg";
+import AgentHead from "./AgentHead";
 import {
   ApiError,
   type Expertise,
@@ -11,23 +12,42 @@ import {
   fetchConfig,
   signIn,
 } from "./api";
-import { BAND_LABELS, classifyScore } from "./score";
+import { BAND_LABELS, classifyScore, formatScore } from "./score";
 
 interface Turn {
   id: number;
   question: string;
+  askedAt: Date;
   answer: string;
+  answeredAt: Date;
   score: number;
 }
 
+interface Pending {
+  question: string;
+  askedAt: Date;
+}
+
+interface Failure extends Pending {
+  message: string;
+}
+
+// How close to the bottom, in pixels, still counts as reading the newest message.
+const NEAR_BOTTOM = 80;
+
 const EXPERTISE: [Expertise, string][] = [
-  ["beginner", "Beginner"],
-  ["intermediate", "Intermediate"],
-  ["expert", "Expert"],
+  ["beginner", "Iniciante"],
+  ["intermediate", "Intermediário"],
+  ["expert", "Especialista"],
 ];
 
+const DEFAULT_NAME = "Produtor";
+const DEFAULT_EXPERTISE: Expertise = "intermediate";
+
+const REMARK_PLUGINS = [remarkGfm];
+
 function userMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Something went wrong. Try again.";
+  return error instanceof ApiError ? error.message : "Algo deu errado. Tente de novo.";
 }
 
 // A v4 UUID from getRandomValues. crypto.randomUUID exists only in a secure context,
@@ -40,12 +60,64 @@ function newSessionId(): string {
   return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join("-");
 }
 
+// navigator.clipboard, like randomUUID, exists only in a secure context. Without it a
+// copy button would do nothing, so none is shown.
+function hasClipboard(): boolean {
+  return typeof navigator !== "undefined" && navigator.clipboard !== undefined;
+}
+
+/** The browser's clock at send or arrival; the API returns no timestamp. */
+function Time({ at }: { at: Date }) {
+  return (
+    <time dateTime={at.toISOString()}>
+      {at.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+    </time>
+  );
+}
+
 function Score({ score, threshold }: { score: number; threshold: number }) {
   const band = classifyScore(score, threshold);
   return (
     <p className={`score score-${band}`}>
-      Hallucination score {score.toFixed(2)}: <strong>{BAND_LABELS[band]}</strong>
+      Pontuação de alucinação {formatScore(score)}: <strong>{BAND_LABELS[band]}</strong>
     </p>
+  );
+}
+
+function Question({ text, at }: { text: string; at: Date }) {
+  return (
+    <div className="question">
+      <p>{text}</p>
+      <Time at={at} />
+    </div>
+  );
+}
+
+const COPY_LABELS = { idle: "Copiar", copied: "Copiado", failed: "Falha ao copiar" };
+
+function CopyButton({ text, label }: { text: string; label?: string }) {
+  const [status, setStatus] = useState<keyof typeof COPY_LABELS>("idle");
+
+  useEffect(() => {
+    if (status === "idle") return;
+    const timer = setTimeout(() => setStatus("idle"), 2000);
+    return () => clearTimeout(timer);
+  }, [status]);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus("copied");
+    } catch {
+      // A denied permission copies nothing; say so rather than look unchanged.
+      setStatus("failed");
+    }
+  }
+
+  return (
+    <button type="button" className="quiet" aria-label={label} onClick={() => void copy()}>
+      {COPY_LABELS[status]}
+    </button>
   );
 }
 
@@ -62,14 +134,21 @@ export default function App() {
   const [signingIn, setSigningIn] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
 
-  const [name, setName] = useState("Farmer");
-  const [expertise, setExpertise] = useState<Expertise>("intermediate");
+  const [name, setName] = useState(DEFAULT_NAME);
+  const [expertise, setExpertise] = useState<Expertise>(DEFAULT_EXPERTISE);
   const [sessionId, setSessionId] = useState(newSessionId);
 
   const [turns, setTurns] = useState<Turn[]>([]);
   const [question, setQuestion] = useState("");
-  const [pending, setPending] = useState<string | null>(null);
-  const [chatError, setChatError] = useState<string | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [chatError, setChatError] = useState<Failure | null>(null);
+
+  // Below 48rem the sidebar is closed until the Menu button opens it.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const end = useRef<HTMLDivElement>(null);
+  const chat = useRef<HTMLElement>(null);
+  const atBottom = useRef(true);
+  const canCopy = hasClipboard();
 
   function loadConfig() {
     setConfigError(null);
@@ -80,10 +159,22 @@ export default function App() {
 
   useEffect(loadConfig, []);
 
+  function trackScroll() {
+    const el = chat.current;
+    if (el) atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM;
+  }
+
+  // A question just sent always scrolls into view. An answer or error that arrives
+  // scrolls only for a reader at the bottom, so one reading back keeps their place.
+  // jsdom has no scrollIntoView, hence the optional call.
+  useEffect(() => {
+    if (pending !== null || atBottom.current) end.current?.scrollIntoView?.({ block: "end" });
+  }, [turns, pending, chatError]);
+
   async function handleSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!username || !password) {
-      setSignInError("Enter your username and password to sign in.");
+      setSignInError("Informe usuário e senha para entrar.");
       return;
     }
     setSigningIn(true);
@@ -98,6 +189,7 @@ export default function App() {
       setSignedInAs(username);
       setPassword("");
       setChatError(null);
+      setMenuOpen(false);
     } catch (error) {
       setSignInError(userMessage(error));
     } finally {
@@ -108,20 +200,34 @@ export default function App() {
   async function send() {
     const text = question.trim();
     if (!token || !config || pending || !text) return;
-    setPending(text);
+    const askedAt = new Date();
+    setPending({ question: text, askedAt });
     setChatError(null);
     try {
       const reply = await askQuestion(token, sessionId, text, { name, expertise }, config.chat_timeout);
       setTurns((previous) => [
         ...previous,
-        { id: previous.length, question: text, answer: reply.answer, score: reply.hallucination_score },
+        {
+          id: previous.length,
+          question: text,
+          askedAt,
+          answer: reply.answer,
+          answeredAt: new Date(),
+          score: reply.hallucination_score,
+        },
       ]);
       // The field stays editable while waiting; keep a draft of the next question.
       setQuestion((current) => (current.trim() === text ? "" : current));
     } catch (error) {
-      // The question stays in the input; sending it again is the user's call.
-      setChatError(userMessage(error));
-      if (error instanceof ApiError && error.unauthorized) setToken(null);
+      // The failed question stays on screen above the error, even if the input was edited
+      // meanwhile; sending it again is the user's call. An expired token sends the user
+      // back to sign in, with the conversation kept in memory.
+      if (error instanceof ApiError && error.unauthorized) {
+        setToken(null);
+        setSignInError(userMessage(error));
+      } else {
+        setChatError({ question: text, askedAt, message: userMessage(error) });
+      }
     } finally {
       setPending(null);
     }
@@ -143,150 +249,215 @@ export default function App() {
     setSessionId(newSessionId());
     setTurns([]);
     setChatError(null);
+    setMenuOpen(false);
   }
 
-  const canAsk = token !== null && config !== null && pending === null;
+  function signOut() {
+    setToken(null);
+    setSignedInAs("");
+    setUsername("");
+    setPassword("");
+    setSignInError(null);
+    setName(DEFAULT_NAME);
+    setExpertise(DEFAULT_EXPERTISE);
+    setQuestion("");
+    newSession();
+  }
 
-  return (
-    <div className="page">
-      <header className="masthead">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcSet={logoDark} />
-          <img src={logoLight} alt="SmartB100" width="201" height="48" />
-        </picture>
-        <p className="tagline">
-          Answers from IAC Boletim 100, each with a hallucination score.
-        </p>
-      </header>
+  const configNotice = configError && (
+    <div className="notice notice-row">
+      <p role="alert">{configError}</p>
+      <button type="button" onClick={loadConfig}>
+        Tentar de novo
+      </button>
+    </div>
+  );
 
-      {configError && (
-        <div className="notice notice-error notice-row">
-          <p role="alert">{configError}</p>
-          <button type="button" onClick={loadConfig}>
-            Retry
-          </button>
-        </div>
-      )}
-
-      <div className="layout">
-        <aside className="panel">
-          <section aria-labelledby="sign-in-heading">
-            <h2 id="sign-in-heading">Account</h2>
-            {token ? (
-              <p role="status">Signed in as {signedInAs}.</p>
-            ) : (
-              <form onSubmit={handleSignIn} className="stack">
-                <label>
-                  Username
-                  <input
-                    value={username}
-                    onChange={(event) => setUsername(event.target.value)}
-                    autoComplete="username"
-                  />
-                </label>
-                <label>
-                  Password
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    autoComplete="current-password"
-                  />
-                </label>
-                <button type="submit" disabled={signingIn}>
-                  Sign in
-                </button>
-                {signInError && (
-                  <p className="notice notice-error" role="alert">
-                    {signInError}
-                  </p>
-                )}
-                <p className="hint">
-                  Accounts are created with <code>POST /auth/register</code>; see the README.
-                </p>
-              </form>
-            )}
-          </section>
-
-          <section aria-labelledby="profile-heading" className="stack">
-            <h2 id="profile-heading">Profile</h2>
+  if (token === null) {
+    return (
+      <main className="sign-in">
+        <div className="sign-in-card stack">
+          <img className="logo" src={logo} alt="SmartB100" width="201" height="48" />
+          <p className="tagline">Respostas do Boletim 100 do IAC</p>
+          {configNotice}
+          <form onSubmit={handleSignIn} className="stack" aria-labelledby="sign-in-heading">
+            <h1 id="sign-in-heading">Entre na sua conta</h1>
             <label>
-              Name
+              Usuário
               <input
-                value={name}
-                maxLength={255}
-                onChange={(event) => setName(event.target.value)}
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
               />
             </label>
             <label>
-              Expertise
-              <select
-                value={expertise}
-                onChange={(event) => setExpertise(event.target.value as Expertise)}
-              >
-                {EXPERTISE.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+              Senha
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+              />
             </label>
-          </section>
-
-          <section aria-labelledby="session-heading" className="stack">
-            <h2 id="session-heading">Session</h2>
-            <p className="session-id">
-              Session <code>{sessionId.slice(0, 8)}</code>
-            </p>
-            <button type="button" onClick={newSession} disabled={pending !== null}>
-              New session
+            <button type="submit" disabled={signingIn}>
+              Entrar
             </button>
-          </section>
-        </aside>
-
-        <main className="chat">
-          <ol className="conversation" aria-label="Conversation">
-            {turns.map((turn) => (
-              <li key={turn.id}>
-                <p className="question">{turn.question}</p>
-                <article className="answer">
-                  <Markdown>{turn.answer}</Markdown>
-                  {config && <Score score={turn.score} threshold={config.hallucination_threshold} />}
-                </article>
-              </li>
-            ))}
-            {pending !== null && (
-              <li>
-                <p className="question">{pending}</p>
-                <p className="waiting" role="status">
-                  Waiting for the answer. On a CPU-only machine this can take minutes.
-                </p>
-              </li>
-            )}
-          </ol>
-
-          <form onSubmit={handleSubmit} className="ask">
-            <label htmlFor="question">Your question</label>
-            <textarea
-              id="question"
-              rows={3}
-              maxLength={2000}
-              value={question}
-              disabled={token === null}
-              placeholder={token ? "Ask about liming and fertilization" : "Sign in to ask a question"}
-              onChange={(event) => setQuestion(event.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            {chatError && (
-              <p className="notice notice-error" role="alert">
-                {chatError}
+            {signInError && (
+              <p className="notice" role="alert">
+                {signInError}
               </p>
             )}
-            <button type="submit" disabled={!canAsk || !question.trim()}>
-              Send
-            </button>
+            <p className="hint">
+              As contas são criadas com <code>POST /auth/register</code>; veja o README.
+            </p>
           </form>
+        </div>
+      </main>
+    );
+  }
+
+  const canAsk = config !== null && pending === null;
+  const empty = turns.length === 0 && pending === null && chatError === null;
+
+  return (
+    <div className="app">
+      <header className="topbar">
+        <button
+          type="button"
+          className="menu-toggle"
+          aria-controls="sidebar"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          Menu
+        </button>
+        <p className="tagline">Respostas do Boletim 100 do IAC</p>
+      </header>
+
+      <aside id="sidebar" className="sidebar" data-open={String(menuOpen)}>
+        <img className="logo" src={logo} alt="SmartB100" width="201" height="48" />
+
+        <button type="button" className="new-chat" onClick={newSession} disabled={pending !== null}>
+          Nova conversa
+        </button>
+
+        <section aria-labelledby="profile-heading" className="stack">
+          <h2 id="profile-heading">Perfil</h2>
+          <label>
+            Nome
+            <input value={name} maxLength={255} onChange={(event) => setName(event.target.value)} />
+          </label>
+          <label>
+            Nível de conhecimento
+            <select
+              value={expertise}
+              onChange={(event) => setExpertise(event.target.value as Expertise)}
+            >
+              {EXPERTISE.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+
+        <section aria-labelledby="session-heading" className="stack">
+          <h2 id="session-heading">Sessão</h2>
+          <div className="session-row">
+            <code className="session-id">{sessionId.slice(0, 8)}</code>
+            {/* The key resets the button: a new id was never copied. */}
+            {canCopy && <CopyButton key={sessionId} text={sessionId} label="Copiar id da sessão" />}
+          </div>
+        </section>
+
+        <footer className="account">
+          <p role="status">Conectado como {signedInAs}.</p>
+          <button type="button" className="quiet" onClick={signOut} disabled={pending !== null}>
+            Sair
+          </button>
+        </footer>
+      </aside>
+
+      <div className="main">
+        {configNotice}
+
+        <main className="chat" ref={chat} onScroll={trackScroll}>
+          {empty ? (
+            <div className="empty">
+              <AgentHead state="idle" />
+              <h1>Pergunte sobre calagem e adubação</h1>
+              <p>
+                As respostas vêm do Boletim 100 do IAC. Cada uma traz uma pontuação de
+                alucinação.
+              </p>
+            </div>
+          ) : (
+            <ol className="conversation" aria-label="Conversa">
+              {turns.map((turn) => (
+                <li key={turn.id}>
+                  <Question text={turn.question} at={turn.askedAt} />
+                  <article className="answer">
+                    <AgentHead state="done" />
+                    <div className="answer-card">
+                      <div className="markdown">
+                        <Markdown remarkPlugins={REMARK_PLUGINS}>{turn.answer}</Markdown>
+                      </div>
+                      <footer className="answer-meta">
+                        {config && (
+                          <Score score={turn.score} threshold={config.hallucination_threshold} />
+                        )}
+                        <Time at={turn.answeredAt} />
+                        {canCopy && <CopyButton text={turn.answer} />}
+                      </footer>
+                    </div>
+                  </article>
+                </li>
+              ))}
+              {pending !== null && (
+                <li>
+                  <Question text={pending.question} at={pending.askedAt} />
+                  <div className="answer">
+                    <AgentHead state="processing" />
+                    <p className="answer-card waiting" role="status">
+                      Aguardando a resposta. Em uma máquina só com CPU, isso pode levar minutos.
+                    </p>
+                  </div>
+                </li>
+              )}
+              {chatError !== null && (
+                <li>
+                  <Question text={chatError.question} at={chatError.askedAt} />
+                  <div className="answer">
+                    <AgentHead state="error" />
+                    <p className="answer-card notice" role="alert">
+                      {chatError.message}
+                    </p>
+                  </div>
+                </li>
+              )}
+            </ol>
+          )}
+          <div ref={end} />
         </main>
+
+        <form onSubmit={handleSubmit} className="composer">
+          <label htmlFor="question" className="visually-hidden">
+            Sua pergunta
+          </label>
+          <textarea
+            id="question"
+            rows={2}
+            maxLength={2000}
+            value={question}
+            placeholder="Pergunte sobre calagem e adubação"
+            onChange={(event) => setQuestion(event.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <button type="submit" disabled={!canAsk || !question.trim()}>
+            Enviar
+          </button>
+        </form>
       </div>
     </div>
   );

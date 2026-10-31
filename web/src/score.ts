@@ -2,10 +2,15 @@ export type Band = "low" | "moderate" | "high";
 
 /** Shown next to every score, so the band never depends on colour alone. */
 export const BAND_LABELS: Record<Band, string> = {
-  low: "Low risk",
-  moderate: "Moderate risk",
-  high: "High risk",
+  low: "Risco baixo",
+  moderate: "Risco moderado",
+  high: "Risco alto",
 };
+
+/** Two decimals with a decimal comma, as Brazilian readers write them. */
+export function formatScore(score: number): string {
+  return score.toFixed(2).replace(".", ",");
+}
 
 /**
  * Place a hallucination score in a band relative to the gate's threshold.

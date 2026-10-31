@@ -2,8 +2,8 @@
  * Calls to the SmartB100 API. Every path starts with /api, which the Vite dev
  * server and nginx both proxy to the API with the prefix stripped.
  *
- * Every error thrown here carries a message meant for the user; status codes and
- * URLs stay out of it.
+ * Every error thrown here carries a message meant for the user, in Portuguese like
+ * the rest of the page; status codes and URLs stay out of it.
  */
 
 export type Expertise = "beginner" | "intermediate" | "expert";
@@ -35,7 +35,7 @@ export class ApiError extends Error {
   }
 }
 
-const UNREACHABLE = "Could not connect to the API. Check that the server is running and try again.";
+const UNREACHABLE = "Não foi possível conectar à API. Verifique se o servidor está rodando e tente de novo.";
 
 export async function fetchConfig(): Promise<PageConfig> {
   let response: Response;
@@ -44,7 +44,7 @@ export async function fetchConfig(): Promise<PageConfig> {
   } catch {
     throw new ApiError(UNREACHABLE);
   }
-  if (!response.ok) throw new ApiError("Could not load the page settings from the API.");
+  if (!response.ok) throw new ApiError("Não foi possível carregar as configurações da página.");
   return (await response.json()) as PageConfig;
 }
 
@@ -60,33 +60,33 @@ export async function signIn(username: string, password: string): Promise<string
     throw new ApiError(UNREACHABLE);
   }
   if (response.status === 401) {
-    throw new ApiError("Sign-in failed: incorrect username or password.");
+    throw new ApiError("Falha ao entrar: usuário ou senha incorretos.");
   }
-  if (response.status === 429) throw new ApiError("Too many attempts. Wait a minute and try again.");
-  if (!response.ok) throw new ApiError("Sign-in failed. Please try again.");
+  if (response.status === 429) throw new ApiError("Muitas tentativas. Aguarde um minuto e tente de novo.");
+  if (!response.ok) throw new ApiError("Falha ao entrar. Tente de novo.");
   const body = (await response.json()) as { access_token: string };
   return body.access_token;
 }
 
 function chatFailure(status: number): ApiError {
-  if (status === 401) return new ApiError("Your session expired. Sign in again.", true);
-  if (status === 429) return new ApiError("Request limit exceeded. Wait a few seconds and send again.");
+  if (status === 401) return new ApiError("Sua sessão expirou. Entre de novo.", true);
+  if (status === 429) return new ApiError("Limite de pedidos atingido. Aguarde alguns segundos e envie de novo.");
   if (status === 503) {
     return new ApiError(
-      "Service temporarily unavailable. The backend may be starting (Ollama or Qdrant). " +
-        "Send the question again in a few moments.",
+      "Serviço temporariamente indisponível. O backend pode estar iniciando (Ollama ou " +
+        "Qdrant). Envie a pergunta de novo em alguns instantes.",
     );
   }
   if (status === 504) {
     return new ApiError(
-      "The gateway timed out. The server may still finish and record this answer, " +
-        "so sending the question again can answer it twice.",
+      "O gateway esgotou o tempo de espera. O servidor ainda pode terminar e registrar " +
+        "esta resposta, então enviar a pergunta de novo pode respondê-la duas vezes.",
     );
   }
   if (status >= 400 && status < 500) {
-    return new ApiError(`Your question was rejected (code ${status}). Review it and try again.`);
+    return new ApiError(`Sua pergunta foi recusada (código ${status}). Revise e tente de novo.`);
   }
-  return new ApiError("The server ran into a problem. Try again shortly.");
+  return new ApiError("O servidor encontrou um problema. Tente de novo em instantes.");
 }
 
 /**
@@ -123,9 +123,10 @@ export async function askQuestion(
   } catch (error) {
     if (controller.signal.aborted) {
       throw new ApiError(
-        `No answer after ${timeoutSeconds} s. The server may still finish and record this ` +
-          "answer, so sending the question again can answer it twice. On a CPU-only " +
-          "machine Ollama can take several minutes per answer.",
+        `Sem resposta após ${timeoutSeconds.toLocaleString("pt-BR")} s. O servidor ainda pode ` +
+          "terminar e registrar esta resposta, então enviar a pergunta de novo pode " +
+          "respondê-la duas vezes. Em uma máquina só com CPU, o Ollama pode levar vários " +
+          "minutos por resposta.",
       );
     }
     throw error;

@@ -1,7 +1,8 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import indexHtml from "../index.html?raw";
 import App from "./App";
 
 const TOKEN = "header.payload.signature";
@@ -55,16 +56,23 @@ function body(call: Call): Record<string, unknown> {
 }
 
 async function signIn(user: ReturnType<typeof userEvent.setup>): Promise<void> {
-  await user.type(screen.getByLabelText("Username"), "farmer");
-  await user.type(screen.getByLabelText("Password"), "correct horse");
-  await user.click(screen.getByRole("button", { name: "Sign in" }));
-  await screen.findByText(/signed in/i);
+  await user.type(screen.getByLabelText("Usuário"), "farmer");
+  await user.type(screen.getByLabelText("Senha"), "correct horse");
+  await user.click(screen.getByRole("button", { name: "Entrar" }));
+  await screen.findByText(/conectado como/i);
 }
 
 async function ask(user: ReturnType<typeof userEvent.setup>, question: string): Promise<void> {
-  await user.clear(screen.getByLabelText("Your question"));
-  await user.type(screen.getByLabelText("Your question"), question);
-  await user.click(screen.getByRole("button", { name: "Send" }));
+  await user.clear(screen.getByLabelText("Sua pergunta"));
+  await user.type(screen.getByLabelText("Sua pergunta"), question);
+  await user.click(screen.getByRole("button", { name: "Enviar" }));
+}
+
+/** The state each agent head on the page reports, in page order. */
+function heads(): (string | null)[] {
+  return Array.from(document.querySelectorAll(".agent-head"), (head) =>
+    head.getAttribute("data-state"),
+  );
 }
 
 beforeEach(() => {
@@ -75,6 +83,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("web app", () => {
@@ -83,7 +92,7 @@ describe("web app", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).disabled).toBe(true);
+    expect(screen.queryByLabelText("Sua pergunta")).toBeNull();
     await signIn(user);
 
     const login = calls.find((call) => call.url === "/api/auth/token")!;
@@ -92,7 +101,7 @@ describe("web app", () => {
     expect(form.get("username")).toBe("farmer");
     expect(form.get("password")).toBe("correct horse");
     await waitFor(() =>
-      expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).disabled).toBe(false),
+      expect((screen.getByLabelText("Sua pergunta") as HTMLTextAreaElement).disabled).toBe(false),
     );
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
@@ -109,9 +118,9 @@ describe("web app", () => {
     render(<App />);
     await signIn(user);
 
-    await user.clear(screen.getByLabelText("Name"));
-    await user.type(screen.getByLabelText("Name"), "Ana");
-    await user.selectOptions(screen.getByLabelText("Expertise"), "expert");
+    await user.clear(screen.getByLabelText("Nome"));
+    await user.type(screen.getByLabelText("Nome"), "Ana");
+    await user.selectOptions(screen.getByLabelText("Nível de conhecimento"), "expert");
     await ask(user, "How do I correct soil acidity?");
     await screen.findByText("Apply lime.");
 
@@ -134,7 +143,7 @@ describe("web app", () => {
             reject(new DOMException("aborted", "AbortError")),
           );
         }),
-      /may still finish/i,
+      /ainda pode terminar/i,
     ],
     [
       "a body that stalls",
@@ -150,14 +159,14 @@ describe("web app", () => {
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),
-      /may still finish/i,
+      /ainda pode terminar/i,
     ],
-    ["a 503", json({ detail: "unavailable" }, 503), /temporarily unavailable/i],
-    ["a 504", json({ detail: "timeout" }, 504), /gateway timed out/i],
+    ["a 503", json({ detail: "unavailable" }, 503), /temporariamente indisponível/i],
+    ["a 504", json({ detail: "timeout" }, 504), /esgotou o tempo/i],
     [
       "a network error",
       () => Promise.reject(new TypeError("Failed to fetch")),
-      /could not connect to the api/i,
+      /não foi possível conectar à api/i,
     ],
   ];
 
@@ -184,7 +193,7 @@ describe("web app", () => {
       // Well past a 1 s retry backoff, the shortest the Gradio page used.
       await new Promise((resolve) => setTimeout(resolve, 2500));
       expect(chatCalls(calls)).toHaveLength(1);
-      expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).value).toBe(
+      expect((screen.getByLabelText("Sua pergunta") as HTMLTextAreaElement).value).toBe(
         "How much lime per hectare?",
       );
     },
@@ -199,8 +208,8 @@ describe("web app", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect((await screen.findByRole("alert")).textContent).toMatch(/page settings/i);
-    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/configurações da página/i);
+    await user.click(screen.getByRole("button", { name: "Tentar de novo" }));
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
 
     await signIn(user);
@@ -224,13 +233,13 @@ describe("web app", () => {
     await ask(user, "First question?");
     await screen.findByText("First answer.");
     await ask(user, "Second question?");
-    await screen.findByRole("button", { name: "Sign in" });
+    await screen.findByRole("button", { name: "Entrar" });
 
-    await user.clear(screen.getByLabelText("Username"));
-    await user.type(screen.getByLabelText("Username"), "other");
-    await user.type(screen.getByLabelText("Password"), "battery staple");
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
-    await screen.findByText(/signed in as other/i);
+    await user.clear(screen.getByLabelText("Usuário"));
+    await user.type(screen.getByLabelText("Usuário"), "other");
+    await user.type(screen.getByLabelText("Senha"), "battery staple");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+    await screen.findByText(/conectado como other/i);
 
     expect(screen.queryByText("First answer.")).toBeNull();
     await ask(user, "Third question?");
@@ -255,11 +264,11 @@ describe("web app", () => {
     await ask(user, "First question?");
     await screen.findByText("First answer.");
     await ask(user, "Second question?");
-    await screen.findByRole("button", { name: "Sign in" });
+    await screen.findByRole("button", { name: "Entrar" });
 
-    await user.type(screen.getByLabelText("Password"), "correct horse");
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
-    await screen.findByText(/signed in as farmer/i);
+    await user.type(screen.getByLabelText("Senha"), "correct horse");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+    await screen.findByText(/conectado como farmer/i);
 
     expect(screen.getByText("First answer.")).toBeTruthy();
     await ask(user, "Third question?");
@@ -280,9 +289,9 @@ describe("web app", () => {
 
     await ask(user, "How much lime per hectare?");
 
-    expect((await screen.findByRole("alert")).textContent).toMatch(/sign in again/i);
-    expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect((await screen.findByRole("alert")).textContent).toMatch(/entre de novo/i);
+    expect(screen.queryByLabelText("Sua pergunta")).toBeNull();
+    expect(screen.getByRole("button", { name: "Entrar" })).toBeTruthy();
   });
 
   it("each_score_sits_under_its_answer", async () => {
@@ -305,10 +314,10 @@ describe("web app", () => {
 
     const first = screen.getByText("First answer.").closest("article")!;
     const second = screen.getByText("Second answer.").closest("article")!;
-    expect(within(first).getByText(/0\.10/)).toBeTruthy();
-    expect(within(first).getByText(/low risk/i)).toBeTruthy();
-    expect(within(second).getByText(/0\.90/)).toBeTruthy();
-    expect(within(second).getByText(/high risk/i)).toBeTruthy();
+    expect(within(first).getByText(/0,10/)).toBeTruthy();
+    expect(within(first).getByText(/risco baixo/i)).toBeTruthy();
+    expect(within(second).getByText(/0,90/)).toBeTruthy();
+    expect(within(second).getByText(/risco alto/i)).toBeTruthy();
   });
 
   it("new_session_keeps_the_sign_in", async () => {
@@ -323,7 +332,7 @@ describe("web app", () => {
 
     await ask(user, "First question?");
     await screen.findByText("An answer.");
-    await user.click(screen.getByRole("button", { name: "New session" }));
+    await user.click(screen.getByRole("button", { name: "Nova conversa" }));
 
     expect(screen.queryByText("An answer.")).toBeNull();
     await ask(user, "Second question?");
@@ -350,7 +359,7 @@ describe("web app", () => {
 
     await ask(user, "First question?");
     await screen.findByText("An answer.");
-    await user.click(screen.getByRole("button", { name: "New session" }));
+    await user.click(screen.getByRole("button", { name: "Nova conversa" }));
     await ask(user, "Second question?");
     await waitFor(() => expect(chatCalls(calls)).toHaveLength(2));
 
@@ -371,13 +380,13 @@ describe("web app", () => {
     await signIn(user);
 
     await ask(user, "First question?");
-    await screen.findByText(/waiting for the answer/i);
-    await user.clear(screen.getByLabelText("Your question"));
-    await user.type(screen.getByLabelText("Your question"), "Next question?");
+    await screen.findByText(/aguardando a resposta/i);
+    await user.clear(screen.getByLabelText("Sua pergunta"));
+    await user.type(screen.getByLabelText("Sua pergunta"), "Next question?");
     answer(json({ answer: "An answer.", hallucination_score: 0.1 }));
     await screen.findByText("An answer.");
 
-    expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).value).toBe(
+    expect((screen.getByLabelText("Sua pergunta") as HTMLTextAreaElement).value).toBe(
       "Next question?",
     );
   });
@@ -404,5 +413,335 @@ describe("web app", () => {
     const answer = bold.closest("article")!;
     expect(answer.querySelector("img")).toBeNull();
     expect(answer.textContent).toContain("<img src=x onerror=alert(1)>");
+  });
+
+  it("user_copy_is_portuguese", async () => {
+    stubApi({ "/api/config": config(), "/api/auth/token": signedIn() });
+    const user = userEvent.setup();
+    render(<App />);
+
+    for (const label of ["Usuário", "Senha"]) {
+      expect(screen.getByLabelText(label)).toBeTruthy();
+    }
+    expect(screen.getByRole("button", { name: "Entrar" })).toBeTruthy();
+    await signIn(user);
+    for (const label of ["Nome", "Nível de conhecimento", "Sua pergunta"]) {
+      expect(screen.getByLabelText(label)).toBeTruthy();
+    }
+    for (const name of ["Nova conversa", "Sair", "Enviar"]) {
+      expect(screen.getByRole("button", { name })).toBeTruthy();
+    }
+    expect(indexHtml).toContain('<html lang="pt-BR">');
+  });
+
+  it("sign_in_has_its_own_screen", async () => {
+    stubApi({ "/api/config": config(), "/api/auth/token": signedIn() });
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByLabelText("Usuário")).toBeTruthy();
+    expect(screen.queryByLabelText("Sua pergunta")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Nova conversa" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Menu" })).toBeNull();
+
+    await signIn(user);
+    expect(screen.queryByLabelText("Usuário")).toBeNull();
+    expect(screen.queryByLabelText("Senha")).toBeNull();
+    expect(screen.getByLabelText("Sua pergunta")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Nova conversa" })).toBeTruthy();
+  });
+
+  it("sign_out_clears_the_conversation", async () => {
+    let answer: (response: Response) => void = () => {};
+    const calls = stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [
+        json({ answer: "First answer.", hallucination_score: 0.1 }),
+        () => new Promise<Response>((resolve) => (answer = resolve)),
+        json({ answer: "Later answer.", hallucination_score: 0.1 }),
+      ],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+    await user.clear(screen.getByLabelText("Nome"));
+    await user.type(screen.getByLabelText("Nome"), "Ana");
+    await ask(user, "First question?");
+    await screen.findByText("First answer.");
+
+    // A pending question keeps "Sair" disabled: its answer must not land after sign-out.
+    await ask(user, "Second question?");
+    await screen.findByText(/aguardando a resposta/i);
+    expect((screen.getByRole("button", { name: "Sair" }) as HTMLButtonElement).disabled).toBe(true);
+    answer(json({ answer: "Second answer.", hallucination_score: 0.1 }));
+    await screen.findByText("Second answer.");
+
+    await user.type(screen.getByLabelText("Sua pergunta"), "A draft");
+    await user.click(screen.getByRole("button", { name: "Sair" }));
+    expect((screen.getByLabelText("Usuário") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByLabelText("Sua pergunta")).toBeNull();
+
+    await signIn(user);
+    expect(screen.queryByText("First answer.")).toBeNull();
+    expect(screen.queryByText("Second answer.")).toBeNull();
+    expect((screen.getByLabelText("Nome") as HTMLInputElement).value).toBe("Produtor");
+    expect((screen.getByLabelText("Sua pergunta") as HTMLTextAreaElement).value).toBe("");
+    await ask(user, "Third question?");
+    await screen.findByText("Later answer.");
+    const [first, , third] = chatCalls(calls);
+    expect(body(third).session_id).not.toBe(body(first).session_id);
+  });
+
+  it("the_agent_head_follows_the_request", async () => {
+    let answer: (response: Response) => void = () => {};
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [
+        () => new Promise<Response>((resolve) => (answer = resolve)),
+        json({ detail: "unavailable" }, 503),
+      ],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+    expect(heads()).toEqual(["idle"]);
+
+    await ask(user, "First question?");
+    await waitFor(() => expect(heads()).toEqual(["processing"]));
+    // A request that stays pending keeps the state: nothing advances it on a timer.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(heads()).toEqual(["processing"]);
+
+    answer(json({ answer: "An answer.", hallucination_score: 0.1 }));
+    await screen.findByText("An answer.");
+    expect(heads()).toEqual(["done"]);
+
+    await ask(user, "Second question?");
+    await screen.findByRole("alert");
+    expect(heads()).toEqual(["done", "error"]);
+  });
+
+  it("tables_render", async () => {
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [
+        json({
+          answer: "| Cultura | Dose |\n| --- | --- |\n| Soja | 2 t/ha |",
+          hallucination_score: 0.1,
+        }),
+      ],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    await ask(user, "Which dose?");
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getByRole("cell", { name: "Soja" })).toBeTruthy();
+    expect(within(table).getByRole("cell", { name: "2 t/ha" })).toBeTruthy();
+  });
+
+  it("each_message_shows_its_time", async () => {
+    const sentAt = new Date("2026-10-30T13:05:00Z");
+    const arrivedAt = new Date("2026-10-30T13:09:00Z");
+    // Only Date is faked: the timers the test helpers wait on keep running.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      stubApi({
+        "/api/config": config(),
+        "/api/auth/token": signedIn(),
+        "/api/chat": [
+          () => {
+            vi.setSystemTime(arrivedAt);
+            return json({ answer: "An answer.", hallucination_score: 0.1 });
+          },
+        ],
+      });
+      const user = userEvent.setup();
+      render(<App />);
+      await signIn(user);
+
+      vi.setSystemTime(sentAt);
+      await ask(user, "First question?");
+      await screen.findByText("An answer.");
+
+      const question = screen.getByText("First question?").closest("li")!;
+      const answer = screen.getByText("An answer.").closest("article")!;
+      expect(question.querySelector("time")!.dateTime).toBe(sentAt.toISOString());
+      expect(answer.querySelector("time")!.dateTime).toBe(arrivedAt.toISOString());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a_failed_question_stays_visible", async () => {
+    let fail: (response: Response) => void = () => {};
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [() => new Promise<Response>((resolve) => (fail = resolve))],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    await ask(user, "Which lime?");
+    await screen.findByText(/aguardando a resposta/i);
+    await user.clear(screen.getByLabelText("Sua pergunta"));
+    await user.type(screen.getByLabelText("Sua pergunta"), "A new draft");
+    fail(json({ detail: "unavailable" }, 503));
+
+    const error = await screen.findByRole("alert");
+    const entry = error.closest("li")!;
+    expect(within(entry).getByText("Which lime?")).toBeTruthy();
+    expect((screen.getByLabelText("Sua pergunta") as HTMLTextAreaElement).value).toBe(
+      "A new draft",
+    );
+  });
+
+  it("reading_back_is_not_interrupted", async () => {
+    let answer: (response: Response) => void = () => {};
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [
+        json({ answer: "First answer.", hallucination_score: 0.1 }),
+        () => new Promise<Response>((resolve) => (answer = resolve)),
+      ],
+    });
+    // jsdom has no layout: the scroll calls and the chat's geometry are set by hand.
+    const scrolls = vi.fn();
+    Element.prototype.scrollIntoView = scrolls;
+    try {
+      const user = userEvent.setup();
+      render(<App />);
+      await signIn(user);
+      await ask(user, "First question?");
+      await screen.findByText("First answer.");
+
+      scrolls.mockClear();
+      await ask(user, "Second question?");
+      await screen.findByText(/aguardando a resposta/i);
+      expect(scrolls).toHaveBeenCalled();
+
+      const chat = document.querySelector(".chat")!;
+      Object.defineProperty(chat, "scrollHeight", { value: 2000, configurable: true });
+      Object.defineProperty(chat, "clientHeight", { value: 500, configurable: true });
+      chat.scrollTop = 0;
+      fireEvent.scroll(chat);
+      scrolls.mockClear();
+      answer(json({ answer: "Second answer.", hallucination_score: 0.1 }));
+      await screen.findByText("Second answer.");
+
+      expect(scrolls).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+    }
+  });
+
+  it("copy_needs_a_clipboard: with a clipboard", async () => {
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [json({ answer: "Use **lime**.", hallucination_score: 0.1 })],
+    });
+    // setup() puts its own clipboard stub on navigator.
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    await ask(user, "Which lime?");
+    await screen.findByText("lime");
+    await user.click(screen.getByRole("button", { name: "Copiar" }));
+
+    expect(await navigator.clipboard.readText()).toBe("Use **lime**.");
+  });
+
+  it("copy_needs_a_clipboard: the session id", async () => {
+    const calls = stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [json({ answer: "An answer.", hallucination_score: 0.1 })],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+    await ask(user, "First question?");
+    await screen.findByText("An answer.");
+
+    const button = () => screen.getByRole("button", { name: "Copiar id da sessão" });
+    await user.click(button());
+    expect(await navigator.clipboard.readText()).toBe(body(chatCalls(calls)[0]).session_id);
+    expect(button().textContent).toBe("Copiado");
+
+    // The new id was never copied, so the button must not claim it was.
+    await user.click(screen.getByRole("button", { name: "Nova conversa" }));
+    expect(button().textContent).toBe("Copiar");
+  });
+
+  it("copy_needs_a_clipboard: a refused write", async () => {
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [json({ answer: "An answer.", hallucination_score: 0.1 })],
+    });
+    const user = userEvent.setup();
+    vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(
+      new DOMException("Write permission denied.", "NotAllowedError"),
+    );
+    render(<App />);
+    await signIn(user);
+    await ask(user, "First question?");
+    await screen.findByText("An answer.");
+
+    await user.click(screen.getByRole("button", { name: "Copiar" }));
+
+    expect(await screen.findByRole("button", { name: "Falha ao copiar" })).toBeTruthy();
+  });
+
+  it("copy_needs_a_clipboard: without a clipboard", async () => {
+    stubApi({
+      "/api/config": config(),
+      "/api/auth/token": signedIn(),
+      "/api/chat": [json({ answer: "An answer.", hallucination_score: 0.1 })],
+    });
+    const user = userEvent.setup();
+    // A plain-HTTP origin has no clipboard API.
+    const own = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    try {
+      render(<App />);
+      await signIn(user);
+      await ask(user, "First question?");
+      await screen.findByText("An answer.");
+
+      expect(screen.queryByRole("button", { name: /copiar/i })).toBeNull();
+    } finally {
+      if (own) Object.defineProperty(navigator, "clipboard", own);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+
+  it("the_menu_toggles_the_sidebar", async () => {
+    stubApi({ "/api/config": config(), "/api/auth/token": signedIn() });
+    const user = userEvent.setup();
+    render(<App />);
+    await signIn(user);
+
+    const menu = screen.getByRole("button", { name: "Menu" });
+    const sidebar = document.getElementById(menu.getAttribute("aria-controls")!)!;
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+    expect(sidebar.dataset.open).toBe("false");
+
+    await user.click(menu);
+    expect(menu.getAttribute("aria-expanded")).toBe("true");
+    expect(sidebar.dataset.open).toBe("true");
+
+    await user.click(menu);
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
   });
 });
