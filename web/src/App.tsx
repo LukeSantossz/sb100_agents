@@ -71,11 +71,14 @@ export default function App() {
   const [pending, setPending] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
 
-  useEffect(() => {
+  function loadConfig() {
+    setConfigError(null);
     fetchConfig()
       .then(setConfig)
       .catch((error: unknown) => setConfigError(userMessage(error)));
-  }, []);
+  }
+
+  useEffect(loadConfig, []);
 
   async function handleSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -87,6 +90,11 @@ export default function App() {
     setSignInError(null);
     try {
       setToken(await signIn(username, password));
+      // Another account must not see, or continue, the previous account's conversation.
+      if (signedInAs && username !== signedInAs) {
+        setSessionId(newSessionId());
+        setTurns([]);
+      }
       setSignedInAs(username);
       setPassword("");
       setChatError(null);
@@ -152,9 +160,12 @@ export default function App() {
       </header>
 
       {configError && (
-        <p className="notice notice-error" role="alert">
-          {configError}
-        </p>
+        <div className="notice notice-error notice-row">
+          <p role="alert">{configError}</p>
+          <button type="button" onClick={loadConfig}>
+            Retry
+          </button>
+        </div>
       )}
 
       <div className="layout">

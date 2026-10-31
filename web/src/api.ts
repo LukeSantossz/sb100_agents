@@ -104,15 +104,23 @@ export async function askQuestion(
 ): Promise<Answer> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
-  let response: Response;
+  // The timer runs until the body is read: a server that sends its headers and then
+  // stalls must not keep the page waiting past the timeout.
   try {
-    response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId, question, profile }),
-      signal: controller.signal,
-    });
-  } catch {
+    let response: Response;
+    try {
+      response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, question, profile }),
+        signal: controller.signal,
+      });
+    } catch {
+      throw new ApiError(UNREACHABLE);
+    }
+    if (!response.ok) throw chatFailure(response.status);
+    return (await response.json()) as Answer;
+  } catch (error) {
     if (controller.signal.aborted) {
       throw new ApiError(
         `No answer after ${timeoutSeconds} s. The server may still finish and record this ` +
@@ -120,10 +128,8 @@ export async function askQuestion(
           "machine Ollama can take several minutes per answer.",
       );
     }
-    throw new ApiError(UNREACHABLE);
+    throw error;
   } finally {
     clearTimeout(timer);
   }
-  if (!response.ok) throw chatFailure(response.status);
-  return (await response.json()) as Answer;
 }

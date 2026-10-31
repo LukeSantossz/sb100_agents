@@ -64,10 +64,16 @@ Start-Sleep -Seconds 3
 
 # Start the web page. It needs Node.js; without it the API still starts on its own.
 if (Get-Command npm -ErrorAction SilentlyContinue) {
+    $installed = $true
     if (-not (Test-Path "web\node_modules")) {
         npm --prefix web ci
+        $installed = ($LASTEXITCODE -eq 0)
     }
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/k", "npm --prefix web run dev" -WindowStyle Normal
+    if ($installed) {
+        Start-Process -FilePath "cmd.exe" -ArgumentList "/k", "npm --prefix web run dev" -WindowStyle Normal
+    } else {
+        Write-Host "Web page: skipped - npm ci failed in web" -ForegroundColor Yellow
+    }
 } else {
     Write-Host "Web page: skipped - Node.js 22.12+ is not on the PATH" -ForegroundColor Yellow
 }

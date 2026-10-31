@@ -167,6 +167,18 @@ code {
   color: var(--sb-fg);
 }
 
+.notice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.notice-row p {
+  margin: 0;
+}
+
 .chat {
   display: grid;
   gap: 1.5rem;

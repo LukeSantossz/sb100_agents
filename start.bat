@@ -53,7 +53,11 @@ if %ERRORLEVEL% NEQ 0 (
     echo Web page: skipped - Node.js 22.12+ is not on the PATH
 ) else (
     if not exist web\node_modules call npm --prefix web ci
-    start "SmartB100 Web" cmd /k "npm --prefix web run dev"
+    if errorlevel 1 (
+        echo Web page: skipped - npm ci failed in web\
+    ) else (
+        start "SmartB100 Web" cmd /k "npm --prefix web run dev"
+    )
 )
 
 echo.
