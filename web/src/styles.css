@@ -448,6 +448,11 @@ time {
   margin-bottom: 0;
 }
 
+.markdown pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .markdown table {
   display: block;
   max-width: 100%;

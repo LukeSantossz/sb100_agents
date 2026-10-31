@@ -28,6 +28,13 @@ interface Pending {
   askedAt: Date;
 }
 
+interface Failure extends Pending {
+  message: string;
+}
+
+// How close to the bottom, in pixels, still counts as reading the newest message.
+const NEAR_BOTTOM = 80;
+
 const EXPERTISE: [Expertise, string][] = [
   ["beginner", "Iniciante"],
   ["intermediate", "Intermediário"],
@@ -86,27 +93,30 @@ function Question({ text, at }: { text: string; at: Date }) {
   );
 }
 
+const COPY_LABELS = { idle: "Copiar", copied: "Copiado", failed: "Falha ao copiar" };
+
 function CopyButton({ text, label }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<keyof typeof COPY_LABELS>("idle");
 
   useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 2000);
+    if (status === "idle") return;
+    const timer = setTimeout(() => setStatus("idle"), 2000);
     return () => clearTimeout(timer);
-  }, [copied]);
+  }, [status]);
 
   async function copy() {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
+      setStatus("copied");
     } catch {
-      // A denied permission leaves the button as it was; there is nothing to undo.
+      // A denied permission copies nothing; say so rather than look unchanged.
+      setStatus("failed");
     }
   }
 
   return (
     <button type="button" className="quiet" aria-label={label} onClick={() => void copy()}>
-      {copied ? "Copiado" : "Copiar"}
+      {COPY_LABELS[status]}
     </button>
   );
 }
@@ -131,11 +141,13 @@ export default function App() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [question, setQuestion] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
-  const [chatError, setChatError] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<Failure | null>(null);
 
   // Below 48rem the sidebar is closed until the Menu button opens it.
   const [menuOpen, setMenuOpen] = useState(false);
   const end = useRef<HTMLDivElement>(null);
+  const chat = useRef<HTMLElement>(null);
+  const atBottom = useRef(true);
   const canCopy = hasClipboard();
 
   function loadConfig() {
@@ -147,9 +159,16 @@ export default function App() {
 
   useEffect(loadConfig, []);
 
+  function trackScroll() {
+    const el = chat.current;
+    if (el) atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM;
+  }
+
+  // A question just sent always scrolls into view. An answer or error that arrives
+  // scrolls only for a reader at the bottom, so one reading back keeps their place.
   // jsdom has no scrollIntoView, hence the optional call.
   useEffect(() => {
-    end.current?.scrollIntoView?.({ block: "end" });
+    if (pending !== null || atBottom.current) end.current?.scrollIntoView?.({ block: "end" });
   }, [turns, pending, chatError]);
 
   async function handleSignIn(event: FormEvent<HTMLFormElement>) {
@@ -200,13 +219,14 @@ export default function App() {
       // The field stays editable while waiting; keep a draft of the next question.
       setQuestion((current) => (current.trim() === text ? "" : current));
     } catch (error) {
-      // The question stays in the input; sending it again is the user's call. An expired
-      // token sends the user back to sign in, with the conversation kept in memory.
+      // The failed question stays on screen above the error, even if the input was edited
+      // meanwhile; sending it again is the user's call. An expired token sends the user
+      // back to sign in, with the conversation kept in memory.
       if (error instanceof ApiError && error.unauthorized) {
         setToken(null);
         setSignInError(userMessage(error));
       } else {
-        setChatError(userMessage(error));
+        setChatError({ question: text, askedAt, message: userMessage(error) });
       }
     } finally {
       setPending(null);
@@ -346,7 +366,8 @@ export default function App() {
           <h2 id="session-heading">Sessão</h2>
           <div className="session-row">
             <code className="session-id">{sessionId.slice(0, 8)}</code>
-            {canCopy && <CopyButton text={sessionId} label="Copiar id da sessão" />}
+            {/* The key resets the button: a new id was never copied. */}
+            {canCopy && <CopyButton key={sessionId} text={sessionId} label="Copiar id da sessão" />}
           </div>
         </section>
 
@@ -361,7 +382,7 @@ export default function App() {
       <div className="main">
         {configNotice}
 
-        <main className="chat">
+        <main className="chat" ref={chat} onScroll={trackScroll}>
           {empty ? (
             <div className="empty">
               <AgentHead state="idle" />
@@ -406,10 +427,11 @@ export default function App() {
               )}
               {chatError !== null && (
                 <li>
+                  <Question text={chatError.question} at={chatError.askedAt} />
                   <div className="answer">
                     <AgentHead state="error" />
                     <p className="answer-card notice" role="alert">
-                      {chatError}
+                      {chatError.message}
                     </p>
                   </div>
                 </li>
