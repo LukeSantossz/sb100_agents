@@ -90,3 +90,14 @@ def test_readme_states_the_affiliation() -> None:
     readme = _readme()
     license_section = readme.split("## License", 1)[1]
     assert _AFFILIATION in license_section
+
+
+@pytest.mark.parametrize("name", ["cover-light.svg", "cover-dark.svg"])
+def test_cover_is_a_banner(name: str) -> None:
+    """The cover is a 1280 x 400 banner in the VisioSoil model (spec 0028)."""
+    head = re.search(r"<svg [^>]*>", (_BRAND / name).read_text(encoding="utf-8"))
+    assert head
+    tag = head.group(0)
+    assert 'viewBox="0 0 1280 400"' in tag
+    assert 'width="1280"' in tag
+    assert 'height="400"' in tag
