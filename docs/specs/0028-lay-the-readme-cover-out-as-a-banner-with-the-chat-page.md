@@ -27,12 +27,15 @@ SmartB100's own identity:
   current cover's line, in Cascadia Mono 400 and the muted text colour.
 - **Pills.** "Grounded answers", "Hallucination score" and "Three reader profiles", three of
   the features the README's What It Does section lists.
-- **Phone.** A phone frame showing the chat page with its real Portuguese copy: the top bar
-  with the mark and the name, one question bubble in Leaf, an answer card whose text is drawn
-  as grey lines, the score line in the page's own words, "Pontuação de alucinação 0,18: Risco
-  baixo", with the band in the page's low-risk colour, and the composer with its placeholder
-  "Pergunte sobre calagem e adubação". The question and the score are illustrative, as the
-  VisioSoil cover's camera screen is.
+- **Phone.** A phone frame showing the chat page's layout: the top bar with the mark and
+  the name, one question bubble in Leaf, "How much lime / for soybeans?", an answer card whose
+  text is drawn as grey lines, the score line, "Hallucination score 0.18: Low risk", with the
+  band in the page's low-risk colour, and the composer with the placeholder "Ask about liming
+  and fertilizing". The question and the score are illustrative, as the VisioSoil cover's
+  camera screen is.
+- **One language.** Every word on the cover is English, as on the VisioSoil cover, so the
+  phone's copy is the English sense of the page's Portuguese strings rather than the strings
+  themselves. The only Portuguese left is the bulletin's own name, IAC Boletim 100.
 - All text is Cascadia Mono converted to outlines, as spec 0024 requires, and the generator
   stays outside the repository for the reason spec 0024 gives.
 
@@ -46,6 +49,8 @@ SmartB100's own identity:
 - **Draw the phone's text in a sans face.** The chat page itself uses the system sans stack,
   but no sans face here is under a licence that plainly allows embedding its outlines, and
   spec 0024 already licenses Cascadia Mono for that use.
+- **Show the page's real Portuguese copy on the phone.** It is what a reader sees on the
+  page, but it mixes two languages on one English cover, which the Developer rejected.
 - **Resize the social preview to match.** GitHub asks for a 2:1 social preview, so
   `social-preview-1280x640.png` keeps its 1280 x 640 poster.
 
