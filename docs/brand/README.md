@@ -14,7 +14,7 @@ Every asset comes in a light and a dark version. A name without `-dark` is the l
 
 | File | Use |
 | --- | --- |
-| `cover-light.svg`, `cover-dark.svg` | README cover, 1280 x 640. The README switches them with the reader's GitHub theme. |
+| `cover-light.svg`, `cover-dark.svg` | README cover, a 1280 x 400 banner with the chat page on a phone (spec 0028). The README switches them with the reader's GitHub theme. |
 | `smartb100-logo.svg`, `smartb100-logo-dark.svg` | Mark and wordmark side by side, for headers. |
 | `smartb100-mark.svg`, `smartb100-mark-dark.svg` | Mark alone, on a 48-unit grid. |
 | `avatar-light-500.png`, `avatar-dark-500.png` | GitHub or social avatar, 500 x 500. |
