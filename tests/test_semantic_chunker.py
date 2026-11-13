@@ -126,3 +126,78 @@ def test_a_directory_named_like_a_pdf_is_not_indexed(tmp_path: Path) -> None:
     """rglob("*") returns directories too; only files are PDFs."""
     (tmp_path / "looks_like.pdf").mkdir()
     assert discover_pdfs(tmp_path) == []
+
+
+# ------------------- one Qdrant for indexing and querying (spec 0021) -------------------
+#
+# The chunker's --qdrant-url, --api-key and --collection defaulted to constants of its
+# own while the API read Settings, so QDRANT_URL, QDRANT_API_KEY and COLLECTION_NAME in
+# .env moved the query and not the corpus.
+
+_CONFIGURED = {
+    "qdrant_url": "http://qdrant.example:6333",
+    "qdrant_api_key": "configured-key",
+    "collection_name": "configured_collection",
+}
+
+
+@pytest.fixture
+def configured_qdrant(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
+    """Points Settings at a non-default Qdrant and records what the chunker targets.
+
+    ``main`` assigns the module globals on every run, so they are registered with
+    monkeypatch first, which restores them afterwards.
+    """
+    import database.semantic_chunker as chunker
+    from core.config import settings
+
+    for name, value in _CONFIGURED.items():
+        monkeypatch.setattr(settings, name, value)
+    for name in ("QDRANT_URL", "QDRANT_API_KEY", "COLLECTION_NAME", "OLLAMA_MODEL"):
+        monkeypatch.setattr(chunker, name, getattr(chunker, name))
+
+    seen: dict[str, object] = {}
+
+    def record(*_args: object, **_kwargs: object) -> None:
+        seen.update(
+            url=chunker.QDRANT_URL,
+            api_key=chunker.QDRANT_API_KEY,
+            collection=chunker.COLLECTION_NAME,
+        )
+
+    monkeypatch.setattr(chunker, "process_folder", record)
+    monkeypatch.setattr(chunker, "search", record)
+    return seen
+
+
+def test_the_index_command_targets_the_configured_qdrant(
+    tmp_path: Path, configured_qdrant: dict[str, object]
+) -> None:
+    assert main(["index", str(tmp_path)]) == 0
+    assert configured_qdrant == {
+        "url": "http://qdrant.example:6333",
+        "api_key": "configured-key",
+        "collection": "configured_collection",
+    }
+
+
+def test_the_search_command_targets_the_configured_qdrant(
+    configured_qdrant: dict[str, object],
+) -> None:
+    assert main(["search", "calagem"]) == 0
+    assert configured_qdrant == {
+        "url": "http://qdrant.example:6333",
+        "api_key": "configured-key",
+        "collection": "configured_collection",
+    }
+
+
+@pytest.mark.parametrize("command", [["index", "."], ["search", "calagem"]])
+def test_the_cli_flags_still_win(configured_qdrant: dict[str, object], command: list[str]) -> None:
+    flags = ["--qdrant-url", "http://flag:6333", "--api-key", "flag-key", "--collection", "flag"]
+    assert main([*command, *flags]) == 0
+    assert configured_qdrant == {
+        "url": "http://flag:6333",
+        "api_key": "flag-key",
+        "collection": "flag",
+    }
